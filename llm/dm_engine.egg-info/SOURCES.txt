@@ -1,5 +1,6 @@
 conversation.py
 llm.py
+persona.py
 setup.py
 dm_engine/__init__.py
 dm_engine/cli.py

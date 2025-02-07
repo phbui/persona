@@ -1,4 +1,3 @@
-import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
@@ -33,7 +32,13 @@ class LLM:
         # Move inputs to the same device as the model
         device = next(self.model.parameters()).device
         inputs = {k: v.to(device) for k, v in inputs.items()}
+        
+        # Record the length of the prompt tokens
+        prompt_length = inputs["input_ids"].shape[1]
+        
         # Generate output tokens
         outputs = self.model.generate(**inputs, max_new_tokens=max_new_tokens)
-        # Decode the output tokens to a string
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Only decode the tokens beyond the prompt length
+        new_tokens = outputs[0][prompt_length:]
+        return self.tokenizer.decode(new_tokens, skip_special_tokens=True)
