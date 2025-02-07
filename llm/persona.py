@@ -12,19 +12,15 @@ class Persona:
         with open(persona_path, "r") as f:
             data = json.load(f)
         return data
-    
+        
     def _process_persona(self):
-        """
-        Injects the username into the instruction if a "{username}" placeholder is found.
-        """
         username = self.persona_data.get("username", "Unknown")
-        if "instruction" in self.persona_data and "{username}" in self.persona_data["instruction"]:
-            self.persona_data["instruction"] = (
-                f"Respond solely in the voice of {username} and only with the knowedge of {username}. Provide only your final answer without any greetings, self-introductions, "
-                "or repeated context from previous conversation turns. Do not prefix your response with your username or any extra dialogue. "
-                "Your answer should be one continuous, standalone message that may include ** for actions."
-            )
-    
+        self.persona_data["instruction"] = (
+            f"Respond solely in the voice of {username}, as if you were typing a live chat message. "
+            "Provide only your final, concise answer to the user's message. DO NOT include any greetings, self-introductions, or any repeated conversation context. "
+            "Your reply must be a single, continuous message with minimal spacing and no extraneous dialogue. DO NOT include instructions, context, or the voice of the player."
+        )
+
     @property
     def system_message(self) -> str:
         return self.persona_data.get("system_message", "")
@@ -43,6 +39,10 @@ class Persona:
         return self.persona_data.get("instruction", "")
     
     @property
+    def typing_style(self) -> str:
+        return self.persona_data.get("typing_style", "")
+    
+    @property
     def username(self) -> str:
         return self.persona_data.get("username", "Unknown")
     
@@ -58,5 +58,6 @@ class Persona:
             f"[System Message]\n{self.system_message}\n\n"
             f"[Persona Backstory]\n{self.backstory}\n\n"
             f"[User Message]\n{self.user_message}\n\n"
+            f"[Typing Style]\n{self.typing_style}\n\n"
             f"[Instruction]\n{self.instruction}\n"
         )

@@ -34,8 +34,8 @@ class Conversation:
         context = "\n".join(self.history)
         prompt = (
             f"{self.persona}\n\n"
-            f"<CONTEXT>\n{context}\n</CONTEXT>\n\n"
-            "Answer:"
+            f"[Context]\n{context}\n\n"
+            "[Answer]\n"
         )
         return prompt
     
@@ -54,24 +54,27 @@ class Conversation:
         if last_index != -1:
             return response[:last_index+1].strip()
         return response.strip()
-    
+
     def chat(self, user_input: str, max_new_tokens: int = 100) -> str:
         """
         Processes a user's input:
-          1. Adds the user's input (labeled as 'Player') to the conversation history.
-          2. Builds a prompt including the formatted persona and the hidden conversation context.
-          3. Generates the assistant's response.
-          4. Trims the response to finish naturally.
-          5. Adds the assistant's response (labeled with the persona's username) to the conversation history.
-          6. Returns the final, formatted response prefixed with the profile picture and username.
+        1. Adds the user's input (labeled as 'Player') to the conversation history.
+        2. Builds a prompt including the formatted persona and the hidden conversation context.
+        3. Generates the assistant's response.
+        4. Trims the response to finish naturally.
+        5. Performs additional cleaning to remove any context or instruction artifacts and newlines.
+        6. Adds the assistant's response (labeled with the persona's username) to the conversation history.
+        7. Returns the final cleaned, one-line response.
         """
         self.add_turn("Player", user_input)
         prompt = self.get_prompt()
-        response = self.llm.generate_response(prompt, max_new_tokens)
+        response = self.llm.generate_response(prompt, max_new_tokens)        
         response = self._finish_naturally(response)
+        response = " ".join(response.split())
+        
         self.add_turn(self.username, response)
-        final_response = f"[{self.profile_pic}][{self.username}]: {response}"
-        return final_response
+        return prompt, response
+
     
     def end_conversation(self) -> str:
         """
