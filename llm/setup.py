@@ -8,6 +8,7 @@ setup(
     entry_points={
         "console_scripts": [
             "dm-cli=dm_engine.cli:main", 
+            "dm-gui=dm_engine.gui:main", 
         ],
     },
 )

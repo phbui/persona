@@ -29,6 +29,11 @@ class Persona:
         return self.persona_data.get("system_message", "")
     
     @property
+    def backstory(self) -> str:
+        return self.persona_data.get("backstory", "")
+    
+    
+    @property
     def user_message(self) -> str:
         return self.persona_data.get("user_message", "")
     
@@ -50,6 +55,7 @@ class Persona:
         """
         return (
             f"[System Message]\n{self.system_message}\n\n"
+            f"[Persona Backstory]\n{self.backstory}\n\n"
             f"[User Message]\n{self.user_message}\n\n"
             f"[Instruction]\n{self.instruction}\n"
         )

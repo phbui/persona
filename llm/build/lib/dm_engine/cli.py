@@ -31,7 +31,6 @@ def main():
                 max_tokens = 100
             else:
                 max_tokens = int(max_tokens_input)
-            print(f"Using max tokens: {max_tokens}")
             response = conversation.chat(user_input, max_new_tokens=max_tokens)
             
             print(response)

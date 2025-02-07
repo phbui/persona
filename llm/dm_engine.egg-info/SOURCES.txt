@@ -4,7 +4,7 @@ persona.py
 setup.py
 dm_engine/__init__.py
 dm_engine/cli.py
-dm_engine/interface.py
+dm_engine/gui.py
 dm_engine.egg-info/PKG-INFO
 dm_engine.egg-info/SOURCES.txt
 dm_engine.egg-info/dependency_links.txt
