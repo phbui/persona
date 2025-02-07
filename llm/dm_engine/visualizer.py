@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from mpl_toolkits.mplot3d import Axes3D  # Necessary for 3D plotting (may be implicit in recent matplotlib)
+from mpl_toolkits.mplot3d import Axes3D  # For 3D plotting
 import numpy as np
 
 class Visualizer(tk.Toplevel):
@@ -30,7 +30,7 @@ class Visualizer(tk.Toplevel):
         self.sent_canvas = FigureCanvasTkAgg(self.sent_fig, master=self.sentiment_frame)
         self.sent_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # (Optional) Connect events for zoom/pan on sentiment tab
+        # Connect events for zoom/pan on sentiment tab
         self.sent_ax.callbacks.connect('xlim_changed', self.on_x_change)
         self.sent_canvas.mpl_connect("scroll_event", self.on_scroll)
         self.sent_canvas.mpl_connect("button_press_event", self.on_click)
@@ -56,6 +56,9 @@ class Visualizer(tk.Toplevel):
 
         # Enable interactive rotation in the 3D plot
         self.emb_ax.mouse_init()
+
+        # Connect scroll event for 3D zoom on the embeddings tab
+        self.emb_canvas.mpl_connect("scroll_event", self.on_scroll_emb)
 
         # Immediately update both visualizations
         self.update_sentiment_visualization()
@@ -134,21 +137,17 @@ class Visualizer(tk.Toplevel):
         self.emb_ax.set_xlabel("PC1")
         self.emb_ax.set_ylabel("PC2")
         self.emb_ax.set_zlabel("PC3")
-
-        # Optional: set equal aspect ratio (if desired)
-        # This may require additional adjustments.
         
         self.emb_canvas.draw()
 
-    # --- The following event handlers are for the sentiment plot only ---
+    # --- Event handlers for the sentiment plot ---
 
     def on_scroll(self, event):
         """Handles zooming in/out with the scroll wheel for the sentiment plot."""
         if event.xdata is None:
             return  # Skip if xdata is not defined
         x_min, x_max = self.sent_ax.get_xlim()
-        # Choose zoom factor: scroll up (event.step > 0) zooms in, down zooms out
-        zoom_factor = 0.8 if event.step > 0 else 1.25
+        zoom_factor = 0.8 if event.step > 0 else 1.25  # Scroll up zooms in, down zooms out
         new_x_min = event.xdata - (event.xdata - x_min) * zoom_factor
         new_x_max = event.xdata + (x_max - event.xdata) * zoom_factor
         self.sent_ax.set_xlim(new_x_min, new_x_max)
@@ -156,7 +155,7 @@ class Visualizer(tk.Toplevel):
 
     def on_click(self, event):
         """Handles mouse click to start dragging (panning) for the sentiment plot."""
-        if event.button == 1:  # Left mouse button
+        if event.button == 1 and event.xdata is not None:  # Left mouse button and valid xdata
             self.press_x = event.xdata
             self.xlim = self.sent_ax.get_xlim()
 
@@ -183,6 +182,34 @@ class Visualizer(tk.Toplevel):
         """Detects when x-axis changes (for debugging)."""
         x_min, x_max = self.sent_ax.get_xlim()
         print(f"New X Limits: {x_min} to {x_max}")
+
+    # --- New event handler for the 3D embeddings plot ---
+
+    def on_scroll_emb(self, event):
+        """Handles zooming in/out with the scroll wheel for the embeddings 3D plot."""
+        # Get current 3D limits
+        x_min, x_max = self.emb_ax.get_xlim3d()
+        y_min, y_max = self.emb_ax.get_ylim3d()
+        z_min, z_max = self.emb_ax.get_zlim3d()
+
+        # Use zoom factor: scroll up (event.step > 0) zooms in, down zooms out
+        zoom_factor = 0.8 if event.step > 0 else 1.25
+
+        # Compute the center of each axis
+        x_center = (x_min + x_max) / 2
+        y_center = (y_min + y_max) / 2
+        z_center = (z_min + z_max) / 2
+
+        # Compute new ranges
+        new_x_range = (x_max - x_min) * zoom_factor / 2
+        new_y_range = (y_max - y_min) * zoom_factor / 2
+        new_z_range = (z_max - z_min) * zoom_factor / 2
+
+        # Set new limits
+        self.emb_ax.set_xlim3d([x_center - new_x_range, x_center + new_x_range])
+        self.emb_ax.set_ylim3d([y_center - new_y_range, y_center + new_y_range])
+        self.emb_ax.set_zlim3d([z_center - new_z_range, z_center + new_z_range])
+        self.emb_canvas.draw()
 
     def on_close(self):
         """Handles closing the visualization window."""
