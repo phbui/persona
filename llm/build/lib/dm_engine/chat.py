@@ -1,0 +1,155 @@
+import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
+import threading
+import torch
+import sys
+import gc
+from visualizer import Visualizer
+
+# Import your DM engine classes.
+from dm_engine import LLM, Conversation, Persona, PlayerModel
+
+class Chat(tk.Tk):
+    def __init__(self, hf_key, persona_path, max_tokens=32):
+        super().__init__()
+        self.title("Dungeon Master Engine Chat")
+        self.geometry("800x600")
+        self.max_tokens = max_tokens
+
+        print("[DEBUG] Initializing ChatGUI.")
+
+        # Override the close protocol for graceful shutdown.
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.visualization_window = None  # Track the visualization window.
+
+        # Instantiate DM engine classes.
+        self.persona = Persona(persona_path)
+        self.llm = LLM(secret_key=hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
+        self.conversation = Conversation(self.llm, persona=self.persona)
+
+        # Create the player model (hybrid: probabilistic + embedding).
+        self.player_model = PlayerModel(embedding_dim=50)
+
+        # Create chat area.
+        self.chat_area = ScrolledText(self, wrap=tk.WORD, font=("Helvetica", 16))
+        self.chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+        self.chat_area.config(state=tk.DISABLED)
+        self.chat_area.tag_configure("user", foreground="white", background="#0B93F6",
+                                     justify="right", spacing1=5, spacing3=10, lmargin1=50, rmargin=10)
+        self.chat_area.tag_configure("assistant", foreground="black", background="#E5E5EA",
+                                     justify="left", spacing1=5, spacing3=10, lmargin1=10, rmargin=50)
+        self.chat_area.tag_configure("system", foreground="gray", justify="center",
+                                     spacing1=5, spacing3=10)
+
+        # Input frame for message entry and send button.
+        input_frame = tk.Frame(self)
+        input_frame.pack(padx=10, pady=10, fill=tk.X)
+        self.input_field = tk.Entry(input_frame, font=("Helvetica", 20))
+        self.input_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        send_button = tk.Button(input_frame, text="Send", font=("Helvetica", 20),
+                                command=self.send_message)
+        send_button.pack(side=tk.LEFT)
+
+        # Button to open the integrated player model visualization.
+        vis_button = tk.Button(self, text="Show Player Model", font=("Helvetica", 16),
+                               command=self.open_player_model_visualization)
+        vis_button.pack(pady=(0, 10))
+
+        self.bind("<Return>", lambda event: self.send_message())
+
+        # Insert initial system messages.
+        self.insert_message("system", f"{self.persona.username} joined the chat.")
+        self.insert_message("system", "User joined the chat.")
+
+    def on_close(self):
+        print("[DEBUG] Closing ChatGUI application.")
+        if self.visualization_window is not None:
+            print("[DEBUG] Closing visualization window.")
+            self.visualization_window.destroy()
+        self.destroy()
+        print("[DEBUG] Shutting down transformer model.")
+        try:
+            del self.llm.model
+        except Exception as e:
+            print(f"[DEBUG] Error deleting model: {e}")
+        gc.collect()
+        torch.cuda.empty_cache()
+        print("[DEBUG] Exiting application.")
+        sys.exit(0)
+
+    def insert_message(self, tag, message):
+        self.chat_area.config(state=tk.NORMAL)
+        if tag == "user":
+            self.chat_area.insert(tk.END, f"You: {message}\n", "user")
+        elif tag == "assistant":
+            self.chat_area.insert(tk.END, f"{self.persona.username}: {message}\n", "assistant")
+        else:
+            self.chat_area.insert(tk.END, f"{message}\n", "system")
+        self.chat_area.config(state=tk.DISABLED)
+        self.chat_area.see(tk.END)
+        print(f"[DEBUG] Inserted {tag} message: {message}")
+
+    def send_message(self):
+        user_message = self.input_field.get().strip()
+        if not user_message:
+            print("[DEBUG] Empty user message; ignoring.")
+            return
+        print(f"[DEBUG] User message: {user_message}")
+        self.insert_message("user", user_message)
+        self.input_field.delete(0, tk.END)
+
+        self.player_model.update(user_message, role="user")
+        print("[DEBUG] Updated player model with user message.")
+
+        self.chat_area.config(state=tk.NORMAL)
+        typing_text = f"{self.persona.username} is typing..."
+        self.chat_area.insert(tk.END, f"{typing_text}\n", "assistant")
+        self.chat_area.config(state=tk.DISABLED)
+        self.chat_area.see(tk.END)
+        print("[DEBUG] Inserted typing indicator.")
+
+        self.update_visualization_if_open()
+
+        threading.Thread(target=self.get_response, args=(user_message,), daemon=True).start()
+
+    def get_response(self, user_message):
+        print(f"[DEBUG] Starting response generation thread for message: {user_message}")
+        print("[DEBUG] Predicted next response embedding computed.")
+        try:
+            print(f"[DEBUG] Generating response for: {user_message}")
+            prompt, assistant_response = self.conversation.chat(user_message, max_new_tokens=self.max_tokens)
+        except Exception as e:
+            assistant_response = "Error generating response."
+            print(f"[ERROR] Exception in get_response: {e}")
+        self.player_model.update(assistant_response, role="assistant")
+        print("[DEBUG] Updated player model with assistant response.")
+        self.after(0, lambda: self.update_response(assistant_response))
+
+    def update_response(self, response):
+        self.chat_area.config(state=tk.NORMAL)
+        typing_index = self.chat_area.search(f"{self.persona.username} is typing...", "1.0", tk.END)
+        if typing_index:
+            line_number = typing_index.split('.')[0]
+            start_index = f"{line_number}.0"
+            end_index = f"{line_number}.end"
+            self.chat_area.delete(start_index, end_index)
+            self.chat_area.insert(start_index, f"{self.persona.username}: {response}\n", "assistant")
+            print(f"[DEBUG] Replaced typing indicator with response: {response}")
+        else:
+            self.chat_area.insert(tk.END, f"{self.persona.username}: {response}\n", "assistant")
+            print(f"[DEBUG] Appended response: {response}")
+        self.chat_area.config(state=tk.DISABLED)
+        self.chat_area.see(tk.END)
+        self.update_visualization_if_open()
+
+    def update_visualization_if_open(self):
+        if self.visualization_window is not None:
+            print("[DEBUG] Triggering visualization update due to new message.")
+            self.visualization_window.update_visualization()
+
+    def open_player_model_visualization(self):
+        if self.visualization_window is None or not tk.Toplevel.winfo_exists(self.visualization_window):
+            print("[DEBUG] Opening Player Model Visualization window.")
+            self.visualization_window = Visualizer(self, self.player_model)
+        else:
+            print("[DEBUG] Player Model Visualization window already open.")
