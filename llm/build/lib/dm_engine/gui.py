@@ -6,7 +6,7 @@ import re
 from dm_engine import LLM, Conversation, Persona
 
 class ChatGUI(tk.Tk):
-    def __init__(self, hf_key, persona_path, max_tokens=64):
+    def __init__(self, hf_key, persona_path, max_tokens=32):
         super().__init__()
         self.title("Dungeon Master Engine Chat")
         self.geometry("800x600")
@@ -81,8 +81,6 @@ class ChatGUI(tk.Tk):
         try:
             print(f"[DEBUG] Generating response for: {user_message}", flush=True)
             prompt, assistant_response = self.conversation.chat(user_message, max_new_tokens=self.max_tokens)
-            print(f"prompt: {prompt}")
-            print(f"reponse: {assistant_response}")
         except Exception as e:
             assistant_response = "Error generating response."
             print(f"[ERROR] Exception in get_response: {e}", flush=True)
