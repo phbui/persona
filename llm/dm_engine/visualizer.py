@@ -59,6 +59,8 @@ class Visualizer(tk.Toplevel):
 
         # Connect scroll event for 3D zoom on the embeddings tab
         self.emb_canvas.mpl_connect("scroll_event", self.on_scroll_emb)
+        # Connect right-click (button 3) on embeddings tab to show info
+        self.emb_canvas.mpl_connect("button_press_event", self.on_info_click_emb)
 
         # Immediately update both visualizations
         self.update_sentiment_visualization()
@@ -131,8 +133,8 @@ class Visualizer(tk.Toplevel):
             else:
                 colors.append('orange')
 
-        # Create a 3D scatter plot
-        self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
+        # Create a 3D scatter plot and store the scatter object for later hit-testing
+        self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
         self.emb_ax.set_title("3D Embedding Visualization", fontsize=12)
         self.emb_ax.set_xlabel("PC1")
         self.emb_ax.set_ylabel("PC2")
@@ -154,8 +156,14 @@ class Visualizer(tk.Toplevel):
         self.sent_canvas.draw()
 
     def on_click(self, event):
-        """Handles mouse click to start dragging (panning) for the sentiment plot."""
-        if event.button == 1 and event.xdata is not None:  # Left mouse button and valid xdata
+        """Handles mouse click for the sentiment plot.
+        Left-click (button 1) is used for panning.
+        Right-click (button 3) is used to open a detailed info window.
+        """
+        if event.button == 3 and event.xdata is not None:
+            self.open_info_window_sentiment(event)
+            return
+        if event.button == 1 and event.xdata is not None:
             self.press_x = event.xdata
             self.xlim = self.sent_ax.get_xlim()
 
@@ -183,7 +191,62 @@ class Visualizer(tk.Toplevel):
         x_min, x_max = self.sent_ax.get_xlim()
         print(f"New X Limits: {x_min} to {x_max}")
 
-    # --- New event handler for the 3D embeddings plot ---
+    # --- New: Detailed Info Window Methods ---
+
+    def open_info_window_sentiment(self, event):
+        """Finds the sentiment data point closest to the click location and opens an info window."""
+        x_click = event.xdata
+        y_click = event.ydata
+        history = self.player_model.get_history_for_visualization()
+        best_entry = None
+        best_dist = float('inf')
+        # Compare against each data point (using order as x and compound score as y)
+        for entry in history:
+            x_val = entry["order"]
+            y_val = entry["sentiment_scores"]["compound"]
+            dist = np.sqrt((x_click - x_val)**2 + (y_click - y_val)**2)
+            if dist < best_dist:
+                best_dist = dist
+                best_entry = entry
+        # If the closest point is within a threshold distance, open the info window.
+        if best_dist < 1.0:
+            self.show_info_window(best_entry)
+
+    def on_info_click_emb(self, event):
+        """Handles right-click on the embeddings 3D plot to open an info window."""
+        if event.button == 3:
+            if hasattr(self, 'emb_scatter'):
+                contains, attr = self.emb_scatter.contains(event)
+                if contains:
+                    index = attr["ind"][0]
+                    history = self.player_model.get_history_for_visualization()
+                    # Ensure index is valid
+                    if index < len(history):
+                        self.show_info_window(history[index])
+
+    def show_info_window(self, entry):
+        """Opens a new small window displaying detailed information about a data point."""
+        info_win = tk.Toplevel(self)
+        info_win.title(f"Detail for Message {entry['order']}")
+        info_win.geometry("400x300")
+        # Create a Text widget to display details
+        text = tk.Text(info_win, wrap="word", width=50, height=15)
+        text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        details = f"Order: {entry['order']}\n"
+        details += f"Timestamp: {entry['timestamp']}\n"
+        details += f"Role: {entry['role']}\n\n"
+        details += f"Message:\n{entry['message']}\n\n"
+        details += f"Sentiment: {entry['sentiment']}\n\n"
+        details += "Sentiment Scores:\n"
+        for key, value in entry["sentiment_scores"].items():
+            details += f"  {key}: {value}\n"
+        text.insert("1.0", details)
+        text.config(state="disabled")
+        # Add a Close button
+        close_btn = tk.Button(info_win, text="Close", command=info_win.destroy)
+        close_btn.pack(pady=5)
+
+    # --- Event handler for the 3D embeddings plot ---
 
     def on_scroll_emb(self, event):
         """Handles zooming in/out with the scroll wheel for the embeddings 3D plot."""
