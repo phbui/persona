@@ -20,8 +20,9 @@ class Persona:
         username = self.persona_data.get("username", "Unknown")
         if "instruction" in self.persona_data and "{username}" in self.persona_data["instruction"]:
             self.persona_data["instruction"] = (
-                f"Respond solely in the voice of {username}. Do not prefix your response with your username; "
-                "simply provide one continuous message that may include ** for actions. Do not include dialogue from any other voices."
+                f"Respond solely in the voice of {username} and only with the knowedge of {username}. Provide only your final answer without any greetings, self-introductions, "
+                "or repeated context from previous conversation turns. Do not prefix your response with your username or any extra dialogue. "
+                "Your answer should be one continuous, standalone message that may include ** for actions."
             )
     
     @property
