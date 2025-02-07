@@ -34,6 +34,7 @@ class Visualizer(tk.Toplevel):
         self.sent_ax.callbacks.connect('xlim_changed', self.on_x_change)
         self.sent_canvas.mpl_connect("scroll_event", self.on_scroll)
         self.sent_canvas.mpl_connect("button_press_event", self.on_click)
+        self.sent_canvas.mpl_connect("button_release_event", self.on_release)
         self.sent_canvas.mpl_connect("motion_notify_event", self.on_drag)
         self.sent_canvas.mpl_connect("key_press_event", self.on_key)
 
@@ -143,8 +144,11 @@ class Visualizer(tk.Toplevel):
 
     def on_scroll(self, event):
         """Handles zooming in/out with the scroll wheel for the sentiment plot."""
+        if event.xdata is None:
+            return  # Skip if xdata is not defined
         x_min, x_max = self.sent_ax.get_xlim()
-        zoom_factor = 0.8 if event.step > 0 else 1.25  # Scroll up zooms in, down zooms out
+        # Choose zoom factor: scroll up (event.step > 0) zooms in, down zooms out
+        zoom_factor = 0.8 if event.step > 0 else 1.25
         new_x_min = event.xdata - (event.xdata - x_min) * zoom_factor
         new_x_max = event.xdata + (x_max - event.xdata) * zoom_factor
         self.sent_ax.set_xlim(new_x_min, new_x_max)
@@ -164,6 +168,11 @@ class Visualizer(tk.Toplevel):
         x_min, x_max = self.xlim
         self.sent_ax.set_xlim(x_min + dx, x_max + dx)
         self.sent_canvas.draw()
+
+    def on_release(self, event):
+        """Resets panning variables when the mouse button is released."""
+        self.press_x = None
+        self.xlim = None
 
     def on_key(self, event):
         """Resets zoom/pan of the sentiment plot when 'r' is pressed."""

@@ -60,6 +60,10 @@ class Visualizer(tk.Toplevel):
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
 
+    def update_visualization(self):
+        self.update_sentiment_visualization()
+        self.update_embeddings_visualization()
+
     def update_sentiment_visualization(self):
         """Updates the sentiment graph (tab 1) with sentiment scores over dialogue order."""
         history = self.player_model.get_history_for_visualization()
