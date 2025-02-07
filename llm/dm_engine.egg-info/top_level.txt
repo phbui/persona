@@ -2,3 +2,4 @@ conversation
 dm_engine
 llm
 persona
+playermodel
