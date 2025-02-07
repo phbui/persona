@@ -1,0 +1,2 @@
+[console_scripts]
+dm-cli = dm_engine.cli:main
