@@ -1,15 +1,16 @@
 import argparse
-import pygame
+import tkinter as tk
+from tkinter import scrolledtext
 from dm_engine import LLM, Conversation, Persona
 
 def main():
     # Parse command-line arguments.
     parser = argparse.ArgumentParser(
-        description="Dungeon Master Engine GUI using Pygame (Conversation Mode)"
+        description="Dungeon Master Engine Chat GUI using Tkinter (Conversation Mode)"
     )
     parser.add_argument("--hf_key", type=str, required=True, help="Hugging Face authentication token")
     parser.add_argument("--persona_path", type=str, required=True, help="Path to persona JSON file")
-    parser.add_argument("--max_tokens", type=int, default=100, help="Default maximum tokens per generation")
+    parser.add_argument("--max_tokens", type=int, default=128, help="Default maximum tokens per generation")
     args = parser.parse_args()
 
     # Instantiate Persona, LLM, and Conversation.
@@ -17,67 +18,73 @@ def main():
     llm_interface = LLM(secret_key=args.hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
     conversation = Conversation(llm_interface, persona=persona)
 
-    # Initialize Pygame.
-    pygame.init()
-    screen_width, screen_height = 800, 600
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption("Dungeon Master Engine GUI")
-    clock = pygame.time.Clock()
+    # Create the main Tkinter window.
+    root = tk.Tk()
+    root.title("Dungeon Master Engine Chat")
+    root.geometry("800x600")
 
-    # Set up fonts and colors.
-    font = pygame.font.SysFont("Courier New", 20)
-    input_font = pygame.font.SysFont("Courier New", 24)
-    text_color = (255, 255, 255)  # white
-    bg_color = (0, 0, 0)          # black
+    # Create a scrolled text widget for the chat history.
+    chat_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, state="disabled", font=("Helvetica", 12))
+    chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-    # The transcript stores lines of conversation.
-    transcript = []
-    transcript.append("Welcome to Dungeon Master Engine!")
-    transcript.append("Type your message and press Enter.")
+    # Create a frame for the input field and Send button.
+    input_frame = tk.Frame(root)
+    input_frame.pack(padx=10, pady=10, fill=tk.X)
+    input_field = tk.Entry(input_frame, font=("Helvetica", 12))
+    input_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+    send_button = tk.Button(input_frame, text="Send", font=("Helvetica", 12), command=lambda: send_message())
+    send_button.pack(side=tk.LEFT)
 
-    input_text = ""  # Current input field content.
+    def insert_message(sender, message):
+        """Insert a message into the chat area."""
+        chat_area.config(state="normal")
+        chat_area.insert(tk.END, f"{sender}: {message}\n")
+        chat_area.config(state="disabled")
+        chat_area.see(tk.END)
 
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            # Handle keyboard events for text input.
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_BACKSPACE:
-                    input_text = input_text[:-1]
-                elif event.key == pygame.K_RETURN:
-                    # When Enter is pressed, process the input.
-                    if input_text.strip():
-                        transcript.append(">>> " + input_text)
-                        # Generate response from the conversation.
-                        response = conversation.chat(input_text, max_new_tokens=args.max_tokens)
-                        transcript.append(response)
-                        input_text = ""  # Clear input after sending.
-                else:
-                    input_text += event.unicode
+    # Display a join message when the chat starts.
+    insert_message("System", "User joined the chat.")
 
-        # Draw background.
-        screen.fill(bg_color)
+    def send_message():
+        user_message = input_field.get().strip()
+        if not user_message:
+            return
+        # Insert the user's message.
+        insert_message("You", user_message)
+        input_field.delete(0, tk.END)
+        
+        # Insert a typing indicator for the assistant.
+        chat_area.config(state="normal")
+        # Record the current number of lines (the last line index)
+        lines_before = int(chat_area.index('end-1c').split('.')[0])
+        chat_area.insert(tk.END, f"{persona.username} is typing...\n")
+        chat_area.config(state="disabled")
+        chat_area.see(tk.END)
+        
+        # Generate the assistant's response (blocking call; consider threading if needed)
+        full_response = conversation.chat(user_message, max_new_tokens=args.max_tokens)
+        # conversation.chat returns a formatted string like "[profile_pic][username]: response"
+        if "]: " in full_response:
+            assistant_response = full_response.split("]: ", 1)[1]
+        else:
+            assistant_response = full_response
+        
+        # Remove the "typing..." indicator.
+        chat_area.config(state="normal")
+        # Delete the line that was just inserted.
+        start_index = f"{lines_before}.0"
+        end_index = f"{lines_before + 1}.0"
+        chat_area.delete(start_index, end_index)
+        chat_area.config(state="disabled")
+        
+        # Insert the assistant's actual response.
+        insert_message(persona.username, assistant_response)
 
-        # Render the transcript.
-        y_offset = 10
-        line_height = font.get_height() + 5
-        # Calculate how many lines can fit in the transcript area (leaving space for the input field).
-        max_lines = (screen_height - 50) // line_height
-        for line in transcript[-max_lines:]:
-            rendered_line = font.render(line, True, text_color)
-            screen.blit(rendered_line, (10, y_offset))
-            y_offset += line_height
+    # Bind the Return key to send the message.
+    root.bind("<Return>", lambda event: send_message())
 
-        # Render the input field.
-        input_surface = input_font.render(">> " + input_text, True, text_color)
-        screen.blit(input_surface, (10, screen_height - 40))
-
-        pygame.display.flip()
-        clock.tick(30)
-
-    pygame.quit()
+    # Start the Tkinter event loop.
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
