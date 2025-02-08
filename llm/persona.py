@@ -32,13 +32,13 @@ class Persona:
         )
 
         self.persona_data["mental_state"] = {
-            "confidence": 0,
-            "guilt": 0,
-            "calm": 0,
-            "anxiety": 0,
-            "stability": 0,
-            "neuroticism": 0,
-        }
+                "valence": 0,
+                "arousal": 0,
+                "dominance": 0,
+                "confidence": 0,
+                "anxiety": 0,
+                "guilt": 0,
+            }
 
     def _process_triggers(self):
         self.embedded_triggers = []
@@ -87,13 +87,13 @@ class Persona:
     @property
     def mental_state(self) -> dict:
         return self.persona_data.get("mental_state", {
-            "stability": 0,
-            "calm": 0,
-            "guilt": 0,
-            "neuroticism": 0,   
-            "anxiety": 0,
-            "confidence": 0,
-        })
+                "valence": 0,
+                "arousal": 0,
+                "dominance": 0,
+                "confidence": 0,
+                "anxiety": 0,
+                "guilt": 0,
+            })
     
     @property
     def username(self) -> str:
@@ -117,7 +117,7 @@ class Persona:
             f"[Important Details]\n{self.important_details}\n\n"
             f"[User Message]\n{self.user_message}\n\n"
             f"[Typing Style]\n{self.typing_style}\n\n"
-            f"[Your Mental State]\n{json.dumps(self.mental_state)}\n\n" 
+            f"[Your Mental State]\n{self.formated_mental_state()}\n\n" 
             f"[Instruction]\n{self.instruction}\n"
         )
 
@@ -133,6 +133,22 @@ class Persona:
         else:
             self.persona_data["backstory"] = additional_text
 
+    def formated_mental_state(self):
+        """
+        Converts a dictionary of mental state parameters into a formatted string.
+                                
+        Returns:
+            str: Formatted string, e.g., "Valence: 0%\nArousal: 0%\n..."
+        """
+        # Create a list of formatted lines
+        formatted_lines = []
+        for key, value in self.mental_state.items():
+            # Capitalize the key and format the value with a "%" sign
+            formatted_lines.append(f"{key.capitalize()}: {value}%")
+        
+        # Join the lines with a newline character
+        return "\n".join(formatted_lines)
+
     def update_mental_state(self, changes):
         """
         Updates the mental state values based on given changes while ensuring they stay within [0, 10].
@@ -143,18 +159,17 @@ class Persona:
         # Ensure the mental state dictionary exists
         if "mental_state" not in self.persona_data:
             self.persona_data["mental_state"] = {
+                "valence": 0,
+                "arousal": 0,
+                "dominance": 0,
                 "confidence": 0,
-                "guilt": 0,
-                "calm": 0,
                 "anxiety": 0,
-                "stability": 0,
-                "neuroticism": 0,
+                "guilt": 0,
             }
 
         for key, delta in changes.items():
             if key in self.persona_data["mental_state"]:
-                # Update value and clamp it within the range [0, 10]
                 new_value = self.persona_data["mental_state"][key] + delta
-                self.persona_data["mental_state"][key] = max(0, min(10, new_value))
+                self.persona_data["mental_state"][key] = max(0, min(100, new_value))
 
         return self.persona_data["mental_state"]
