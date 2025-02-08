@@ -25,20 +25,26 @@ class LLM:
             torch_dtype=torch.float16,
             token=secret_key
         )
-        
+            
     def generate_response(self, prompt: str, max_new_tokens: int = 100) -> str:
-        # Tokenize the input prompt
-        inputs = self.tokenizer(prompt, return_tensors="pt")
-        # Move inputs to the same device as the model
-        device = next(self.model.parameters()).device
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-        
-        # Record the length of the prompt tokens
-        prompt_length = inputs["input_ids"].shape[1]
-        
-        # Generate output tokens
-        outputs = self.model.generate(**inputs, max_new_tokens=max_new_tokens)
-        
-        # Only decode the tokens beyond the prompt length
-        new_tokens = outputs[0][prompt_length:]
-        return self.tokenizer.decode(new_tokens, skip_special_tokens=True)
+        with torch.no_grad():
+            # Tokenize the input prompt.
+            inputs = self.tokenizer(prompt, return_tensors="pt")
+            # Move inputs to the same device as the model.
+            device = next(self.model.parameters()).device
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            
+            # Record the length of the prompt tokens.
+            prompt_length = inputs["input_ids"].shape[1]
+            
+            # Generate output tokens with caching enabled.
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                use_cache=True,
+                do_sample=False  # Greedy decoding
+            )
+            
+            # Only decode the tokens beyond the prompt length.
+            new_tokens = outputs[0][prompt_length:]
+            return self.tokenizer.decode(new_tokens, skip_special_tokens=True)

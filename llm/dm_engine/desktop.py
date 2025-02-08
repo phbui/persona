@@ -80,8 +80,13 @@ class Desktop(tk.Tk):
             chat_window = Chat(self, self.hf_key, persona_path, max_tokens=64)
             chat_window.lift()
             self.wait_window(chat_window)
-            print("[DEBUG] Chat window closed. Conversation end data:", chat_window.conversation_end_data)
-            print("[DEBUG] Player model end data:", chat_window.player_model_end_data)
+            try:
+                #print("[DEBUG] Chat window closed. Conversation end data:", chat_window.conversation_end_data)
+                #print("[DEBUG] Player model end data:", chat_window.player_model_end_data)
+                print("[DEBUG] Conversation saved.")
+            except Exception as e:
+                print("[DEBUG] No relevant info from conversation.")
+
             try:
                 self.contacts_tree.state(["!disabled"])
                 print("[DEBUG] Contacts widget re-enabled.")
