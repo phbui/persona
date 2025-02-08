@@ -90,6 +90,7 @@ class Chat(tk.Toplevel):
             if chunk:
                 chunk_emb = self.get_embedding(chunk)
                 embeddings.append(chunk_emb)
+
         return full_emb, embeddings
 
     def get_embedding(self, text):

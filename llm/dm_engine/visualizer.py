@@ -97,7 +97,9 @@ class Visualizer(tk.Toplevel):
                 colors.append('blue')
             else:
                 colors.append('orange')
-        self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
+        # Assign the scatter plot to self.emb_scatter so that it can be used for click events.
+        self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
+        
         sorted_history = sorted(history, key=lambda x: x["order"])
         user_x, user_y, user_z, assistant_x, assistant_y, assistant_z = [], [], [], [], [], []
         for entry in sorted_history:
@@ -140,27 +142,20 @@ class Visualizer(tk.Toplevel):
         # For each history entry, if chunked embeddings exist, plot them.
         for entry in history:
             if "chunked_embeddings" in entry and entry["chunked_embeddings"] is not None:
-                # Determine color based on the role.
                 role = entry["role"]
-                if role in ["user", "player"]:
-                    color = "blue"
-                else:
-                    color = "orange"
+                color = "blue" if role in ["user", "player"] else "orange"
                 # Assume entry["chunked_embeddings"] is a NumPy array of shape (n, 3)
                 chunk_embs = entry["chunked_embeddings"]
                 if chunk_embs.shape[0] > 0:
                     main_emb = entry["embedding"]
-                    # For each chunk, draw a dotted line connecting the main embedding to that chunk.
                     for i in range(chunk_embs.shape[0]):
                         self.emb_ax.plot([main_emb[0], chunk_embs[i, 0]],
                                         [main_emb[1], chunk_embs[i, 1]],
                                         [main_emb[2], chunk_embs[i, 2]],
                                         linestyle='dotted', color=color, linewidth=1)
-                    # Plot each chunk with small markers (no label).
                     for i in range(chunk_embs.shape[0]):
                         self.emb_ax.scatter(chunk_embs[i, 0], chunk_embs[i, 1], chunk_embs[i, 2],
                                             c=color, s=10, marker='o')
-
         self.emb_ax.set_title("3D Embedding Visualization", fontsize=12)
         self.emb_ax.set_xlabel("PC1")
         self.emb_ax.set_ylabel("PC2")

@@ -93,4 +93,11 @@ class PlayerModel:
                 else:
                     reduced_chunk_embs = safe_pca(chunk_embs, n_components=3)
                 entry["chunked_embeddings"] = reduced_chunk_embs
+
+        import json
+        print(f"full emb: {main_embeddings}")   
+        print(f"full emb: {reduced_main_embeddings}")        
+        print(f"embeddings: {reduced_chunk_embs}") 
+        print(f"embeddings: {entry['chunked_embeddings']}") 
+
         return reduced_history

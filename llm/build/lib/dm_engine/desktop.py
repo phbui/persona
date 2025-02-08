@@ -14,7 +14,7 @@ from dm_engine import Persona  # Ensure Persona is imported
 class Desktop(tk.Tk):
     def __init__(self, hf_key, personas_folder):
         super().__init__()
-        self.title("Dungeon Master Desktop")
+        self.title("")
         self.geometry("400x600")
         self.hf_key = hf_key
         self.personas_folder = personas_folder
