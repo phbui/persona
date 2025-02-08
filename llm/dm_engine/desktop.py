@@ -21,7 +21,10 @@ class Desktop(tk.Tk):
         print("[DEBUG] Desktop initialized with hf_key:", hf_key)
         print("[DEBUG] Using personas folder:", self.personas_folder)
 
-        # Create a Treeview widget for displaying contacts.
+        # Bind the on_close method to the window's close protocol.
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        # Instead of a Listbox, use a Treeview for better control over item appearance.
         self.style = ttk.Style()
         self.style.configure("Treeview", rowheight=30)
         self.contacts_tree = ttk.Treeview(self, columns=("Name",), show="headings", selectmode="browse")
@@ -95,6 +98,21 @@ class Desktop(tk.Tk):
                 print("[DEBUG] Contacts widget re-enabled.")
             except Exception as e:
                 print(f"[DEBUG] Could not re-enable contacts widget: {e}")
+
+    def on_close(self):
+        """Properly shuts down the Desktop application and any child windows."""
+        print("[DEBUG] Shutting down Desktop application.")
+        # Iterate over all child widgets and destroy Toplevel windows (e.g., any Chat windows)
+        for widget in self.winfo_children():
+            if isinstance(widget, tk.Toplevel):
+                try:
+                    widget.destroy()
+                    print(f"[DEBUG] Destroyed child window: {widget}")
+                except Exception as e:
+                    print(f"[DEBUG] Error destroying child window: {e}")
+        # Finally, destroy the main Desktop window.
+        self.destroy()
+        print("[DEBUG] Desktop application closed.")
 
 def main():
     parser = argparse.ArgumentParser(

@@ -12,7 +12,7 @@ from dm_engine import LLM, Conversation, Persona, PlayerModel
 class Chat(tk.Toplevel):  # Now a Toplevel window.
     def __init__(self, parent, hf_key, persona, max_tokens=32):
         super().__init__(parent)
-        self.title("Dungeon Master Engine Chat")
+        self.title("")
         self.geometry("800x600")
         self.max_tokens = max_tokens
 
@@ -114,15 +114,19 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
         print("[DEBUG] Updated player model with user message.")
 
         self.chat_area.config(state=tk.NORMAL)
+        self.after(1000, self.insert_typing_indicator)
+        threading.Thread(target=self.get_response, args=(user_message,), daemon=True).start()
+        self.update_visualization_if_open()
+
+    def insert_typing_indicator(self):
+        """Inserts the typing indicator after a delay."""
         typing_text = f"{self.persona.username} is typing..."
+        self.chat_area.config(state=tk.NORMAL)
         self.chat_area.insert(tk.END, f"{typing_text}\n", "assistant")
         self.chat_area.config(state=tk.DISABLED)
         self.chat_area.see(tk.END)
         print("[DEBUG] Inserted typing indicator.")
 
-        self.update_visualization_if_open()
-
-        threading.Thread(target=self.get_response, args=(user_message,), daemon=True).start()
 
     def get_response(self, user_message):
         print(f"[DEBUG] Starting response generation thread for message: {user_message}")

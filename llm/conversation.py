@@ -54,6 +54,14 @@ class Conversation:
         if last_index != -1:
             return response[:last_index+1].strip()
         return response.strip()
+    
+    def _clean_response(self, username, response):
+        prefix = f"{username}:"
+        if response.startswith(prefix):
+            # Remove the prefix and strip any leading/trailing whitespace.
+            return response[len(prefix):].strip()
+        return response
+
 
     def chat(self, user_input: str, max_new_tokens: int = 100) -> str:
         """
@@ -70,6 +78,7 @@ class Conversation:
         prompt = self.get_prompt()
         response = self.llm.generate_response(prompt, max_new_tokens)        
         response = self._finish_naturally(response)
+        response = self._clean_response(self.username, response)
         response = " ".join(response.split())
         
         self.add_turn(self.username, response)
