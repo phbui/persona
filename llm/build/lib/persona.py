@@ -40,15 +40,13 @@ class Persona:
                 emb = emb / norm
             self.embedded_triggers.append({"embedding": emb, "changes": changes})
 
-    def check_triggers(self, embedding, threshold=0.5):
+    def check_triggers(self, embedding, threshold=1.0):
         for trig in self.embedded_triggers.copy():
             distance = np.linalg.norm(embedding - trig["embedding"])
             if distance < threshold:
                 print(f"Trigger activated (distance: {distance:.4f}). "
                       f"Applying changes: {trig['changes']}")
                 self.update_mental_state(trig["changes"])
-            else: 
-                print(f"Trigger not activated (distance: {distance:.4f}).")
 
     @property
     def system_message(self) -> str:
@@ -78,12 +76,12 @@ class Persona:
     @property
     def mental_state(self) -> dict:
         return self.persona_data.get("mental_state", {
-            "confidence": 0,
-            "guilt": 0,
-            "calm": 0,
-            "anxiety": 0,
             "stability": 0,
-            "neuroticism": 0,
+            "calm": 0,
+            "guilt": 0,
+            "neuroticism": 0,   
+            "anxiety": 0,
+            "confidence": 0,
         })
     
     @property

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from mpl_toolkits.mplot3d import Axes3D  # For 3D plotting
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from sklearn.decomposition import PCA
 
@@ -13,15 +13,10 @@ class Visualizer(tk.Toplevel):
         self.geometry("900x700")
         self.player_model = player_model
         self.persona = persona 
-
         self.protocol("WM_DELETE_WINDOW", self.on_close)
-
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
-        # ------------------------------
-        # Tab 1: Sentiment Graph
-        # ------------------------------
         self.sentiment_frame = tk.Frame(self.notebook)
         self.notebook.add(self.sentiment_frame, text="Sentiment")
         self.sent_fig, self.sent_ax = plt.subplots(figsize=(7, 5))
@@ -36,9 +31,6 @@ class Visualizer(tk.Toplevel):
         self.press_x = None
         self.xlim = None
 
-        # ------------------------------
-        # Tab 2: Embeddings 3D Graph
-        # ------------------------------
         self.embeddings_frame = tk.Frame(self.notebook)
         self.notebook.add(self.embeddings_frame, text="Embeddings")
         self.emb_fig = plt.figure(figsize=(7, 5))
@@ -49,18 +41,25 @@ class Visualizer(tk.Toplevel):
         self.emb_canvas.mpl_connect("scroll_event", self.on_scroll_emb)
         self.emb_canvas.mpl_connect("button_press_event", self.on_info_click_emb)
 
+        self.mental_state_frame = tk.Frame(self.notebook)
+        self.notebook.add(self.mental_state_frame, text="Mental State")
+        self.radar_fig = plt.figure(figsize=(7, 5))
+        self.radar_ax = self.radar_fig.add_subplot(111, polar=True)
+        self.radar_canvas = FigureCanvasTkAgg(self.radar_fig, master=self.mental_state_frame)
+        self.radar_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
+        self.update_mental_state_visualization()
 
     def update_visualization(self):
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
+        self.update_mental_state_visualization()
 
     def update_sentiment_visualization(self):
         history = self.player_model.get_history_for_visualization()
-        orders_user, scores_user = [], []
-        orders_llm, scores_llm = [], []
-
+        orders_user, scores_user, orders_llm, scores_llm = [], [], [], []
         for entry in history:
             order = entry["order"]
             compound_score = entry["sentiment_scores"]["compound"]
@@ -71,7 +70,6 @@ class Visualizer(tk.Toplevel):
             elif role in ["assistant", "llm"]:
                 orders_llm.append(order)
                 scores_llm.append(compound_score)
-
         self.sent_ax.clear()
         if orders_user:
             self.sent_ax.plot(orders_user, scores_user, marker='o', linestyle='-', color='blue', label="User")
@@ -90,10 +88,7 @@ class Visualizer(tk.Toplevel):
     def update_embeddings_visualization(self):
         history = self.player_model.get_history_for_visualization()
         self.emb_ax.clear()
-
-        # Plot conversation history as scatter points.
-        xs, ys, zs = [], [], []
-        colors = []
+        xs, ys, zs, colors = [], [], [], []
         for entry in history:
             emb = entry["embedding"]
             xs.append(emb[0])
@@ -104,11 +99,8 @@ class Visualizer(tk.Toplevel):
             else:
                 colors.append('orange')
         self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
-
-        # Sort history by dialogue order.
         sorted_history = sorted(history, key=lambda x: x["order"])
-        user_x, user_y, user_z = [], [], []
-        assistant_x, assistant_y, assistant_z = [], [], []
+        user_x, user_y, user_z, assistant_x, assistant_y, assistant_z = [], [], [], [], [], []
         for entry in sorted_history:
             emb = entry["embedding"]
             if entry["role"] in ["user", "player"]:
@@ -119,30 +111,20 @@ class Visualizer(tk.Toplevel):
                 assistant_x.append(emb[0])
                 assistant_y.append(emb[1])
                 assistant_z.append(emb[2])
-                
-        # Draw line plots for each group.
         if len(user_x) > 1:
             self.emb_ax.plot(user_x, user_y, user_z, color='blue', linewidth=2, label="User Path")
-            # Add arrows for user path segments.
             for i in range(len(user_x) - 1):
                 dx = user_x[i+1] - user_x[i]
                 dy = user_y[i+1] - user_y[i]
                 dz = user_z[i+1] - user_z[i]
-                self.emb_ax.quiver(user_x[i], user_y[i], user_z[i],
-                                   dx, dy, dz,
-                                   arrow_length_ratio=0.1, color='blue', linewidth=1)
+                self.emb_ax.quiver(user_x[i], user_y[i], user_z[i], dx, dy, dz, arrow_length_ratio=0.1, color='blue', linewidth=1)
         if len(assistant_x) > 1:
             self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='orange', linewidth=2, label="Assistant Path")
-            # Add arrows for assistant path segments.
             for i in range(len(assistant_x) - 1):
                 dx = assistant_x[i+1] - assistant_x[i]
                 dy = assistant_y[i+1] - assistant_y[i]
                 dz = assistant_z[i+1] - assistant_z[i]
-                self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i],
-                                   dx, dy, dz,
-                                   arrow_length_ratio=0.1, color='orange', linewidth=1)
-
-        # If persona has embedded triggers, process and plot them.
+                self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i], dx, dy, dz, arrow_length_ratio=0.1, color='orange', linewidth=1)
         if hasattr(self.persona, "embedded_triggers") and self.persona.embedded_triggers:
             triggers_embeddings = np.array([trigger["embedding"] for trigger in self.persona.embedded_triggers])
             if len(triggers_embeddings) == 1:
@@ -154,11 +136,7 @@ class Visualizer(tk.Toplevel):
             else:
                 pca = PCA(n_components=3)
                 reduced_triggers = pca.fit_transform(triggers_embeddings)
-            self.emb_ax.scatter(reduced_triggers[:, 0],
-                                reduced_triggers[:, 1],
-                                reduced_triggers[:, 2],
-                                c='red', marker='*', s=100, label="Triggers")
-
+            self.emb_ax.scatter(reduced_triggers[:, 0], reduced_triggers[:, 1], reduced_triggers[:, 2], c='red', marker='*', s=100, label="Triggers")
         self.emb_ax.set_title("3D Embedding Visualization", fontsize=12)
         self.emb_ax.set_xlabel("PC1")
         self.emb_ax.set_ylabel("PC2")
@@ -166,9 +144,26 @@ class Visualizer(tk.Toplevel):
         self.emb_ax.legend()
         self.emb_canvas.draw()
 
+    def update_mental_state_visualization(self):
+        ms = self.persona.mental_state
+        categories = list(ms.keys())
+        values = list(ms.values())
+        values += values[:1]
+        N = len(categories)
+        angles = [n / float(N) * 2 * np.pi for n in range(N)]
+        angles += angles[:1]
+        self.radar_ax.clear()
+        self.radar_ax.set_theta_offset(np.pi / 2)
+        self.radar_ax.set_theta_direction(-1)
+        self.radar_ax.set_xticks(angles[:-1])
+        self.radar_ax.set_xticklabels(categories)
+        self.radar_ax.set_ylim(-2, 10)
+        self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid')
+        self.radar_ax.fill(angles, values, 'b', alpha=0.25)
+        self.radar_canvas.draw()
+
     def on_scroll(self, event):
-        if event.xdata is None:
-            return
+        if event.xdata is None: return
         x_min, x_max = self.sent_ax.get_xlim()
         zoom_factor = 0.8 if event.step > 0 else 1.25
         new_x_min = event.xdata - (event.xdata - x_min) * zoom_factor
@@ -185,8 +180,7 @@ class Visualizer(tk.Toplevel):
             self.xlim = self.sent_ax.get_xlim()
 
     def on_drag(self, event):
-        if self.press_x is None or event.xdata is None:
-            return
+        if self.press_x is None or event.xdata is None: return
         dx = self.press_x - event.xdata
         x_min, x_max = self.xlim
         self.sent_ax.set_xlim(x_min + dx, x_max + dx)

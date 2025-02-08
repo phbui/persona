@@ -121,6 +121,7 @@ class Chat(tk.Toplevel):
             assistant_response = "Error generating response."
             print(f"[ERROR] Exception in get_response: {e}")
         assistant_embedding = self.get_embedding(assistant_response)
+        self.persona.check_triggers(assistant_embedding)
         self.player_model.update(assistant_embedding, assistant_response, role="assistant")
         print("[DEBUG] Updated player model with assistant response.")
         self.response_queue.put(assistant_response)

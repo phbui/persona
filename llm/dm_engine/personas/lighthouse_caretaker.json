@@ -8,11 +8,11 @@
   "order": "Based on your mental state, you will try as hard as you can to not admit you murdered Jonas or that you did anything to hide this fact.",
   "triggers": [
     {
-      "trigger": "Jonas should be here instead of you",
+      "trigger": "Jonas",
       "changes": { "guilt": 3, "anxiety": 2, "confidence": -2, "stability": -2 }
     },
     {
-      "trigger": "This storm is your fault",
+      "trigger": "This storm",
       "changes": { "anxiety": 3, "calm": -2, "stability": -2 }
     },
     {
@@ -30,14 +30,6 @@
     {
       "trigger": "Stop dodging the questions",
       "changes": { "anxiety": 2, "neuroticism": 1, "calm": -2 }
-    },
-    {
-      "trigger": "It's okay, you're doing your best",
-      "changes": { "confidence": 2, "calm": 2, "anxiety": -3 }
-    },
-    {
-      "trigger": "I trust you",
-      "changes": { "confidence": 2, "calm": 1, "stability": 1 }
     },
     {
       "trigger": "You're hiding something from me",
