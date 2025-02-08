@@ -128,15 +128,7 @@ class Visualizer(tk.Toplevel):
                 self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i], dx, dy, dz, arrow_length_ratio=0.1, color='orange', linewidth=1)
         if hasattr(self.persona, "embedded_triggers") and self.persona.embedded_triggers:
             triggers_embeddings = np.array([trigger["embedding"] for trigger in self.persona.embedded_triggers])
-            if len(triggers_embeddings) == 1:
-                reduced_triggers = triggers_embeddings[:, :3]
-            elif len(triggers_embeddings) == 2:
-                pca = PCA(n_components=2)
-                reduced_2d = pca.fit_transform(triggers_embeddings)
-                reduced_triggers = np.hstack([reduced_2d, np.zeros((2, 1))])
-            else:
-                pca = PCA(n_components=3)
-                reduced_triggers = pca.fit_transform(triggers_embeddings)
+            reduced_triggers = self.player_model.reduce_array(triggers_embeddings)
             self.emb_ax.scatter(reduced_triggers[:, 0], reduced_triggers[:, 1], reduced_triggers[:, 2],
                                 c='red', marker='*', s=100, label="Triggers")
         # For each history entry, if chunked embeddings exist, plot them.
