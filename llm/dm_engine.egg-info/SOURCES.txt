@@ -1,7 +1,7 @@
 conversation.py
 llm.py
 persona.py
-playermodel.py
+player_model.py
 setup.py
 dm_engine/__init__.py
 dm_engine/chat.py

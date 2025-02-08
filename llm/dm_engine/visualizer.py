@@ -6,11 +6,12 @@ from mpl_toolkits.mplot3d import Axes3D  # For 3D plotting
 import numpy as np
 
 class Visualizer(tk.Toplevel):
-    def __init__(self, master, player_model):
+    def __init__(self, master, player_model, persona):
         super().__init__(master)
         self.title("Visualizer: Sentiment & Embeddings")
         self.geometry("900x700")  # Adjust window size as needed
         self.player_model = player_model
+        self.persona = persona 
 
         # Override the close protocol for cleanup
         self.protocol("WM_DELETE_WINDOW", self.on_close)

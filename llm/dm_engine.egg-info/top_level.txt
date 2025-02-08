@@ -2,4 +2,4 @@ conversation
 dm_engine
 llm
 persona
-playermodel
+player_model

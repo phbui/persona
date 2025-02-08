@@ -3,36 +3,25 @@ from tkinter.scrolledtext import ScrolledText
 import threading
 import torch
 import gc
-import queue  # Import the queue module
+import queue
 from visualizer import Visualizer
+from dm_engine import LLM, Conversation, PlayerModel
+from sentence_transformers import SentenceTransformer
 
-# Import your DM engine classes.
-from dm_engine import LLM, Conversation, Persona, PlayerModel
-
-class Chat(tk.Toplevel):  # Now a Toplevel window.
+class Chat(tk.Toplevel):
     def __init__(self, parent, hf_key, persona, max_tokens=32):
         super().__init__(parent)
         self.title("")
         self.geometry("800x600")
         self.max_tokens = max_tokens
-
         print("[DEBUG] Initializing ChatGUI.")
-
-        # Override the close protocol for graceful shutdown.
         self.protocol("WM_DELETE_WINDOW", self.on_close)
-        self.visualization_window = None  # Track the visualization window.
-
-        # Use the provided Persona object (already loaded by Desktop).
+        self.visualization_window = None
         self.persona = persona
-
-        # Instantiate DM engine classes.
         self.llm = LLM(secret_key=hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
         self.conversation = Conversation(self.llm, persona=self.persona)
-
-        # Create the player model (hybrid: probabilistic + embedding).
-        self.player_model = PlayerModel(embedding_dim=50)
-
-        # Create chat area.
+        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.player_model = PlayerModel()
         self.chat_area = ScrolledText(self, wrap=tk.WORD, font=("Helvetica", 16))
         self.chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
         self.chat_area.config(state=tk.DISABLED)
@@ -42,8 +31,6 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
                                      justify="left", spacing1=5, spacing3=10, lmargin1=10, rmargin=50)
         self.chat_area.tag_configure("system", foreground="gray", justify="center",
                                      spacing1=5, spacing3=10)
-
-        # Input frame for message entry and send button.
         input_frame = tk.Frame(self)
         input_frame.pack(padx=10, pady=10, fill=tk.X)
         self.input_field = tk.Entry(input_frame, font=("Helvetica", 20))
@@ -51,19 +38,12 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
         send_button = tk.Button(input_frame, text="Send", font=("Helvetica", 20),
                                 command=self.send_message)
         send_button.pack(side=tk.LEFT)
-
-        # Button to open the integrated player model visualization.
         vis_button = tk.Button(self, text="Show Player Model", font=("Helvetica", 16),
                                command=self.open_player_model_visualization)
         vis_button.pack(pady=(0, 10))
-
         self.bind("<Return>", lambda event: self.send_message())
-
-        # Insert initial system messages.
         self.insert_message("system", f"{self.persona.username} joined the chat.")
         self.insert_message("system", "User joined the chat.")
-
-        # Create a thread-safe queue for responses.
         self.response_queue = queue.Queue()
         self.check_response_queue()
 
@@ -74,11 +54,9 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
             self.player_model_end_data = self.player_model.history
         except Exception as e:
             print(f"[DEBUG] Error ending conversation: {e}")
-
         if self.visualization_window is not None:
             print("[DEBUG] Closing visualization window.")
             self.visualization_window.destroy()
-
         print("[DEBUG] Shutting down transformer model.")
         try:
             del self.llm.model
@@ -101,6 +79,9 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
         self.chat_area.see(tk.END)
         print(f"[DEBUG] Inserted {tag} message: {message}")
 
+    def get_embedding(self, text):
+        return self.encoder.encode(text)
+
     def send_message(self):
         user_message = self.input_field.get().strip()
         if not user_message:
@@ -109,17 +90,15 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
         print(f"[DEBUG] User message: {user_message}")
         self.insert_message("user", user_message)
         self.input_field.delete(0, tk.END)
-
-        self.player_model.update(user_message, role="user")
+        embedding = self.get_embedding(user_message)
+        self.player_model.update(embedding, user_message, role="user")
         print("[DEBUG] Updated player model with user message.")
-
         self.chat_area.config(state=tk.NORMAL)
         self.after(1000, self.insert_typing_indicator)
-        threading.Thread(target=self.get_response, args=(user_message,), daemon=True).start()
+        threading.Thread(target=self.get_response, args=(embedding, user_message), daemon=True).start()
         self.update_visualization_if_open()
 
     def insert_typing_indicator(self):
-        """Inserts the typing indicator after a delay."""
         typing_text = f"{self.persona.username} is typing..."
         self.chat_area.config(state=tk.NORMAL)
         self.chat_area.insert(tk.END, f"{typing_text}\n", "assistant")
@@ -127,9 +106,9 @@ class Chat(tk.Toplevel):  # Now a Toplevel window.
         self.chat_area.see(tk.END)
         print("[DEBUG] Inserted typing indicator.")
 
-
-    def get_response(self, user_message):
+    def get_response(self, embedding, user_message):
         print(f"[DEBUG] Starting response generation thread for message: {user_message}")
+        self.persona.check_triggers(embedding)
         try:
             print(f"[DEBUG] Generating response for: {user_message}")
             prompt, assistant_response = self.conversation.chat(user_message, max_new_tokens=self.max_tokens)

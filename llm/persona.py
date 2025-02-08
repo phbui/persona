@@ -1,15 +1,15 @@
 import json
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 class Persona:
-
-
-
     def __init__(self, persona_path: str):
         """
         Loads and processes the persona from a JSON file.
         """
         self.persona_data = self._load_persona(persona_path)
         self._process_persona()
+        self._process_triggers()
     
     def _load_persona(self, persona_path: str) -> dict:
         with open(persona_path, "r") as f:
@@ -27,6 +27,25 @@ class Persona:
             "stability": 0,
             "neuroticism": 0,
         }
+
+    def _process_triggers(self):
+        encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.embedded_triggers = []
+        for trigger in self.persona_data.get("triggers", []):
+            trig_text = trigger.get("trigger", "")
+            changes = trigger.get("changes", {})
+            emb = encoder.encode(trig_text)
+            self.embedded_triggers.append({"embedding": emb, "changes": changes})
+
+    def check_triggers(self, embedding, threshold=0.5):
+        for trig in self.embedded_triggers.copy():
+            distance = np.linalg.norm(embedding - trig["embedding"])
+            if distance < threshold:
+                print(f"Trigger activated (distance: {distance:.4f}). "
+                      f"Applying changes: {trig['changes']}")
+                self.update_mental_state(trig["changes"])
+            else: 
+                print(f"Trigger not activated (distance: {distance:.4f}).")
 
     @property
     def system_message(self) -> str:
