@@ -41,7 +41,7 @@ class Visualizer(tk.Toplevel):
         self.sent_ax.legend()
 
         # -----------------------------
-        # Embeddings Tab (unchanged, but note draw_idle usage below)
+        # Embeddings Tab (unchanged)
         # -----------------------------
         self.embeddings_frame = tk.Frame(self.notebook)
         self.notebook.add(self.embeddings_frame, text="Embeddings")
@@ -54,20 +54,29 @@ class Visualizer(tk.Toplevel):
         self.emb_canvas.mpl_connect("button_press_event", self.on_info_click_emb)
 
         # -----------------------------
-        # Mental State Tab
+        # Mental State Tab with Sliders
         # -----------------------------
         self.mental_state_frame = tk.Frame(self.notebook)
         self.notebook.add(self.mental_state_frame, text="Mental State")
+        
+        # Radar chart frame (upper part)
         self.radar_fig = plt.figure(figsize=(7, 5))
         self.radar_ax = self.radar_fig.add_subplot(111, polar=True)
         self.radar_canvas = FigureCanvasTkAgg(self.radar_fig, master=self.mental_state_frame)
-        self.radar_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        # Connect events for interactivity on the radar chart.
-        self.radar_canvas.mpl_connect("button_press_event", self.on_radar_click)
-        self.radar_canvas.mpl_connect("motion_notify_event", self.on_radar_drag)
-        self.radar_canvas.mpl_connect("button_release_event", self.on_radar_release)
-        # Variable to track which category is being dragged.
-        self.selected_category = None
+        self.radar_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Slider frame (lower part)
+        self.slider_frame = tk.Frame(self.mental_state_frame)
+        self.slider_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
+        self.sliders = {}
+        # Create a slider for each mental state category.
+        for cat, value in self.persona.mental_state.items():
+            var = tk.IntVar(value=value)
+            slider = tk.Scale(self.slider_frame, from_=0, to=100, orient=tk.HORIZONTAL,
+                              label=cat.capitalize(), variable=var,
+                              command=lambda val, cat=cat: self.on_slider_change(cat, val))
+            slider.pack(side=tk.LEFT, padx=5, pady=5, expand=True)
+            self.sliders[cat] = slider
 
         # Initial drawing
         self.update_sentiment_visualization()
@@ -94,7 +103,7 @@ class Visualizer(tk.Toplevel):
             elif role in ["assistant", "llm"]:
                 orders_llm.append(order)
                 scores_llm.append(compound_score)
-        
+
         # Update the existing line objects rather than re-creating them.
         self.user_line.set_data(orders_user, scores_user)
         self.llm_line.set_data(orders_llm, scores_llm)
@@ -103,7 +112,7 @@ class Visualizer(tk.Toplevel):
         if orders_user or orders_llm:
             all_orders = orders_user + orders_llm
             self.sent_ax.set_xlim(min(all_orders) - 1, max(all_orders) + 1)
-        
+
         # Recalculate the limits and update view
         self.sent_ax.relim()
         self.sent_ax.autoscale_view(True, True, True)
@@ -123,7 +132,7 @@ class Visualizer(tk.Toplevel):
             colors.append('blue' if entry["role"] in ["user", "player"] else 'orange')
         # Store scatter plot for click events.
         self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
-        
+
         sorted_history = sorted(history, key=lambda x: x["order"])
         user_x, user_y, user_z, assistant_x, assistant_y, assistant_z = [], [], [], [], [], []
         for entry in sorted_history:
@@ -183,7 +192,7 @@ class Visualizer(tk.Toplevel):
         ms = self.persona.mental_state
         categories = list(ms.keys())
         values = list(ms.values())
-        # Close the circle
+        # Close the circle for the radar chart.
         values += values[:1]
         N = len(categories)
         angles = [n / float(N) * 2 * np.pi for n in range(N)]
@@ -194,7 +203,8 @@ class Visualizer(tk.Toplevel):
         self.radar_ax.set_xticks(angles[:-1])
         self.radar_ax.set_xticklabels(categories)
         self.radar_ax.set_ylim(-20, 100)
-        self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid', marker='o')
+        # Increase marker size as needed.
+        self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid', marker='o', markersize=10)
         self.radar_ax.fill(angles, values, 'b', alpha=0.25)
         self.radar_canvas.draw_idle()
 
@@ -318,58 +328,14 @@ class Visualizer(tk.Toplevel):
 
         self.destroy()
 
-    # === INTERACTIVE MENTAL STATE HANDLERS ===
-    def on_radar_click(self, event):
-        """Called when the user clicks on the radar chart.
-           Identifies if a mental state category point was clicked.
-        """
-        if event.inaxes != self.radar_ax:
-            return
-        # Convert click (x, y) to polar coordinates.
-        x, y = event.xdata, event.ydata
-        r_click = np.sqrt(x**2 + y**2)
-        theta_click = np.arctan2(y, x)
-        # Adjust theta_click to [0, 2pi]
-        if theta_click < 0:
-            theta_click += 2 * np.pi
-
-        # Determine which category is clicked.
-        categories = list(self.persona.mental_state.keys())
-        N = len(categories)
-        # The categories are evenly spaced.
-        category_angles = np.array([n / float(N) * 2 * np.pi for n in range(N)])
-        # Adjust for the theta offset used in the radar plot (here, pi/2).
-        category_angles = (category_angles + np.pi/2) % (2 * np.pi)
-        # Find the category whose angle is closest to theta_click.
-        angle_diffs = np.abs(category_angles - theta_click)
-        category_index = np.argmin(angle_diffs)
-        # Use a tolerance (e.g., 0.3 radians) to decide if a point was selected.
-        if angle_diffs[category_index] < 0.3:
-            self.selected_category = categories[category_index]
-            print("Selected category for editing:", self.selected_category)
-        else:
-            self.selected_category = None
-
-    def on_radar_drag(self, event):
-        """Called when the user drags the mouse on the radar chart.
-           Updates the mental state for the selected category.
-        """
-        if self.selected_category is None or event.inaxes != self.radar_ax:
-            return
-        # Get new position in polar coordinates.
-        x, y = event.xdata, event.ydata
-        new_r = np.sqrt(x**2 + y**2)
-        # Clamp the value between 0 and 100.
-        new_value = max(0, min(100, new_r))
-        # Compute the change.
-        current_value = self.persona.mental_state[self.selected_category]
-        delta = new_value - current_value
-        # Update the mental state using the provided update method.
-        changes = {self.selected_category: delta}
-        self.persona.mental_state = self.persona.update_mental_state(changes)
-        # Redraw the radar chart.
-        self.update_mental_state_visualization()
-
-    def on_radar_release(self, event):
-        """Called when the user releases the mouse button on the radar chart."""
-        self.selected_category = None
+    # === SLIDER CALLBACK FOR MENTAL STATE ===
+    def on_slider_change(self, category, value):
+        try:
+            new_val = int(value)
+        except ValueError:
+            new_val = 0
+        current_val = self.persona.mental_state.get(category, 0)
+        delta = new_val - current_val
+        if delta != 0:
+            self.persona.update_mental_state({category: delta})
+            self.update_mental_state_visualization()

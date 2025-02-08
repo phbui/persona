@@ -172,4 +172,6 @@ class Persona:
                 new_value = self.persona_data["mental_state"][key] + delta
                 self.persona_data["mental_state"][key] = max(0, min(100, new_value))
 
+        print(self.persona_data["mental_state"])
+
         return self.persona_data["mental_state"]
