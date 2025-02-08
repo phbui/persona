@@ -64,3 +64,15 @@ class Persona:
             f"[Typing Style]\n{self.typing_style}\n\n"
             f"[Instruction]\n{self.instruction}\n"
         )
+
+    def append_to_backstory(self, additional_text: str):
+        """
+        Appends additional_text to the backstory.
+        If a backstory already exists, appends a newline and then the new text;
+        otherwise, sets the backstory to the new text.
+        """
+        current_backstory = self.persona_data.get("backstory", "")
+        if current_backstory:
+            self.persona_data["backstory"] = current_backstory + "\n" + additional_text
+        else:
+            self.persona_data["backstory"] = additional_text

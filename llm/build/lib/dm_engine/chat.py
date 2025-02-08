@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 import threading
 import torch
-import sys
 import gc
 import queue  # Import the queue module
 from visualizer import Visualizer
@@ -10,8 +9,8 @@ from visualizer import Visualizer
 # Import your DM engine classes.
 from dm_engine import LLM, Conversation, Persona, PlayerModel
 
-class Chat(tk.Toplevel):  # Change to Toplevel instead of tk.Tk
-    def __init__(self, parent, hf_key, persona_path, max_tokens=32):
+class Chat(tk.Toplevel):  # Now a Toplevel window.
+    def __init__(self, parent, hf_key, persona, max_tokens=32):
         super().__init__(parent)
         self.title("Dungeon Master Engine Chat")
         self.geometry("800x600")
@@ -23,8 +22,10 @@ class Chat(tk.Toplevel):  # Change to Toplevel instead of tk.Tk
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.visualization_window = None  # Track the visualization window.
 
+        # Use the provided Persona object (already loaded by Desktop).
+        self.persona = persona
+
         # Instantiate DM engine classes.
-        self.persona = Persona(persona_path)
         self.llm = LLM(secret_key=hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
         self.conversation = Conversation(self.llm, persona=self.persona)
 
@@ -64,12 +65,10 @@ class Chat(tk.Toplevel):  # Change to Toplevel instead of tk.Tk
 
         # Create a thread-safe queue for responses.
         self.response_queue = queue.Queue()
-        # Start a periodic check of the queue (runs in the main thread).
         self.check_response_queue()
 
     def on_close(self):
         print("[DEBUG] Closing ChatGUI application.")
-
         try:
             self.conversation_end_data = self.conversation.end_conversation()
             self.player_model_end_data = self.player_model.history

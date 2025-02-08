@@ -6,8 +6,9 @@ import json
 import argparse
 
 # Import your Chat class.
-# (Ensure that Chat is a Toplevel subclass rather than a Tk subclass for multi-window management.)
+# (Ensure that Chat is a Toplevel subclass for multi-window management.)
 from chat import Chat
+from dm_engine import Persona  # Ensure Persona is imported
 
 class Desktop(tk.Tk):
     def __init__(self, hf_key, personas_folder):
@@ -20,11 +21,9 @@ class Desktop(tk.Tk):
         print("[DEBUG] Desktop initialized with hf_key:", hf_key)
         print("[DEBUG] Using personas folder:", self.personas_folder)
 
-        # Instead of a Listbox, use a Treeview for better control over item appearance.
+        # Create a Treeview widget for displaying contacts.
         self.style = ttk.Style()
-        # Increase row height for vertical padding (adjust the value as needed)
         self.style.configure("Treeview", rowheight=30)
-
         self.contacts_tree = ttk.Treeview(self, columns=("Name",), show="headings", selectmode="browse")
         self.contacts_tree.heading("Name", text="Contact")
         self.contacts_tree.column("Name", anchor="center")
@@ -34,8 +33,6 @@ class Desktop(tk.Tk):
         self.contacts = self.load_personas()
         print("[DEBUG] Loaded", len(self.contacts), "contacts.")
         for contact in self.contacts:
-            # Add horizontal padding by prepending and appending spaces.
-            
             print("[DEBUG] Loaded contact:", contact['name'].strip(), "from file:", contact['file'])
             self.contacts_tree.insert("", tk.END, values=(contact['name'],))
 
@@ -43,7 +40,8 @@ class Desktop(tk.Tk):
         self.contacts_tree.bind("<Double-Button-1>", self.open_chat_with_contact)
 
     def load_personas(self):
-        """Load all persona JSON files from the personas folder and return a list of contacts."""
+        """Load all persona JSON files from the personas folder and return a list of contacts.
+           Each contact includes the loaded Persona object."""
         persona_files = glob.glob(os.path.join(self.personas_folder, "*.json"))
         print("[DEBUG] Found", len(persona_files), "persona files in folder.")
         contacts = []
@@ -52,11 +50,13 @@ class Desktop(tk.Tk):
             try:
                 with open(pfile, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                # Assume that the persona JSON contains a field "username" or "name".
                 name = data.get("username") or data.get("name") or os.path.basename(pfile).split(".")[0]
+                # Create a Persona object from the file.
+                persona_obj = Persona(pfile)
                 contacts.append({
                     "name": name,
-                    "file": pfile
+                    "file": pfile,
+                    "persona": persona_obj
                 })
                 print("[DEBUG] Successfully loaded persona:", name)
             except Exception as e:
@@ -69,6 +69,7 @@ class Desktop(tk.Tk):
             index = self.contacts_tree.index(selected_item)
             contact = self.contacts[index]
             persona_path = contact["file"]
+            persona_obj = contact["persona"]
             print("[DEBUG] Opening Chat window for contact:", contact["name"], "from file:", persona_path)
             try:
                 self.contacts_tree.state(["disabled"])
@@ -77,11 +78,13 @@ class Desktop(tk.Tk):
                 print(f"[DEBUG] Could not disable contacts widget: {e}")
             
             # Pass self (Desktop instance) as the parent to the Chat window.
-            chat_window = Chat(self, self.hf_key, persona_path, max_tokens=64)
+            # Pass the loaded Persona object instead of a persona_path.
+            chat_window = Chat(self, self.hf_key, persona_obj, max_tokens=64)
             chat_window.lift()
             self.wait_window(chat_window)
             try:
                 #print("[DEBUG] Chat window closed. Conversation end data:", chat_window.conversation_end_data)
+                persona_obj.append_to_backstory(chat_window.conversation_end_data)
                 #print("[DEBUG] Player model end data:", chat_window.player_model_end_data)
                 print("[DEBUG] Conversation saved.")
             except Exception as e:

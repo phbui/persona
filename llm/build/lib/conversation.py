@@ -85,8 +85,8 @@ class Conversation:
         summary = ""
 
         if len(self.history) > 0:
-            summary_prompt = (f"Please summarize the entire conversation from the perspective of "
-                            f"{self.username}.")
+            summary_prompt = (f"Please summarize the following conversation from the perspective of "
+                            f"{self.username}:")
             # Use your conversation's generate_response (or your LLM's generate method) to get a summary.
             summary = self.llm.generate_response(summary_prompt + "".join(self.history), max_new_tokens=128)
             print("[DEBUG] Conversation summary generated:", summary )
