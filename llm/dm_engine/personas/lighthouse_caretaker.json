@@ -8,11 +8,15 @@
   "order": "Based on your mental state, you will try as hard as you can to not admit you murdered Jonas or that you did anything to hide this fact.",
   "triggers": [
     {
-      "trigger": "Jonas",
+      "trigger": "Jonas is dead",
       "changes": { "guilt": 3, "anxiety": 2, "confidence": -2, "stability": -2 }
     },
     {
-      "trigger": "This storm",
+      "trigger": "You are alone now",
+      "changes": { "guilt": 3, "anxiety": 2, "confidence": -2, "stability": -2 }
+    },
+    {
+      "trigger": "This storm is coming",
       "changes": { "anxiety": 3, "calm": -2, "stability": -2 }
     },
     {

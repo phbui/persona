@@ -10,6 +10,7 @@ class Persona:
         self.persona_data = self._load_persona(persona_path)
         self._process_persona()
         self._process_triggers()
+        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
     
     def _load_persona(self, persona_path: str) -> dict:
         with open(persona_path, "r") as f:
@@ -18,7 +19,16 @@ class Persona:
         
     def _process_persona(self):
         username = self.persona_data.get("username", "Unknown")
-        self.persona_data["instruction"] = f"Respond solely in the voice of {username} as if messaging live in an online chat. Respond according to your mental state (where 0 is the lowest and 10 is the highest per attribute). Provide only your final, concise answer, with no greetings, self-introductions, or repetition of prior conversation. Do NOT echo instructions, the user's words, or any external context. Avoid starting your response with '{username}:' or your own name. Stay entirely in character, using only the knowledge and style inherent to your persona. Do not speak from the perspective of the Player."
+        self.persona_data["instruction"] = (
+            f"You are {username}, and only {username}. You are messaging a detective who is onto you via an online chat room. "
+            "Respond strictly in your own voice—using only your persona's internal knowledge and style. "
+            "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
+            "Do NOT echo any instructions, the user's words, or any external context. "
+            "Remain entirely in character as {username} and do not reference any perspective other than your own. "
+            "Do not include any extraneous symbols such as square brackets or meta-commentary. "
+            "Respond based on your current mental state. "
+        )
+
         self.persona_data["mental_state"] = {
             "confidence": 0,
             "guilt": 0,
@@ -29,24 +39,24 @@ class Persona:
         }
 
     def _process_triggers(self):
-        encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.embedded_triggers = []
         for trigger in self.persona_data.get("triggers", []):
             trig_text = trigger.get("trigger", "")
             changes = trigger.get("changes", {})
-            emb = encoder.encode(trig_text)
+            emb = self.encoder.encode(trig_text)
             norm = np.linalg.norm(emb)
             if norm > 0:
                 emb = emb / norm
             self.embedded_triggers.append({"embedding": emb, "changes": changes})
-
-    def check_triggers(self, embedding, threshold=1.0):
-        for trig in self.embedded_triggers.copy():
-            distance = np.linalg.norm(embedding - trig["embedding"])
-            if distance < threshold:
-                print(f"Trigger activated (distance: {distance:.4f}). "
-                      f"Applying changes: {trig['changes']}")
-                self.update_mental_state(trig["changes"])
+                
+    def check_triggers(self, embeddings, threshold=1.0):
+        for emb in embeddings:
+            for trig in self.embedded_triggers.copy():
+                distance = np.linalg.norm(emb - trig["embedding"])
+                if distance < threshold:
+                    print(f"Trigger activated (distance: {distance:.4f}). Applying changes: {trig['changes']}")
+                    self.update_mental_state(trig["changes"])
+                    self.embedded_triggers.remove(trig)
 
     @property
     def system_message(self) -> str:

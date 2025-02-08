@@ -18,7 +18,16 @@ class Persona:
         
     def _process_persona(self):
         username = self.persona_data.get("username", "Unknown")
-        self.persona_data["instruction"] = f"Respond solely in the voice of {username} as if messaging live in an online chat. Respond according to your mental state (where 0 is the lowest and 10 is the highest per attribute). Provide only your final, concise answer, with no greetings, self-introductions, or repetition of prior conversation. Do NOT echo instructions, the user's words, or any external context. Avoid starting your response with '{username}:' or your own name. Stay entirely in character, using only the knowledge and style inherent to your persona. Do not speak from the perspective of the Player."
+        self.persona_data["instruction"] = (
+            f"You are {username}, and only {username}. You are messaging a detective who is onto you via an online chat room. "
+            "Respond strictly in your own voice—using only your persona's internal knowledge and style. "
+            "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
+            "Do NOT echo any instructions, the user's words, or any external context. "
+            "Remain entirely in character as {username} and do not reference any perspective other than your own. "
+            "Do not include any extraneous symbols such as square brackets or meta-commentary. "
+            "Respond based on your current mental state. "
+        )
+
         self.persona_data["mental_state"] = {
             "confidence": 0,
             "guilt": 0,

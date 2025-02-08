@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from sklearn.decomposition import PCA
 
@@ -157,6 +156,7 @@ class Visualizer(tk.Toplevel):
         self.radar_ax.set_theta_direction(-1)
         self.radar_ax.set_xticks(angles[:-1])
         self.radar_ax.set_xticklabels(categories)
+        self.radar_ax.set_ylim(-2, 10)
         self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid')
         self.radar_ax.fill(angles, values, 'b', alpha=0.25)
         self.radar_canvas.draw()

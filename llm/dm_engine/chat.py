@@ -3,11 +3,11 @@ from tkinter.scrolledtext import ScrolledText
 import threading
 import torch
 import gc
+import re
 import queue
 import numpy as np
 from visualizer import Visualizer
 from dm_engine import LLM, Conversation, PlayerModel
-from sentence_transformers import SentenceTransformer
 
 class Chat(tk.Toplevel):
     def __init__(self, parent, hf_key, persona, max_tokens=32):
@@ -21,7 +21,6 @@ class Chat(tk.Toplevel):
         self.persona = persona
         self.llm = LLM(secret_key=hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
         self.conversation = Conversation(self.llm, persona=self.persona)
-        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.player_model = PlayerModel()
         self.chat_area = ScrolledText(self, wrap=tk.WORD, font=("Helvetica", 16))
         self.chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
@@ -80,8 +79,22 @@ class Chat(tk.Toplevel):
         self.chat_area.see(tk.END)
         print(f"[DEBUG] Inserted {tag} message: {message}")
 
+    def get_chunked_embeddings(self, text):
+        embeddings = []
+        # Full sentence embedding
+        full_emb = self.get_embedding(text)
+        embeddings.append(full_emb)
+        # Split text by punctuation (commas, periods, exclamation marks, question marks, semicolons, and colons)
+        chunks = re.split(r'[,.!?;:]', text)
+        for chunk in chunks:
+            chunk = chunk.strip()
+            if chunk:
+                chunk_emb = self.get_embedding(chunk)
+                embeddings.append(chunk_emb)
+        return embeddings
+
     def get_embedding(self, text):
-        emb = self.encoder.encode(text)
+        emb = self.persona.encoder.encode(text)
         norm = np.linalg.norm(emb)
         if norm > 0:
             emb = emb / norm
@@ -100,7 +113,7 @@ class Chat(tk.Toplevel):
         print("[DEBUG] Updated player model with user message.")
         self.chat_area.config(state=tk.NORMAL)
         self.after(1000, self.insert_typing_indicator)
-        threading.Thread(target=self.get_response, args=(embedding, user_message), daemon=True).start()
+        threading.Thread(target=self.get_response, args=(user_message), daemon=True).start()
         self.update_visualization_if_open()
 
     def insert_typing_indicator(self):
@@ -111,8 +124,9 @@ class Chat(tk.Toplevel):
         self.chat_area.see(tk.END)
         print("[DEBUG] Inserted typing indicator.")
 
-    def get_response(self, embedding, user_message):
+    def get_response(self, user_message):
         print(f"[DEBUG] Starting response generation thread for message: {user_message}")
+        embedding = self.get_chunked_embeddings(user_message)
         self.persona.check_triggers(embedding)
         try:
             print(f"[DEBUG] Generating response for: {user_message}")
@@ -120,7 +134,7 @@ class Chat(tk.Toplevel):
         except Exception as e:
             assistant_response = "Error generating response."
             print(f"[ERROR] Exception in get_response: {e}")
-        assistant_embedding = self.get_embedding(assistant_response)
+        assistant_embedding = self.get_chunked_embeddings(assistant_response)
         self.persona.check_triggers(assistant_embedding)
         self.player_model.update(assistant_embedding, assistant_response, role="assistant")
         print("[DEBUG] Updated player model with assistant response.")
