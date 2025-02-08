@@ -125,7 +125,8 @@ class Chat(tk.Toplevel):
 
     def get_response(self, user_message, embedding, chunked_embeddings):
         print(f"[DEBUG] Starting response generation thread for message: {user_message}")
-        self.persona.check_triggers(chunked_embeddings.append(embedding))
+        chunked_embeddings.append(embedding)
+        self.persona.check_triggers(chunked_embeddings)
         try:
             print(f"[DEBUG] Generating response for: {user_message}")
             prompt, assistant_response = self.conversation.chat(user_message, max_new_tokens=self.max_tokens)
@@ -133,7 +134,8 @@ class Chat(tk.Toplevel):
             assistant_response = "Error generating response."
             print(f"[ERROR] Exception in get_response: {e}")
         assistant_embedding, assistant_chunked_embedding = self.get_chunked_embeddings(assistant_response)
-        self.persona.check_triggers(assistant_chunked_embedding.append(assistant_embedding))
+        assistant_chunked_embedding.append(assistant_embedding)
+        self.persona.check_triggers(assistant_chunked_embedding)
         self.player_model.update(assistant_embedding, assistant_chunked_embedding, assistant_response, role="assistant")
         print("[DEBUG] Updated player model with assistant response.")
         self.response_queue.put(assistant_response)
