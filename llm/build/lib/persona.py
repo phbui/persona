@@ -7,9 +7,11 @@ class Persona:
         """
         Loads and processes the persona from a JSON file.
         """
+        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.persona_data = self._load_persona(persona_path)
         self._process_persona()
         self._process_triggers()
+
     
     def _load_persona(self, persona_path: str) -> dict:
         with open(persona_path, "r") as f:
@@ -38,24 +40,23 @@ class Persona:
         }
 
     def _process_triggers(self):
-        encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.embedded_triggers = []
         for trigger in self.persona_data.get("triggers", []):
             trig_text = trigger.get("trigger", "")
             changes = trigger.get("changes", {})
-            emb = encoder.encode(trig_text)
+            emb = self.encoder.encode(trig_text)
             norm = np.linalg.norm(emb)
             if norm > 0:
                 emb = emb / norm
             self.embedded_triggers.append({"embedding": emb, "changes": changes})
-
-    def check_triggers(self, embedding, threshold=1.0):
-        for trig in self.embedded_triggers.copy():
-            distance = np.linalg.norm(embedding - trig["embedding"])
-            if distance < threshold:
-                print(f"Trigger activated (distance: {distance:.4f}). "
-                      f"Applying changes: {trig['changes']}")
-                self.update_mental_state(trig["changes"])
+                
+    def check_triggers(self, embeddings, threshold=1.0):
+        for emb in embeddings:
+            for trig in self.embedded_triggers.copy():
+                distance = np.linalg.norm(emb - trig["embedding"])
+                if distance < threshold:
+                    print(f"Trigger activated (distance: {distance:.4f}). Applying changes: {trig['changes']}")
+                    self.update_mental_state(trig["changes"])
 
     @property
     def system_message(self) -> str:

@@ -7,10 +7,11 @@ class Persona:
         """
         Loads and processes the persona from a JSON file.
         """
+        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.persona_data = self._load_persona(persona_path)
         self._process_persona()
         self._process_triggers()
-        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
+
     
     def _load_persona(self, persona_path: str) -> dict:
         with open(persona_path, "r") as f:
@@ -56,7 +57,6 @@ class Persona:
                 if distance < threshold:
                     print(f"Trigger activated (distance: {distance:.4f}). Applying changes: {trig['changes']}")
                     self.update_mental_state(trig["changes"])
-                    self.embedded_triggers.remove(trig)
 
     @property
     def system_message(self) -> str:

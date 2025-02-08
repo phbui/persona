@@ -3,11 +3,11 @@ from tkinter.scrolledtext import ScrolledText
 import threading
 import torch
 import gc
+import re
 import queue
 import numpy as np
 from visualizer import Visualizer
 from dm_engine import LLM, Conversation, PlayerModel
-from sentence_transformers import SentenceTransformer
 
 class Chat(tk.Toplevel):
     def __init__(self, parent, hf_key, persona, max_tokens=32):
@@ -21,7 +21,6 @@ class Chat(tk.Toplevel):
         self.persona = persona
         self.llm = LLM(secret_key=hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
         self.conversation = Conversation(self.llm, persona=self.persona)
-        self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.player_model = PlayerModel()
         self.chat_area = ScrolledText(self, wrap=tk.WORD, font=("Helvetica", 16))
         self.chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
@@ -80,8 +79,21 @@ class Chat(tk.Toplevel):
         self.chat_area.see(tk.END)
         print(f"[DEBUG] Inserted {tag} message: {message}")
 
+    def get_chunked_embeddings(self, text):
+        embeddings = []
+        # Full sentence embedding
+        full_emb = self.get_embedding(text)
+        # Split text by punctuation (commas, periods, exclamation marks, question marks, semicolons, and colons)
+        chunks = re.split(r'[,.!?;:]', text)
+        for chunk in chunks:
+            chunk = chunk.strip()
+            if chunk:
+                chunk_emb = self.get_embedding(chunk)
+                embeddings.append(chunk_emb)
+        return full_emb, embeddings
+
     def get_embedding(self, text):
-        emb = self.encoder.encode(text)
+        emb = self.persona.encoder.encode(text)
         norm = np.linalg.norm(emb)
         if norm > 0:
             emb = emb / norm
@@ -95,12 +107,12 @@ class Chat(tk.Toplevel):
         print(f"[DEBUG] User message: {user_message}")
         self.insert_message("user", user_message)
         self.input_field.delete(0, tk.END)
-        embedding = self.get_embedding(user_message)
-        self.player_model.update(embedding, user_message, role="user")
+        embedding, chunked_embeddings = self.get_chunked_embeddings(user_message)
+        self.player_model.update(embedding, chunked_embeddings, user_message, role="user")
         print("[DEBUG] Updated player model with user message.")
         self.chat_area.config(state=tk.NORMAL)
         self.after(1000, self.insert_typing_indicator)
-        threading.Thread(target=self.get_response, args=(embedding, user_message), daemon=True).start()
+        threading.Thread(target=self.get_response, args=(user_message, embedding, chunked_embeddings), daemon=True).start()
         self.update_visualization_if_open()
 
     def insert_typing_indicator(self):
@@ -111,18 +123,18 @@ class Chat(tk.Toplevel):
         self.chat_area.see(tk.END)
         print("[DEBUG] Inserted typing indicator.")
 
-    def get_response(self, embedding, user_message):
+    def get_response(self, user_message, embedding, chunked_embeddings):
         print(f"[DEBUG] Starting response generation thread for message: {user_message}")
-        self.persona.check_triggers(embedding)
+        self.persona.check_triggers(chunked_embeddings.append(embedding))
         try:
             print(f"[DEBUG] Generating response for: {user_message}")
             prompt, assistant_response = self.conversation.chat(user_message, max_new_tokens=self.max_tokens)
         except Exception as e:
             assistant_response = "Error generating response."
             print(f"[ERROR] Exception in get_response: {e}")
-        assistant_embedding = self.get_embedding(assistant_response)
-        self.persona.check_triggers(assistant_embedding)
-        self.player_model.update(assistant_embedding, assistant_response, role="assistant")
+        assistant_embedding, assistant_chunked_embedding = self.get_chunked_embeddings(assistant_response)
+        self.persona.check_triggers(assistant_chunked_embedding.append(assistant_embedding))
+        self.player_model.update(assistant_embedding, assistant_chunked_embedding, assistant_response, role="assistant")
         print("[DEBUG] Updated player model with assistant response.")
         self.response_queue.put(assistant_response)
 
