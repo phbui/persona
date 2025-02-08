@@ -21,7 +21,7 @@ class Chat(tk.Toplevel):
         self.persona = persona
         self.llm = LLM(secret_key=hf_key, model_name="mistralai/Mistral-7B-Instruct-v0.3")
         self.conversation = Conversation(self.llm, persona=self.persona)
-        self.player_model = PlayerModel()
+        self.player_model = PlayerModel(persona)
         self.chat_area = ScrolledText(self, wrap=tk.WORD, font=("Helvetica", 16))
         self.chat_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
         self.chat_area.config(state=tk.DISABLED)

@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 import json
+import pandas as pd
+import seaborn as sns
 
 class Visualizer(tk.Toplevel):
     def __init__(self, master, player_model, persona):
@@ -15,17 +17,10 @@ class Visualizer(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=tk.BOTH, expand=True)
-
-        # -----------------------------
-        # Sentiment Tab
-        # -----------------------------
         self.sentiment_frame = tk.Frame(self.notebook)
         self.notebook.add(self.sentiment_frame, text="Sentiment")
-        # Create a Figure that will contain two subplots: compound and full emotion spectrum.
         self.sent_fig = plt.figure(figsize=(7, 8))
-        # Top subplot: compound scores
         self.compound_ax = self.sent_fig.add_subplot(211)
-        # Bottom subplot: full emotion spectrum
         self.spectrum_ax = self.sent_fig.add_subplot(212)
         self.sent_canvas = FigureCanvasTkAgg(self.sent_fig, master=self.sentiment_frame)
         self.sent_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
@@ -37,12 +32,6 @@ class Visualizer(tk.Toplevel):
         self.sent_canvas.mpl_connect("key_press_event", self.on_key)
         self.press_x = None
         self.xlim = None
-
-        # Instead of re-plotting each time, we'll update our plots in update_sentiment_visualization()
-
-        # -----------------------------
-        # Embeddings Tab (unchanged)
-        # -----------------------------
         self.embeddings_frame = tk.Frame(self.notebook)
         self.notebook.add(self.embeddings_frame, text="Embeddings")
         self.emb_fig = plt.figure(figsize=(7, 5))
@@ -52,24 +41,15 @@ class Visualizer(tk.Toplevel):
         self.emb_ax.mouse_init()
         self.emb_canvas.mpl_connect("scroll_event", self.on_scroll_emb)
         self.emb_canvas.mpl_connect("button_press_event", self.on_info_click_emb)
-
-        # -----------------------------
-        # Mental State Tab with Sliders
-        # -----------------------------
         self.mental_state_frame = tk.Frame(self.notebook)
         self.notebook.add(self.mental_state_frame, text="Mental State")
-        
-        # Radar chart frame (upper part)
         self.radar_fig = plt.figure(figsize=(7, 5))
         self.radar_ax = self.radar_fig.add_subplot(111, polar=True)
         self.radar_canvas = FigureCanvasTkAgg(self.radar_fig, master=self.mental_state_frame)
         self.radar_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        # Slider frame (lower part)
         self.slider_frame = tk.Frame(self.mental_state_frame)
         self.slider_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
         self.sliders = {}
-        # Create a slider for each mental state category.
         for cat, value in self.persona.mental_state.items():
             var = tk.IntVar(value=value)
             slider = tk.Scale(self.slider_frame, from_=0, to=100, orient=tk.HORIZONTAL,
@@ -77,16 +57,25 @@ class Visualizer(tk.Toplevel):
                               command=lambda val, cat=cat: self.on_slider_change(cat, val))
             slider.pack(side=tk.LEFT, padx=5, pady=5, expand=True)
             self.sliders[cat] = slider
-
-        # Initial drawing
+        self.emotion_vs_ms_frame = tk.Frame(self.notebook)
+        self.notebook.add(self.emotion_vs_ms_frame, text="Emotion vs MS")
+        self.emotion_vs_ms_fig = plt.figure(figsize=(7, 5))
+        self.emotion_vs_ms_ax = self.emotion_vs_ms_fig.add_subplot(111)
+        self.emotion_vs_ms_canvas = FigureCanvasTkAgg(self.emotion_vs_ms_fig, master=self.emotion_vs_ms_frame)
+        self.emotion_vs_ms_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        self.emotion_vs_ms_slider = tk.Scale(self.emotion_vs_ms_frame, from_=1, to=1, orient=tk.HORIZONTAL,
+                                             label="Dialogue Instance", command=self.on_emotion_vs_ms_slider_change, length=300)
+        self.emotion_vs_ms_slider.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
         self.update_mental_state_visualization()
+        self.update_emotion_vs_ms_visualization()
 
     def update_visualization(self):
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
         self.update_mental_state_visualization()
+        self.update_emotion_vs_ms_visualization()
 
     def update_sentiment_visualization(self):
         history = self.player_model.get_history_for_visualization()
@@ -139,14 +128,13 @@ class Visualizer(tk.Toplevel):
         self.spectrum_ax.set_ylabel("Emotion")
         self.spectrum_ax.set_title("Emotion Spectrum over Dialogue Order")
         self.spectrum_ax.set_yticks(list(emotion_to_y.values()))
-        self.spectrum_ax.set_yticklabels(list(emotion_to_y.keys()))
+        self.spectrum_ax.set_yticklabels(list(emotion_to_y.keys()), fontsize=8)
         self.spectrum_ax.grid(True)
         if all_orders:
             self.spectrum_ax.set_xticks(all_orders)
         self.sent_canvas.draw_idle()
 
     def update_embeddings_visualization(self):
-        """This method is left mostly unchanged."""
         history = self.player_model.get_history_for_visualization()
         self.emb_ax.clear()
         xs, ys, zs, colors = [], [], [], []
@@ -155,10 +143,8 @@ class Visualizer(tk.Toplevel):
             xs.append(emb[0])
             ys.append(emb[1])
             zs.append(emb[2])
-            colors.append('blue' if entry["role"] in ["user", "player"] else 'orange')
-        # Store scatter plot for click events.
+            colors.append('blue' if entry["role"] in ["user", "player"] else 'red')
         self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
-        
         sorted_history = sorted(history, key=lambda x: x["order"])
         user_x, user_y, user_z, assistant_x, assistant_y, assistant_z = [], [], [], [], [], []
         for entry in sorted_history:
@@ -180,13 +166,13 @@ class Visualizer(tk.Toplevel):
                 self.emb_ax.quiver(user_x[i], user_y[i], user_z[i], dx, dy, dz,
                                    arrow_length_ratio=0.1, color='blue', linewidth=1)
         if len(assistant_x) > 1:
-            self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='orange', linewidth=2, label="Assistant Path")
+            self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='red', linewidth=2, label="Assistant Path")
             for i in range(len(assistant_x) - 1):
                 dx = assistant_x[i+1] - assistant_x[i]
                 dy = assistant_y[i+1] - assistant_y[i]
                 dz = assistant_z[i+1] - assistant_z[i]
                 self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i], dx, dy, dz,
-                                   arrow_length_ratio=0.1, color='orange', linewidth=1)
+                                   arrow_length_ratio=0.1, color='red', linewidth=1)
         if hasattr(self.persona, "embedded_triggers") and self.persona.embedded_triggers:
             triggers_embeddings = np.array([trigger["embedding"] for trigger in self.persona.embedded_triggers])
             reduced_triggers = self.player_model.reduce_array(triggers_embeddings)
@@ -195,7 +181,7 @@ class Visualizer(tk.Toplevel):
         for entry in history:
             if "chunked_embeddings" in entry and entry["chunked_embeddings"] is not None:
                 role = entry["role"]
-                color = "blue" if role in ["user", "player"] else "orange"
+                color = "blue" if role in ["user", "player"] else "red"
                 chunk_embs = entry["chunked_embeddings"]
                 if chunk_embs.shape[0] > 0:
                     main_emb = entry["embedding"]
@@ -218,7 +204,6 @@ class Visualizer(tk.Toplevel):
         ms = self.persona.mental_state
         categories = list(ms.keys())
         values = list(ms.values())
-        # Close the circle for the radar chart.
         values += values[:1]
         N = len(categories)
         angles = [n / float(N) * 2 * np.pi for n in range(N)]
@@ -232,6 +217,39 @@ class Visualizer(tk.Toplevel):
         self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid', marker='o', markersize=10)
         self.radar_ax.fill(angles, values, 'b', alpha=0.25)
         self.radar_canvas.draw_idle()
+
+    def update_emotion_vs_ms_visualization(self):
+        history = self.player_model.get_history_for_visualization()
+        non_player = [entry for entry in history if entry["role"] in ["assistant", "llm"]]
+        if non_player:
+            self.emotion_vs_ms_slider.config(to=len(non_player))
+            idx = int(self.emotion_vs_ms_slider.get()) - 1
+            subset = non_player[:idx+1]
+            rows = []
+            emotions = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
+            ms_keys = ["valence", "arousal", "dominance", "confidence", "anxiety", "guilt"]
+            for i, entry in enumerate(subset, start=1):
+                emo_dict = {d['label'].lower(): d['score'] for d in entry["sentiment_scores"]}
+                ms_dict = entry["mental_state"] if "mental_state" in entry else self.persona.mental_state
+                row = {"dialogue": i}
+                row.update(emo_dict)
+                row.update(ms_dict)
+                rows.append(row)
+            df = pd.DataFrame(rows)
+            cols = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise", "valence", "arousal", "dominance", "confidence", "anxiety", "guilt"]
+            df = df[cols]
+            corr_matrix = df.corr()
+            self.emotion_vs_ms_ax.clear()
+            sns.heatmap(corr_matrix.loc[emotions, ms_keys], annot=True, cmap="coolwarm", ax=self.emotion_vs_ms_ax, cbar_kws={"label": "Correlation"}, annot_kws={"fontsize":8})
+            self.emotion_vs_ms_ax.set_title("Correlation: Emotions vs Mental State", fontsize=10)
+        else:
+            self.emotion_vs_ms_ax.clear()
+            self.emotion_vs_ms_ax.text(0.5, 0.5, "No non-player data", ha="center", va="center")
+        self.emotion_vs_ms_fig.tight_layout()
+        self.emotion_vs_ms_canvas.draw_idle()
+
+    def on_emotion_vs_ms_slider_change(self, value):
+        self.update_emotion_vs_ms_visualization()
 
     def on_scroll(self, event):
         if event.xdata is None:
@@ -333,16 +351,12 @@ class Visualizer(tk.Toplevel):
         self.emb_canvas.draw_idle()
 
     def on_close(self):
-        """
-        When closing the window, gather all information and save it to a JSON file.
-        """
         data = {
             "history": self.player_model.get_history_for_visualization(),
             "mental_state": self.persona.mental_state
         }
         if hasattr(self.persona, "embedded_triggers"):
             data["embedded_triggers"] = self.persona.embedded_triggers
-
         file_name = "visualization_data.json"
         try:
             with open(file_name, "w") as f:
@@ -350,10 +364,8 @@ class Visualizer(tk.Toplevel):
             print(f"Data successfully saved to {file_name}")
         except Exception as e:
             print(f"An error occurred while saving data: {e}")
-
         self.destroy()
 
-    # === SLIDER CALLBACK FOR MENTAL STATE ===
     def on_slider_change(self, category, value):
         try:
             new_val = int(value)
