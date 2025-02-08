@@ -24,12 +24,11 @@ class Persona:
             f"You are {username}, and only {username}. You are messaging a detective who is onto you via an online chat room. "
             "Respond strictly in your own voice—using only your persona's internal knowledge and style. "
             "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
-            "Do NOT echo any instructions, the user's words, or any external context. "
-            "Do NOT start your response with '{username}:' or your own name."
-            "Remain entirely in character as {username} and do not reference any perspective other than your own. "
+            "Do NOT echo any instructions, the player's words, or any external context. "
+            "Do NOT include any labels or extraneous symbols such as [Context] or [Answer]. "
+            f"Remain entirely in character as {username} and do not reference any perspective other than your own. "
             "Do not speak from the perspective of the Player. "
-            "Do not include any extraneous symbols such as square brackets, conext, or meta-commentary. "
-            "Respond based on your mental state. "
+            "Respond based on your mental state."
         )
 
         self.persona_data["mental_state"] = {

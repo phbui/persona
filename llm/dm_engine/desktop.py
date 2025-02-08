@@ -68,6 +68,11 @@ class Desktop(tk.Tk):
         return contacts
 
     def open_chat_with_contact(self, event):
+        # If a chat window is already open, don't open another.
+        if hasattr(self, "chat_window") and self.chat_window is not None and tk.Toplevel.winfo_exists(self.chat_window):
+            print("[DEBUG] A chat window is already open. Please close it before opening another.")
+            return
+
         selected_item = self.contacts_tree.focus()
         if selected_item:
             index = self.contacts_tree.index(selected_item)
@@ -80,19 +85,22 @@ class Desktop(tk.Tk):
                 print("[DEBUG] Contacts widget disabled.")
             except Exception as e:
                 print(f"[DEBUG] Could not disable contacts widget: {e}")
+
+            # Create the chat window and store its reference.
+            self.chat_window = Chat(self, self.hf_key, persona_obj, max_tokens=64)
+            self.chat_window.lift()
             
-            # Pass self (Desktop instance) as the parent to the Chat window.
-            # Pass the loaded Persona object instead of a persona_path.
-            chat_window = Chat(self, self.hf_key, persona_obj, max_tokens=64)
-            chat_window.lift()
-            self.wait_window(chat_window)
+            # Wait until the chat window is closed.
+            self.wait_window(self.chat_window)
+            
             try:
-                #print("[DEBUG] Chat window closed. Conversation end data:", chat_window.conversation_end_data)
-                persona_obj.append_to_backstory(chat_window.conversation_end_data)
-                #print("[DEBUG] Player model end data:", chat_window.player_model_end_data)
+                persona_obj.append_to_backstory(self.chat_window.conversation_end_data)
                 print("[DEBUG] Conversation saved.")
             except Exception as e:
                 print("[DEBUG] No relevant info from conversation.")
+
+            # Clear the reference so that a new chat can be opened.
+            self.chat_window = None
 
             try:
                 self.contacts_tree.state(["!disabled"])
