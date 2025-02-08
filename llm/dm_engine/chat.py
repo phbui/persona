@@ -4,6 +4,7 @@ import threading
 import torch
 import gc
 import queue
+import numpy as np
 from visualizer import Visualizer
 from dm_engine import LLM, Conversation, PlayerModel
 from sentence_transformers import SentenceTransformer
@@ -80,7 +81,11 @@ class Chat(tk.Toplevel):
         print(f"[DEBUG] Inserted {tag} message: {message}")
 
     def get_embedding(self, text):
-        return self.encoder.encode(text)
+        emb = self.encoder.encode(text)
+        norm = np.linalg.norm(emb)
+        if norm > 0:
+            emb = emb / norm
+        return emb
 
     def send_message(self):
         user_message = self.input_field.get().strip()

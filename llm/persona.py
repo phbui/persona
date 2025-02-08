@@ -35,6 +35,9 @@ class Persona:
             trig_text = trigger.get("trigger", "")
             changes = trigger.get("changes", {})
             emb = encoder.encode(trig_text)
+            norm = np.linalg.norm(emb)
+            if norm > 0:
+                emb = emb / norm
             self.embedded_triggers.append({"embedding": emb, "changes": changes})
 
     def check_triggers(self, embedding, threshold=0.5):

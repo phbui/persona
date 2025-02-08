@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import os
+import sys
 import glob
 import json
 import argparse
@@ -113,6 +114,7 @@ class Desktop(tk.Tk):
         # Finally, destroy the main Desktop window.
         self.destroy()
         print("[DEBUG] Desktop application closed.")
+        sys.exit(0)
 
 def main():
     parser = argparse.ArgumentParser(

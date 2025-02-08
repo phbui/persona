@@ -4,6 +4,7 @@ import threading
 import torch
 import gc
 import queue
+import numpy as np
 from visualizer import Visualizer
 from dm_engine import LLM, Conversation, PlayerModel
 from sentence_transformers import SentenceTransformer
@@ -80,7 +81,11 @@ class Chat(tk.Toplevel):
         print(f"[DEBUG] Inserted {tag} message: {message}")
 
     def get_embedding(self, text):
-        return self.encoder.encode(text)
+        emb = self.encoder.encode(text)
+        norm = np.linalg.norm(emb)
+        if norm > 0:
+            emb = emb / norm
+        return emb
 
     def send_message(self):
         user_message = self.input_field.get().strip()
@@ -115,7 +120,8 @@ class Chat(tk.Toplevel):
         except Exception as e:
             assistant_response = "Error generating response."
             print(f"[ERROR] Exception in get_response: {e}")
-        self.player_model.update(assistant_response, role="assistant")
+        assistant_embedding = self.get_embedding(assistant_response)
+        self.player_model.update(assistant_embedding, assistant_response, role="assistant")
         print("[DEBUG] Updated player model with assistant response.")
         self.response_queue.put(assistant_response)
 
@@ -155,6 +161,6 @@ class Chat(tk.Toplevel):
     def open_player_model_visualization(self):
         if self.visualization_window is None or not tk.Toplevel.winfo_exists(self.visualization_window):
             print("[DEBUG] Opening Player Model Visualization window.")
-            self.visualization_window = Visualizer(self, self.player_model)
+            self.visualization_window = Visualizer(self, self.player_model, self.persona)
         else:
             print("[DEBUG] Player Model Visualization window already open.")
