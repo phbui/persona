@@ -105,7 +105,7 @@ class Visualizer(tk.Toplevel):
                 colors.append('orange')
         self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
 
-        # Connect embeddings for user/player and assistant/llm separately (sorted by dialogue order)
+        # Sort history by dialogue order.
         sorted_history = sorted(history, key=lambda x: x["order"])
         user_x, user_y, user_z = [], [], []
         assistant_x, assistant_y, assistant_z = [], [], []
@@ -119,10 +119,28 @@ class Visualizer(tk.Toplevel):
                 assistant_x.append(emb[0])
                 assistant_y.append(emb[1])
                 assistant_z.append(emb[2])
+                
+        # Draw line plots for each group.
         if len(user_x) > 1:
             self.emb_ax.plot(user_x, user_y, user_z, color='blue', linewidth=2, label="User Path")
+            # Add arrows for user path segments.
+            for i in range(len(user_x) - 1):
+                dx = user_x[i+1] - user_x[i]
+                dy = user_y[i+1] - user_y[i]
+                dz = user_z[i+1] - user_z[i]
+                self.emb_ax.quiver(user_x[i], user_y[i], user_z[i],
+                                   dx, dy, dz,
+                                   arrow_length_ratio=0.1, color='blue', linewidth=1)
         if len(assistant_x) > 1:
             self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='orange', linewidth=2, label="Assistant Path")
+            # Add arrows for assistant path segments.
+            for i in range(len(assistant_x) - 1):
+                dx = assistant_x[i+1] - assistant_x[i]
+                dy = assistant_y[i+1] - assistant_y[i]
+                dz = assistant_z[i+1] - assistant_z[i]
+                self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i],
+                                   dx, dy, dz,
+                                   arrow_length_ratio=0.1, color='orange', linewidth=1)
 
         # If persona has embedded triggers, process and plot them.
         if hasattr(self.persona, "embedded_triggers") and self.persona.embedded_triggers:

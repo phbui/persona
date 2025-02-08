@@ -8,38 +8,44 @@
   "order": "Based on your mental state, you will try as hard as you can to not admit you murdered Jonas or that you did anything to hide this fact.",
   "triggers": [
     {
-      "trigger": "jonas",
-      "changes": { "guilt": 2, "anxiety": 1, "confidence": -1, "stability": -1 }
+      "trigger": "Jonas should be here instead of you",
+      "changes": { "guilt": 3, "anxiety": 2, "confidence": -2, "stability": -2 }
     },
     {
-      "trigger": "storm",
-      "changes": { "anxiety": 2, "calm": -1, "stability": -1 }
+      "trigger": "This storm is your fault",
+      "changes": { "anxiety": 3, "calm": -2, "stability": -2 }
     },
     {
-      "trigger": "accusation",
-      "changes": { "anxiety": 1, "neuroticism": 1, "confidence": -1 }
+      "trigger": "You're lying to me",
+      "changes": { "anxiety": 2, "neuroticism": 2, "confidence": -2 }
     },
     {
-      "trigger": "logbook",
-      "changes": { "anxiety": 1, "guilt": 1, "stability": -1 }
-    },
-    { "trigger": "failure", "changes": { "confidence": -2, "neuroticism": 1 } },
-    {
-      "trigger": "isolation",
-      "changes": { "anxiety": 1, "neuroticism": 1, "calm": -1 }
+      "trigger": "You lied in the logbook",
+      "changes": { "anxiety": 2, "guilt": 1, "stability": -2 }
     },
     {
-      "trigger": "reassurance",
-      "changes": { "confidence": 2, "calm": 2, "anxiety": -2 }
+      "trigger": "You killed him",
+      "changes": { "confidence": -3, "neuroticism": 2 }
     },
     {
-      "trigger": "support",
-      "changes": { "confidence": 1, "calm": 1, "stability": 1 }
+      "trigger": "Stop dodging the questions",
+      "changes": { "anxiety": 2, "neuroticism": 1, "calm": -2 }
     },
-    { "trigger": "suspicion", "changes": { "anxiety": 2, "neuroticism": 1 } },
     {
-      "trigger": "confession",
-      "changes": { "guilt": 1, "anxiety": 1, "confidence": -1 }
+      "trigger": "It's okay, you're doing your best",
+      "changes": { "confidence": 2, "calm": 2, "anxiety": -3 }
+    },
+    {
+      "trigger": "I trust you",
+      "changes": { "confidence": 2, "calm": 1, "stability": 1 }
+    },
+    {
+      "trigger": "You're hiding something from me",
+      "changes": { "anxiety": 3, "neuroticism": 2 }
+    },
+    {
+      "trigger": "You need to be honest with me",
+      "changes": { "guilt": 2, "anxiety": 1, "confidence": -1 }
     }
   ]
 }
