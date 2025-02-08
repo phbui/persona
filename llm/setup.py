@@ -7,8 +7,7 @@ setup(
     py_modules=["llm", "conversation", "persona", "playermodel"], 
     entry_points={
         "console_scripts": [
-            "dm-cli=dm_engine.cli:main", 
-            "dm-gui=dm_engine.gui:main", 
+            "dm-desktop=dm_engine.desktop:main",
         ],
     },
 )

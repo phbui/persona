@@ -81,5 +81,14 @@ class Conversation:
         Ends the conversation by appending a termination message.
         Returns the full conversation transcript (including the hidden context).
         """
-        self.add_turn("System", "The conversation has ended.")
-        return self.get_prompt()
+        # Create a prompt asking for a summary. You can adjust the prompt as needed.
+        summary = ""
+
+        if len(self.history) > 0:
+            summary_prompt = (f"Please summarize the entire conversation from the perspective of "
+                            f"{self.username}.")
+            # Use your conversation's generate_response (or your LLM's generate method) to get a summary.
+            summary = self.llm.generate_response(summary_prompt + self.history.join(), max_new_tokens=128)
+            print("[DEBUG] Conversation summary generated:", summary )
+
+        return summary

@@ -4,14 +4,15 @@ import threading
 import torch
 import sys
 import gc
+import queue  # Import the queue module
 from visualizer import Visualizer
 
 # Import your DM engine classes.
 from dm_engine import LLM, Conversation, Persona, PlayerModel
 
-class Chat(tk.Tk):
-    def __init__(self, hf_key, persona_path, max_tokens=32):
-        super().__init__()
+class Chat(tk.Toplevel):  # Change to Toplevel instead of tk.Tk
+    def __init__(self, parent, hf_key, persona_path, max_tokens=32):
+        super().__init__(parent)
         self.title("Dungeon Master Engine Chat")
         self.geometry("800x600")
         self.max_tokens = max_tokens
@@ -61,12 +62,24 @@ class Chat(tk.Tk):
         self.insert_message("system", f"{self.persona.username} joined the chat.")
         self.insert_message("system", "User joined the chat.")
 
+        # Create a thread-safe queue for responses.
+        self.response_queue = queue.Queue()
+        # Start a periodic check of the queue (runs in the main thread).
+        self.check_response_queue()
+
     def on_close(self):
         print("[DEBUG] Closing ChatGUI application.")
+
+        try:
+            self.conversation_end_data = self.conversation.end_conversation()
+            self.player_model_end_data = self.player_model.history
+        except Exception as e:
+            print(f"[DEBUG] Error ending conversation: {e}")
+
         if self.visualization_window is not None:
             print("[DEBUG] Closing visualization window.")
             self.visualization_window.destroy()
-        self.destroy()
+
         print("[DEBUG] Shutting down transformer model.")
         try:
             del self.llm.model
@@ -75,7 +88,7 @@ class Chat(tk.Tk):
         gc.collect()
         torch.cuda.empty_cache()
         print("[DEBUG] Exiting application.")
-        sys.exit(0)
+        self.destroy()
 
     def insert_message(self, tag, message):
         self.chat_area.config(state=tk.NORMAL)
@@ -114,7 +127,6 @@ class Chat(tk.Tk):
 
     def get_response(self, user_message):
         print(f"[DEBUG] Starting response generation thread for message: {user_message}")
-        print("[DEBUG] Predicted next response embedding computed.")
         try:
             print(f"[DEBUG] Generating response for: {user_message}")
             prompt, assistant_response = self.conversation.chat(user_message, max_new_tokens=self.max_tokens)
@@ -123,7 +135,18 @@ class Chat(tk.Tk):
             print(f"[ERROR] Exception in get_response: {e}")
         self.player_model.update(assistant_response, role="assistant")
         print("[DEBUG] Updated player model with assistant response.")
-        self.after(0, lambda: self.update_response(assistant_response))
+        self.response_queue.put(assistant_response)
+
+    def check_response_queue(self):
+        if not self.winfo_exists():
+            return
+        try:
+            while True:
+                response = self.response_queue.get_nowait()
+                self.update_response(response)
+        except queue.Empty:
+            pass
+        self.after(100, self.check_response_queue)
 
     def update_response(self, response):
         self.chat_area.config(state=tk.NORMAL)

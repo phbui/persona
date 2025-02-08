@@ -9,9 +9,19 @@ def main():
     parser.add_argument("--max_tokens", type=int, default=128, help="Default maximum tokens per generation")
     args = parser.parse_args()
 
-    print("[DEBUG] Starting ChatGUI application.")
+    print("[DEBUG] Starting chat.")
     app = Chat(args.hf_key, args.persona_path, args.max_tokens)
     app.mainloop()
+
+    conversation_data = app.conversation_end_data
+    print("Retrieved conversation data:", conversation_data)
+
+    # Now you can manipulate 'conversation_data' as needed.
+    # For example:
+    if conversation_data is not None:
+        # Process the data (e.g., save to a file, analyze, etc.)
+        with open("conversation_end_data.txt", "w") as f:
+            f.write(str(conversation_data))
 
 if __name__ == "__main__":
     main()

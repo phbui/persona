@@ -5,8 +5,7 @@ playermodel.py
 setup.py
 dm_engine/__init__.py
 dm_engine/chat.py
-dm_engine/cli.py
-dm_engine/gui.py
+dm_engine/desktop.py
 dm_engine/visualizer.py
 dm_engine.egg-info/PKG-INFO
 dm_engine.egg-info/SOURCES.txt
