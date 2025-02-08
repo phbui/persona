@@ -1,9 +1,7 @@
-import copy
 import numpy as np
 from sklearn.decomposition import PCA
-import torch
 import datetime
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import pipeline
 
 class PlayerModel:
     def __init__(self):
@@ -13,34 +11,58 @@ class PlayerModel:
             "player": {"positive": 0, "neutral": 0, "negative": 0},
             "llm": {"positive": 0, "neutral": 0, "negative": 0}
         }
-        self.twitter_tokenizer = AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
-        self.twitter_model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+        
+        self.emotion_classifier = pipeline(
+            "text-classification",
+            model="j-hartmann/emotion-english-distilroberta-base",
+            tokenizer="j-hartmann/emotion-english-distilroberta-base",
+            return_all_scores=True
+        )
     
-    def get_sentiment_twitter(self, text):
-        tokens = self.twitter_tokenizer(text, return_tensors="pt")
-        outputs = self.twitter_model(**tokens)
-        probs = torch.nn.functional.softmax(outputs.logits, dim=-1).tolist()[0]
-        labels = ["negative", "neutral", "positive"]
-        predicted_label = labels[probs.index(max(probs))]
-        compound = probs[2] - probs[0]
-        score_dict = {"neg": probs[0], "neu": probs[1], "pos": probs[2], "compound": compound}
-        return predicted_label, score_dict
+    def get_sentiment_emotion(self, text):
+        """
+        Uses the Emotion-English model pipeline to classify the text.
+        Returns:
+            predicted_emotion: The most likely emotion (e.g., "joy", "anger", etc.)
+            score_dict: A dictionary containing the probabilities for each emotion and a computed compound score.
+        """
+        results = self.emotion_classifier(text)
+        # results is a list (one per input) containing a list of dicts.
+        emotion_scores = results[0]
+        # Determine the predicted emotion as the one with highest score.
+        predicted_emotion = max(emotion_scores, key=lambda x: x['score'])['label']
+        # Build a dictionary of scores with lowercased keys.
+        score_dict = {d['label'].lower(): d['score'] for d in emotion_scores}
+        # Compute a compound score: compound = joy - average(anger, disgust, fear, sadness)
+        neg_emotions = ['anger', 'disgust', 'fear', 'sadness']
+        joy_prob = score_dict.get('joy', 0.0)
+        negative_scores = [score_dict.get(emotion, 0.0) for emotion in neg_emotions]
+        negative_avg = sum(negative_scores) / len(negative_scores) if negative_scores else 0.0
+        compound = joy_prob - negative_avg
+        score_dict['compound'] = compound
+        
+        return predicted_emotion, score_dict
     
     def update(self, embedding, chunked_embeddings, message, role):
-        predicted_label, scores = self.get_sentiment_twitter(message)
+        # Use the emotion pipeline for sentiment analysis.
+        predicted_emotion, scores = self.get_sentiment_emotion(message)
         compound = scores["compound"]
+        # Use thresholds to determine overall sentiment.
         if compound >= 0.05:
             sentiment = "positive"
         elif compound <= -0.05:
             sentiment = "negative"
         else:
             sentiment = "neutral"
+            
+        # Update counts.
         self.sentiment_counts[sentiment] += 1
         if role in self.role_sentiment_counts:
             self.role_sentiment_counts[role][sentiment] += 1
         else:
             self.role_sentiment_counts[role] = {"positive": 0, "neutral": 0, "negative": 0}
             self.role_sentiment_counts[role][sentiment] = 1
+        
         order = len(self.history) + 1
         timestamp = datetime.datetime.now().isoformat()
         self.history.append({
@@ -58,16 +80,9 @@ class PlayerModel:
 
     def reduce_array(self, embeddings, n_components=3):
         """
-        Reduce a single array of embeddings (shape: [m, d]) to n_components dimensions using PCA.
-        If there's only one embedding, it simply returns the first n_components dimensions.
+        Reduce an array of embeddings (shape: [m, d]) to n_components dimensions using PCA.
+        If there's only one embedding, return the first n_components dimensions.
         Pads with zeros if the result has fewer than n_components columns.
-        
-        Parameters:
-        embeddings (array-like): An array of shape (m, d).
-        n_components (int): Target number of dimensions.
-        
-        Returns:
-        np.ndarray: Reduced embeddings with shape (m, n_components).
         """
         embeddings = np.array(embeddings)
         m, _ = embeddings.shape
@@ -75,7 +90,6 @@ class PlayerModel:
         if m == 1:
             reduced = embeddings[:, :n_components]
         else:
-            from sklearn.decomposition import PCA
             pca = PCA(n_components=effective_n_components)
             reduced = pca.fit_transform(embeddings)
             if reduced.shape[1] < n_components:
@@ -97,7 +111,6 @@ class PlayerModel:
         new_main = reduced[0]
         new_chunks = reduced[1:] if reduced.shape[0] > 1 else None
         return new_main, new_chunks
-
 
     def get_history_for_visualization(self):
         import copy

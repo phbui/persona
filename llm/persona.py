@@ -27,8 +27,9 @@ class Persona:
             "Do NOT echo any instructions, the user's words, or any external context. "
             "Do NOT start your response with '{username}:' or your own name."
             "Remain entirely in character as {username} and do not reference any perspective other than your own. "
-            "Do not include any extraneous symbols such as square brackets or meta-commentary. "
-            "Respond based on your current mental state. "
+            "Do not speak from the perspective of the Player. "
+            "Do not include any extraneous symbols such as square brackets, conext, or meta-commentary. "
+            "Respond based on your mental state. "
         )
 
         self.persona_data["mental_state"] = {

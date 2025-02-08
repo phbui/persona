@@ -21,10 +21,15 @@ class Visualizer(tk.Toplevel):
         # -----------------------------
         self.sentiment_frame = tk.Frame(self.notebook)
         self.notebook.add(self.sentiment_frame, text="Sentiment")
-        self.sent_fig, self.sent_ax = plt.subplots(figsize=(7, 5))
+        # Create a Figure that will contain two subplots: compound and full emotion spectrum.
+        self.sent_fig = plt.figure(figsize=(7, 8))
+        # Top subplot: compound scores
+        self.compound_ax = self.sent_fig.add_subplot(211)
+        # Bottom subplot: full emotion spectrum
+        self.spectrum_ax = self.sent_fig.add_subplot(212)
         self.sent_canvas = FigureCanvasTkAgg(self.sent_fig, master=self.sentiment_frame)
         self.sent_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        self.sent_ax.callbacks.connect('xlim_changed', self.on_x_change)
+        self.sent_fig.subplots_adjust(hspace=0.4)
         self.sent_canvas.mpl_connect("scroll_event", self.on_scroll)
         self.sent_canvas.mpl_connect("button_press_event", self.on_click)
         self.sent_canvas.mpl_connect("button_release_event", self.on_release)
@@ -33,12 +38,7 @@ class Visualizer(tk.Toplevel):
         self.press_x = None
         self.xlim = None
 
-        # Instead of re-plotting each time, create the line objects once:
-        self.user_line, = self.sent_ax.plot([], [], marker='o', linestyle='-', color='blue', label="User")
-        self.llm_line, = self.sent_ax.plot([], [], marker='s', linestyle='-', color='orange', label="LLM")
-        # Draw a horizontal line at y=0
-        self.sent_ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-        self.sent_ax.legend()
+        # Instead of re-plotting each time, we'll update our plots in update_sentiment_visualization()
 
         # -----------------------------
         # Embeddings Tab (unchanged)
@@ -89,34 +89,89 @@ class Visualizer(tk.Toplevel):
         self.update_mental_state_visualization()
 
     def update_sentiment_visualization(self):
-        """Update the sentiment plot by simply updating the line data."""
+        """Update the Sentiment tab to show both compound scores and the full emotion spectrum."""
         history = self.player_model.get_history_for_visualization()
-        orders_user, scores_user, orders_llm, scores_llm = [], [], [], []
+        
+        # Clear both subplots.
+        self.compound_ax.clear()
+        self.spectrum_ax.clear()
 
+        # --- Top Panel: Compound Score over Dialogue Order ---
+        orders_user, compound_user = [], []
+        orders_llm, compound_llm = [], []
         for entry in history:
             order = entry["order"]
             compound_score = entry["sentiment_scores"]["compound"]
             role = entry["role"]
             if role in ["user", "player"]:
                 orders_user.append(order)
-                scores_user.append(compound_score)
+                compound_user.append(compound_score)
             elif role in ["assistant", "llm"]:
                 orders_llm.append(order)
-                scores_llm.append(compound_score)
+                compound_llm.append(compound_score)
+        if orders_user:
+            self.compound_ax.plot(orders_user, compound_user, marker='o', linestyle='-', color='blue', label="User")
+        if orders_llm:
+            self.compound_ax.plot(orders_llm, compound_llm, marker='s', linestyle='-', color='orange', label="LLM")
+        self.compound_ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+        self.compound_ax.set_xlabel("Dialogue Order")
+        self.compound_ax.set_ylabel("Compound Score")
+        self.compound_ax.set_title("Compound Emotion Score over Dialogue Order")
+        self.compound_ax.legend()
+        self.compound_ax.grid(True)
+        
+        # Ensure x-axis ticks are whole numbers.
+        all_orders = sorted(set(orders_user + orders_llm))
+        if all_orders:
+            self.compound_ax.set_xticks(all_orders)
 
-        # Update the existing line objects rather than re-creating them.
-        self.user_line.set_data(orders_user, scores_user)
-        self.llm_line.set_data(orders_llm, scores_llm)
+        # --- Bottom Panel: Full Emotion Spectrum ---
+        # Define the full set of emotions (keys from the score dict, except compound).
+        emotions = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
+        # Map each emotion to a y-axis value (categorical)
+        emotion_to_y = {emo: i for i, emo in enumerate(emotions)}
+        
+        # Prepare data for scatter plotting.
+        x_vals = []
+        y_vals = []
+        sizes = []
+        colors = []
+        # Color mapping for each emotion.
+        color_map = {
+            "anger": "red",
+            "disgust": "purple",
+            "fear": "black",
+            "joy": "green",
+            "neutral": "gray",
+            "sadness": "blue",
+            "surprise": "orange"
+        }
+        # Scale factor to adjust marker sizes.
+        scale_factor = 3000
 
-        # Optionally adjust the x-limits if data is available.
-        if orders_user or orders_llm:
-            all_orders = orders_user + orders_llm
-            self.sent_ax.set_xlim(min(all_orders) - 1, max(all_orders) + 1)
+        for entry in history:
+            order = entry["order"]
+            scores = entry.get("sentiment_scores", {})
+            # For each emotion, add a scatter point.
+            for emo in emotions:
+                score = scores.get(emo, 0)
+                x_vals.append(order)
+                y_vals.append(emotion_to_y[emo])
+                sizes.append(score * scale_factor)
+                colors.append(color_map.get(emo, "black"))
+        
+        self.spectrum_ax.scatter(x_vals, y_vals, s=sizes, c=colors, alpha=0.6)
+        self.spectrum_ax.set_xlabel("Dialogue Order")
+        self.spectrum_ax.set_ylabel("Emotion")
+        self.spectrum_ax.set_title("Emotion Spectrum over Dialogue Order")
+        # Set y-axis ticks to the emotion names.
+        self.spectrum_ax.set_yticks(list(emotion_to_y.values()))
+        self.spectrum_ax.set_yticklabels(list(emotion_to_y.keys()))
+        self.spectrum_ax.grid(True)
+        if all_orders:
+            self.spectrum_ax.set_xticks(all_orders)
 
-        # Recalculate the limits and update view
-        self.sent_ax.relim()
-        self.sent_ax.autoscale_view(True, True, True)
-        # Use draw_idle so that multiple quick updates are batched.
+        # Redraw the canvas.
         self.sent_canvas.draw_idle()
 
     def update_embeddings_visualization(self):
@@ -132,7 +187,7 @@ class Visualizer(tk.Toplevel):
             colors.append('blue' if entry["role"] in ["user", "player"] else 'orange')
         # Store scatter plot for click events.
         self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
-
+        
         sorted_history = sorted(history, key=lambda x: x["order"])
         user_x, user_y, user_z, assistant_x, assistant_y, assistant_z = [], [], [], [], [], []
         for entry in sorted_history:
@@ -203,7 +258,6 @@ class Visualizer(tk.Toplevel):
         self.radar_ax.set_xticks(angles[:-1])
         self.radar_ax.set_xticklabels(categories)
         self.radar_ax.set_ylim(-20, 100)
-        # Increase marker size as needed.
         self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid', marker='o', markersize=10)
         self.radar_ax.fill(angles, values, 'b', alpha=0.25)
         self.radar_canvas.draw_idle()
