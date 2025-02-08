@@ -3,7 +3,7 @@ from tkinter import ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
-from sklearn.decomposition import PCA
+import json
 
 class Visualizer(tk.Toplevel):
     def __init__(self, master, player_model, persona):
@@ -16,6 +16,9 @@ class Visualizer(tk.Toplevel):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
+        # -----------------------------
+        # Sentiment Tab
+        # -----------------------------
         self.sentiment_frame = tk.Frame(self.notebook)
         self.notebook.add(self.sentiment_frame, text="Sentiment")
         self.sent_fig, self.sent_ax = plt.subplots(figsize=(7, 5))
@@ -30,6 +33,16 @@ class Visualizer(tk.Toplevel):
         self.press_x = None
         self.xlim = None
 
+        # Instead of re-plotting each time, create the line objects once:
+        self.user_line, = self.sent_ax.plot([], [], marker='o', linestyle='-', color='blue', label="User")
+        self.llm_line, = self.sent_ax.plot([], [], marker='s', linestyle='-', color='orange', label="LLM")
+        # Draw a horizontal line at y=0
+        self.sent_ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+        self.sent_ax.legend()
+
+        # -----------------------------
+        # Embeddings Tab (unchanged, but note draw_idle usage below)
+        # -----------------------------
         self.embeddings_frame = tk.Frame(self.notebook)
         self.notebook.add(self.embeddings_frame, text="Embeddings")
         self.emb_fig = plt.figure(figsize=(7, 5))
@@ -40,6 +53,9 @@ class Visualizer(tk.Toplevel):
         self.emb_canvas.mpl_connect("scroll_event", self.on_scroll_emb)
         self.emb_canvas.mpl_connect("button_press_event", self.on_info_click_emb)
 
+        # -----------------------------
+        # Mental State Tab
+        # -----------------------------
         self.mental_state_frame = tk.Frame(self.notebook)
         self.notebook.add(self.mental_state_frame, text="Mental State")
         self.radar_fig = plt.figure(figsize=(7, 5))
@@ -47,6 +63,7 @@ class Visualizer(tk.Toplevel):
         self.radar_canvas = FigureCanvasTkAgg(self.radar_fig, master=self.mental_state_frame)
         self.radar_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+        # Initial drawing
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
         self.update_mental_state_visualization()
@@ -57,8 +74,10 @@ class Visualizer(tk.Toplevel):
         self.update_mental_state_visualization()
 
     def update_sentiment_visualization(self):
+        """Update the sentiment plot by simply updating the line data."""
         history = self.player_model.get_history_for_visualization()
         orders_user, scores_user, orders_llm, scores_llm = [], [], [], []
+
         for entry in history:
             order = entry["order"]
             compound_score = entry["sentiment_scores"]["compound"]
@@ -69,22 +88,26 @@ class Visualizer(tk.Toplevel):
             elif role in ["assistant", "llm"]:
                 orders_llm.append(order)
                 scores_llm.append(compound_score)
-        self.sent_ax.clear()
-        if orders_user:
-            self.sent_ax.plot(orders_user, scores_user, marker='o', linestyle='-', color='blue', label="User")
-        if orders_llm:
-            self.sent_ax.plot(orders_llm, scores_llm, marker='s', linestyle='-', color='orange', label="LLM")
-        self.sent_ax.set_title("Sentiment Scores Over Dialogue Order", fontsize=12)
-        self.sent_ax.set_xlabel("Dialogue Order")
-        self.sent_ax.set_ylabel("Sentiment Score (Compound)")
-        self.sent_ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
-        self.sent_ax.legend()
+        
+        # Update the existing line objects rather than re-creating them.
+        self.user_line.set_data(orders_user, scores_user)
+        self.llm_line.set_data(orders_llm, scores_llm)
+
+        # Optionally adjust the x-limits if data is available.
         if orders_user or orders_llm:
             all_orders = orders_user + orders_llm
             self.sent_ax.set_xlim(min(all_orders) - 1, max(all_orders) + 1)
-        self.sent_canvas.draw()
+        
+        # Recalculate the limits and update view
+        self.sent_ax.relim()
+        self.sent_ax.autoscale_view(True, True, True)
+        # Use draw_idle so that multiple quick updates are batched.
+        self.sent_canvas.draw_idle()
 
     def update_embeddings_visualization(self):
+        """This method is left mostly unchanged.
+        You can similarly cache and update artist objects if you find this part of the rendering a bottleneck.
+        """
         history = self.player_model.get_history_for_visualization()
         self.emb_ax.clear()
         xs, ys, zs, colors = [], [], [], []
@@ -93,13 +116,11 @@ class Visualizer(tk.Toplevel):
             xs.append(emb[0])
             ys.append(emb[1])
             zs.append(emb[2])
-            if entry["role"] in ["user", "player"]:
-                colors.append('blue')
-            else:
-                colors.append('orange')
-        # Assign the scatter plot to self.emb_scatter so that it can be used for click events.
+            colors.append('blue' if entry["role"] in ["user", "player"] else 'orange')
+        # Store scatter plot for click events.
         self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
         
+        # (The rest of the code for drawing paths, arrows, and triggers remains unchanged)
         sorted_history = sorted(history, key=lambda x: x["order"])
         user_x, user_y, user_z, assistant_x, assistant_y, assistant_z = [], [], [], [], [], []
         for entry in sorted_history:
@@ -118,33 +139,33 @@ class Visualizer(tk.Toplevel):
                 dx = user_x[i+1] - user_x[i]
                 dy = user_y[i+1] - user_y[i]
                 dz = user_z[i+1] - user_z[i]
-                self.emb_ax.quiver(user_x[i], user_y[i], user_z[i], dx, dy, dz, arrow_length_ratio=0.1, color='blue', linewidth=1)
+                self.emb_ax.quiver(user_x[i], user_y[i], user_z[i], dx, dy, dz,
+                                   arrow_length_ratio=0.1, color='blue', linewidth=1)
         if len(assistant_x) > 1:
             self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='orange', linewidth=2, label="Assistant Path")
             for i in range(len(assistant_x) - 1):
                 dx = assistant_x[i+1] - assistant_x[i]
                 dy = assistant_y[i+1] - assistant_y[i]
                 dz = assistant_z[i+1] - assistant_z[i]
-                self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i], dx, dy, dz, arrow_length_ratio=0.1, color='orange', linewidth=1)
+                self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i], dx, dy, dz,
+                                   arrow_length_ratio=0.1, color='orange', linewidth=1)
         if hasattr(self.persona, "embedded_triggers") and self.persona.embedded_triggers:
             triggers_embeddings = np.array([trigger["embedding"] for trigger in self.persona.embedded_triggers])
             reduced_triggers = self.player_model.reduce_array(triggers_embeddings)
             self.emb_ax.scatter(reduced_triggers[:, 0], reduced_triggers[:, 1], reduced_triggers[:, 2],
                                 c='red', marker='*', s=100, label="Triggers")
-        # For each history entry, if chunked embeddings exist, plot them.
         for entry in history:
             if "chunked_embeddings" in entry and entry["chunked_embeddings"] is not None:
                 role = entry["role"]
                 color = "blue" if role in ["user", "player"] else "orange"
-                # Assume entry["chunked_embeddings"] is a NumPy array of shape (n, 3)
                 chunk_embs = entry["chunked_embeddings"]
                 if chunk_embs.shape[0] > 0:
                     main_emb = entry["embedding"]
                     for i in range(chunk_embs.shape[0]):
                         self.emb_ax.plot([main_emb[0], chunk_embs[i, 0]],
-                                        [main_emb[1], chunk_embs[i, 1]],
-                                        [main_emb[2], chunk_embs[i, 2]],
-                                        linestyle='dotted', color=color, linewidth=1)
+                                         [main_emb[1], chunk_embs[i, 1]],
+                                         [main_emb[2], chunk_embs[i, 2]],
+                                         linestyle='dotted', color=color, linewidth=1)
                     for i in range(chunk_embs.shape[0]):
                         self.emb_ax.scatter(chunk_embs[i, 0], chunk_embs[i, 1], chunk_embs[i, 2],
                                             c=color, s=10, marker='o')
@@ -153,12 +174,13 @@ class Visualizer(tk.Toplevel):
         self.emb_ax.set_ylabel("PC2")
         self.emb_ax.set_zlabel("PC3")
         self.emb_ax.legend()
-        self.emb_canvas.draw()
+        self.emb_canvas.draw_idle()
 
     def update_mental_state_visualization(self):
         ms = self.persona.mental_state
         categories = list(ms.keys())
         values = list(ms.values())
+        # Close the circle
         values += values[:1]
         N = len(categories)
         angles = [n / float(N) * 2 * np.pi for n in range(N)]
@@ -171,16 +193,17 @@ class Visualizer(tk.Toplevel):
         self.radar_ax.set_ylim(-2, 10)
         self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid')
         self.radar_ax.fill(angles, values, 'b', alpha=0.25)
-        self.radar_canvas.draw()
+        self.radar_canvas.draw_idle()
 
     def on_scroll(self, event):
-        if event.xdata is None: return
+        if event.xdata is None:
+            return
         x_min, x_max = self.sent_ax.get_xlim()
         zoom_factor = 0.8 if event.step > 0 else 1.25
         new_x_min = event.xdata - (event.xdata - x_min) * zoom_factor
         new_x_max = event.xdata + (x_max - event.xdata) * zoom_factor
         self.sent_ax.set_xlim(new_x_min, new_x_max)
-        self.sent_canvas.draw()
+        self.sent_canvas.draw_idle()
 
     def on_click(self, event):
         if event.button == 3 and event.xdata is not None:
@@ -191,11 +214,12 @@ class Visualizer(tk.Toplevel):
             self.xlim = self.sent_ax.get_xlim()
 
     def on_drag(self, event):
-        if self.press_x is None or event.xdata is None: return
+        if self.press_x is None or event.xdata is None:
+            return
         dx = self.press_x - event.xdata
         x_min, x_max = self.xlim
         self.sent_ax.set_xlim(x_min + dx, x_max + dx)
-        self.sent_canvas.draw()
+        self.sent_canvas.draw_idle()
 
     def on_release(self, event):
         self.press_x = None
@@ -268,7 +292,25 @@ class Visualizer(tk.Toplevel):
         self.emb_ax.set_xlim3d([x_center - new_x_range, x_center + new_x_range])
         self.emb_ax.set_ylim3d([y_center - new_y_range, y_center + new_y_range])
         self.emb_ax.set_zlim3d([z_center - new_z_range, z_center + new_z_range])
-        self.emb_canvas.draw()
+        self.emb_canvas.draw_idle()
 
     def on_close(self):
+        """
+        When closing the window, gather all information and save it to a JSON file.
+        """
+        data = {
+            "history": self.player_model.get_history_for_visualization(),
+            "mental_state": self.persona.mental_state
+        }
+        if hasattr(self.persona, "embedded_triggers"):
+            data["embedded_triggers"] = self.persona.embedded_triggers
+
+        file_name = "visualization_data.json"
+        try:
+            with open(file_name, "w") as f:
+                json.dump(data, f, indent=4)
+            print(f"Data successfully saved to {file_name}")
+        except Exception as e:
+            print(f"An error occurred while saving data: {e}")
+
         self.destroy()

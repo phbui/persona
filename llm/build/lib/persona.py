@@ -25,6 +25,7 @@ class Persona:
             "Respond strictly in your own voice—using only your persona's internal knowledge and style. "
             "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
             "Do NOT echo any instructions, the user's words, or any external context. "
+            "Do NOT start your response with '{username}:' or your own name."
             "Remain entirely in character as {username} and do not reference any perspective other than your own. "
             "Do not include any extraneous symbols such as square brackets or meta-commentary. "
             "Respond based on your current mental state. "
@@ -95,10 +96,6 @@ class Persona:
         })
     
     @property
-    def order(self) -> str:
-        return self.persona_data.get("order", "")
-    
-    @property
     def username(self) -> str:
         return self.persona_data.get("username", "Unknown")
     
@@ -121,7 +118,6 @@ class Persona:
             f"[User Message]\n{self.user_message}\n\n"
             f"[Typing Style]\n{self.typing_style}\n\n"
             f"[Mental State]\n{json.dumps(self.mental_state)}\n\n" 
-            f"[Order]\n{self.order}\n\n" 
             f"[Instruction]\n{self.instruction}\n"
         )
 
