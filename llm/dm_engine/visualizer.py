@@ -89,14 +89,9 @@ class Visualizer(tk.Toplevel):
         self.update_mental_state_visualization()
 
     def update_sentiment_visualization(self):
-        """Update the Sentiment tab to show both compound scores and the full emotion spectrum."""
         history = self.player_model.get_history_for_visualization()
-        
-        # Clear both subplots.
         self.compound_ax.clear()
         self.spectrum_ax.clear()
-
-        # --- Top Panel: Compound Score over Dialogue Order ---
         orders_user, compound_user = [], []
         orders_llm, compound_llm = [], []
         for entry in history:
@@ -112,66 +107,42 @@ class Visualizer(tk.Toplevel):
         if orders_user:
             self.compound_ax.plot(orders_user, compound_user, marker='o', linestyle='-', color='blue', label="User")
         if orders_llm:
-            self.compound_ax.plot(orders_llm, compound_llm, marker='s', linestyle='-', color='orange', label="LLM")
+            self.compound_ax.plot(orders_llm, compound_llm, marker='s', linestyle='-', color='red', label="LLM")
         self.compound_ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
         self.compound_ax.set_xlabel("Dialogue Order")
         self.compound_ax.set_ylabel("Compound Score")
         self.compound_ax.set_title("Compound Emotion Score over Dialogue Order")
         self.compound_ax.legend()
         self.compound_ax.grid(True)
-        
-        # Ensure x-axis ticks are whole numbers.
         all_orders = sorted(set(orders_user + orders_llm))
         if all_orders:
             self.compound_ax.set_xticks(all_orders)
-
-        # --- Bottom Panel: Full Emotion Spectrum ---
-        # Define the full set of emotions (keys from the score dict, except compound).
         emotions = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
-        # Map each emotion to a y-axis value (categorical)
         emotion_to_y = {emo: i for i, emo in enumerate(emotions)}
-        
-        # Prepare data for scatter plotting.
         x_vals = []
         y_vals = []
         sizes = []
         colors = []
-        # Color mapping for each emotion.
-        color_map = {
-            "anger": "red",
-            "disgust": "purple",
-            "fear": "black",
-            "joy": "green",
-            "neutral": "gray",
-            "sadness": "blue",
-            "surprise": "orange"
-        }
-        # Scale factor to adjust marker sizes.
-        scale_factor = 3000
-
+        scale_factor = 300
         for entry in history:
             order = entry["order"]
             scores = entry.get("sentiment_scores", {})
-            # For each emotion, add a scatter point.
+            col = "blue" if order % 2 == 1 else "red"
             for emo in emotions:
                 score = scores.get(emo, 0)
                 x_vals.append(order)
                 y_vals.append(emotion_to_y[emo])
                 sizes.append(score * scale_factor)
-                colors.append(color_map.get(emo, "black"))
-        
+                colors.append(col)
         self.spectrum_ax.scatter(x_vals, y_vals, s=sizes, c=colors, alpha=0.6)
         self.spectrum_ax.set_xlabel("Dialogue Order")
         self.spectrum_ax.set_ylabel("Emotion")
         self.spectrum_ax.set_title("Emotion Spectrum over Dialogue Order")
-        # Set y-axis ticks to the emotion names.
         self.spectrum_ax.set_yticks(list(emotion_to_y.values()))
         self.spectrum_ax.set_yticklabels(list(emotion_to_y.keys()))
         self.spectrum_ax.grid(True)
         if all_orders:
             self.spectrum_ax.set_xticks(all_orders)
-
-        # Redraw the canvas.
         self.sent_canvas.draw_idle()
 
     def update_embeddings_visualization(self):
@@ -184,7 +155,7 @@ class Visualizer(tk.Toplevel):
             xs.append(emb[0])
             ys.append(emb[1])
             zs.append(emb[2])
-            colors.append('blue' if entry["role"] in ["user", "player"] else 'orange')
+            colors.append('blue' if entry["role"] in ["user", "player"] else 'red')
         # Store scatter plot for click events.
         self.emb_scatter = self.emb_ax.scatter(xs, ys, zs, c=colors, depthshade=True, s=60)
         
@@ -209,13 +180,13 @@ class Visualizer(tk.Toplevel):
                 self.emb_ax.quiver(user_x[i], user_y[i], user_z[i], dx, dy, dz,
                                    arrow_length_ratio=0.1, color='blue', linewidth=1)
         if len(assistant_x) > 1:
-            self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='orange', linewidth=2, label="Assistant Path")
+            self.emb_ax.plot(assistant_x, assistant_y, assistant_z, color='red', linewidth=2, label="Assistant Path")
             for i in range(len(assistant_x) - 1):
                 dx = assistant_x[i+1] - assistant_x[i]
                 dy = assistant_y[i+1] - assistant_y[i]
                 dz = assistant_z[i+1] - assistant_z[i]
                 self.emb_ax.quiver(assistant_x[i], assistant_y[i], assistant_z[i], dx, dy, dz,
-                                   arrow_length_ratio=0.1, color='orange', linewidth=1)
+                                   arrow_length_ratio=0.1, color='red', linewidth=1)
         if hasattr(self.persona, "embedded_triggers") and self.persona.embedded_triggers:
             triggers_embeddings = np.array([trigger["embedding"] for trigger in self.persona.embedded_triggers])
             reduced_triggers = self.player_model.reduce_array(triggers_embeddings)
@@ -224,7 +195,7 @@ class Visualizer(tk.Toplevel):
         for entry in history:
             if "chunked_embeddings" in entry and entry["chunked_embeddings"] is not None:
                 role = entry["role"]
-                color = "blue" if role in ["user", "player"] else "orange"
+                color = "blue" if role in ["user", "player"] else "red"
                 chunk_embs = entry["chunked_embeddings"]
                 if chunk_embs.shape[0] > 0:
                     main_emb = entry["embedding"]
