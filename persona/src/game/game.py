@@ -2,7 +2,6 @@ from persona.src.game.chat import Chat
 
 class Game:
     def __init__(self):
-
         self.chat = Chat()
         self.players = []
         self.turn = 0

@@ -1,4 +1,6 @@
 from persona.src.ai.policy import Policy
+import os
+import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,74 +11,96 @@ focus_weight = 0.8
 response_weight = 1.0
 response_emotion_weight = 1.5
 
-# The RL agent using PPO
 class RL():
     def __init__(self, persona_name, input_dim=768 + 5, action_dim=10, hidden_dim=128, lr=3e-4, gamma=0.99, clip_epsilon=0.2):
         """
-        input_dim: Dimension of the combined state vector. For example, if your sentence embedding is 768-dim
-                   and you add an emotion vector of size 5, input_dim should be 768+5.
-        action_dim: Dimension of the action vector (i.e., the mental state update).
-        hidden_dim: Number of hidden units in the network.
-        lr: Learning rate for the optimizer.
-        gamma: Discount factor for future rewards.
-        clip_epsilon: Clipping parameter for PPO.
+        persona_name: Name of the persona (used to identify the policy file).
+        input_dim: Dimension of the full state vector.
+        action_dim: Dimension of the action vector (number of mental state attributes to update).
+        hidden_dim: Hidden layer size.
+        lr: Learning rate.
+        gamma: Discount factor.
+        clip_epsilon: PPO clipping parameter.
         """
-
         self.persona_name = persona_name
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
-        
-        # Initialize the policy network (actor and critic share the encoder)
+
+        # Initialize the policy network (actor and critic) and move it to GPU.
         self.policy_net = Policy(input_dim, action_dim, hidden_dim).to("cuda")
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=lr)
         
-        # Buffers for storing trajectories (states, actions, log probabilities, rewards, values)
+        # Buffers for storing trajectories.
         self.states = []
         self.actions = []
         self.log_probs = []
         self.rewards = []
         self.values = []
-        
+
+        # Policy file path; stored in the 'trained' directory as persona_name.json.
+        self.policy_file = os.path.join("trained", f"{self.persona_name}.json")
+        self.load_policy()  # Load existing policy if available, otherwise create new.
+
+    def load_policy(self):
+        """
+        Checks if a policy file exists for the given persona.
+        If it exists, loads the state dictionary (converting from lists to tensors).
+        Otherwise, saves the initial policy.
+        """
+        if os.path.exists(self.policy_file):
+            print(f"Loading policy from {self.policy_file}")
+            with open(self.policy_file, "r") as f:
+                state_dict_json = json.load(f)
+            # Convert JSON lists back into tensors.
+            state_dict = {}
+            for key, value in state_dict_json.items():
+                state_dict[key] = torch.tensor(value)
+            self.policy_net.load_state_dict(state_dict)
+        else:
+            print(f"No policy file found for {self.persona_name}. Creating new policy.")
+            self.save_policy()
+
+    def save_policy(self):
+        """
+        Saves the current policy network’s state dictionary to a JSON file.
+        Tensors are converted to lists for JSON serialization.
+        """
+        state_dict = self.policy_net.state_dict()
+        state_dict_json = {}
+        for key, tensor in state_dict.items():
+            # Move tensor to CPU and convert to list.
+            state_dict_json[key] = tensor.cpu().tolist()
+        # Ensure that the directory exists.
+        os.makedirs(os.path.dirname(self.policy_file), exist_ok=True)
+        with open(self.policy_file, "w") as f:
+            json.dump(state_dict_json, f)
+        print(f"Policy saved to {self.policy_file}")
+
     def dynamic_emotion_vector(self, emotion_results):
-        # Print the raw classifier output
         print("Raw emotion classifier output:")
         print(emotion_results)
-        
-        # Assuming emotion_results is a list of lists, e.g.:
-        # [[{'label': 'anger', 'score': 0.0044}, ...]]
         if not emotion_results or not emotion_results[0]:
             raise ValueError("No emotion results provided.")
-        
-        # Take the first element (i.e., results for the given input)
         emotions_list = emotion_results[0]
         print("\nEmotions list extracted (first element):")
         print(emotions_list)
-        
-        # Sort the list by the label to ensure a consistent order
         sorted_emotions = sorted(emotions_list, key=lambda x: x['label'])
         print("\nSorted emotions (by label):")
         print(sorted_emotions)
-        
-        # Extract the scores in the sorted order
         scores = [entry['score'] for entry in sorted_emotions]
         print("\nExtracted scores in sorted order:")
         print(scores)
-        
-        # Convert the scores list into a PyTorch tensor and move it to CUDA
         emotion_tensor = torch.tensor(scores, dtype=torch.float32).to("cuda")
         print("\nFinal emotion tensor:")
         print(emotion_tensor)
         print("Emotion tensor shape:", emotion_tensor.shape)
-        
         return emotion_tensor
 
-    # Example usage within your RL select_action method:
     def select_action(self, mental_state, embeddings, emotion_results):
         """
         Combines the previous mental state, dialogue embedding, and dynamic emotion vector into a state vector,
-        performs a forward pass through the policy network,
-        and samples an action from a Gaussian distribution.
-        Returns the updated mental state.
+        performs a forward pass through the policy network, and samples an action (delta) for updating the mental state.
+        Returns the updated mental state as a dictionary.
         """
         # Convert dialogue embeddings to a torch tensor on CUDA
         state_embedding = torch.tensor(embeddings, dtype=torch.float32).to("cuda")
@@ -106,7 +130,7 @@ class RL():
         print("Value:", value)
         
         # Sample an action from the Gaussian distribution
-        dist = torch.distributions.Normal(action_mean, std)
+        dist = Normal(action_mean, std)
         action = dist.sample()
         log_prob = dist.log_prob(action).sum(dim=-1)
         print("\nSampled action:", action)
@@ -118,17 +142,18 @@ class RL():
         self.log_probs.append(log_prob)
         self.values.append(value)
         
-        # Return the action as a NumPy array (remove batch dimension)
-        return action.squeeze(0).detach().cpu().numpy()
+        # Interpret action as delta for mental state and update accordingly.
+        action_delta = action.squeeze(0)  # Remove batch dimension.
+        updated_mental_state_vector = mental_state_vector + action_delta
+        
+        updated_mental_state = {}
+        for i, key in enumerate(mental_keys):
+            updated_value = updated_mental_state_vector[i].item()
+            updated_mental_state[key] = max(0, min(updated_value, 100))
+        
+        return updated_mental_state
 
     def update_policy(self, mental_change_reward, focus_reward, response_reward, response_emotion_reward):
-        """
-        Updates the policy using the collected trajectory data via a PPO update.
-        The reward for the most recent step is computed by combining multiple signals.
-        
-        The rewards provided are scalars, which we combine (here, simply summed).
-        """
-
         total_reward = (
             mental_change_weight * mental_change_reward +
             focus_weight * focus_reward +
@@ -189,3 +214,5 @@ class RL():
         self.values.clear()
         
         print(f"Policy updated. Loss: {loss.item():.4f}")
+        # Save policy after update.
+        self.save_policy()

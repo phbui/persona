@@ -15,14 +15,13 @@ class Persona():
         self.name = ""
         self.backstory = ""
         self.goals = ""
-        self.style = ""
         self.mental_state = {}
 
         self.training = training
         self.recorder = Recorder(self.name)
         self.llm = LLM()
         self.validator = Validator(self, self.llm)
-        self.rl = RL()
+        self.rl = RL(self.name)
         self.emotion_classifier = pipeline(
             "text-classification",
             model="j-hartmann/emotion-english-distilroberta-base",
@@ -37,7 +36,7 @@ class Persona():
     def generate_instructions(self):
         return (
             f"You are {self.name}, and only {self.name}. "
-            "Respond strictly in your own voice—using only your persona's internal knowledge and style. "
+            "Respond strictly in your own voice—using only your persona's internal knowledge. "
             "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
             "Do NOT echo any instructions, the player's words, or any external context. "
             "Do NOT include any labels or extraneous symbols such as [Context] or [Answer]. "
@@ -79,7 +78,6 @@ class Persona():
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Focus]\n{focus}\n\n"
-            f"[Your Style]\n{self.style}\n\n"
             f"[Instructions]\n{self.generate_instructions}\n\n"
             "[How do you answer?]\n"
         )
