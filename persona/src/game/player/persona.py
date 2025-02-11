@@ -6,6 +6,7 @@ from persona.src.ai.rl import RL
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 from concurrent.futures import ThreadPoolExecutor
+import torch
 
 class Persona():
     def __init__(self, persona_path, training=True):
@@ -29,6 +30,9 @@ class Persona():
             return_all_scores=True
         )
         self.sentence_transformer = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+
+        if torch.cuda.is_available():
+            self.sentence_transformer.to("cuda")
 
     def generate_instructions(self):
         return (
@@ -119,19 +123,34 @@ class Persona():
     def reward_response_emotions(self, emotion):
         return self.validator.validate_emotion(emotion)
     
-    def manage_rewards(self, history, prev_mental_state, mental_change, focus, response, response_emotions):
+    def manage_rewards(self, 
+                       history, 
+                       prev_mental_state, 
+                       mental_change, 
+                       focus, 
+                       response, 
+                       response_emotions):
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_mental_change_reward = executor.submit(
-                self.reward_mental_change, prev_mental_state, mental_change, history
+                self.reward_mental_change, 
+                prev_mental_state, 
+                mental_change, 
+                history
             )
             future_focus_reward = executor.submit(
-                self.reward_focus, focus, history
+                self.reward_focus, 
+                focus, 
+                history
             )
             future_response_reward = executor.submit(
-                self.reward_response, response, history
+                self.reward_response, 
+                response, 
+                history
             )
             future_response_emotion_reward = executor.submit(
-                self.reward_response_emotions, response_emotions, history
+                self.reward_response_emotions, 
+                response_emotions, 
+                history
             )
 
             mental_change_reward = future_mental_change_reward.result()
@@ -139,7 +158,10 @@ class Persona():
             response_reward = future_response_reward.result()
             response_emotion_reward = future_response_emotion_reward.result()
 
-        return mental_change_reward, focus_reward, response_reward, response_emotion_reward
+        return (mental_change_reward, 
+                focus_reward, 
+                response_reward, 
+                response_emotion_reward)
 
     def generate_response(self, history):
         message = history[-1]
@@ -147,8 +169,8 @@ class Persona():
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)
 
-        mental_change = self.rl.select_action(embeddings, emotions)
         prev_mental_state = self.mental_state
+        mental_change = self.rl.select_action(prev_mental_state, embeddings, emotions)
         self.update_mental_state(mental_change)
 
         focus = self.generate_focus(history)
@@ -186,4 +208,5 @@ class Persona():
                     response, 
                     response_reward, 
                     response_emotions, 
-                    response_emotion_reward))
+                    response_emotion_reward,
+                    self.rl.policy_net))

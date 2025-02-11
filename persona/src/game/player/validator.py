@@ -13,7 +13,11 @@ class Validator:
         num = int(match.group())
         return max(0, min(num, 100))
     
-    def _validate(self, history, sections: dict, instruction: str, max_tokens: int = 3) -> int:
+    def _validate(self,
+                  history, 
+                  sections: dict, 
+                  instruction: str, 
+                  max_tokens: int = 3) -> int:
         prompt_parts = []
         prompt_parts.append(self.persona.generate_background())
         prompt_parts.append(f"[Conversation So Far]\n{self.persona.format_history(history)}\n\n")
