@@ -5,6 +5,7 @@ from persona.src.ai.llm import LLM
 from persona.src.ai.rl import RL
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
+from concurrent.futures import ThreadPoolExecutor
 
 class Persona():
     def __init__(self, persona_path, training=True):
@@ -117,6 +118,28 @@ class Persona():
 
     def reward_response_emotions(self, emotion):
         return self.validator.validate_emotion(emotion)
+    
+    def manage_rewards(self, history, prev_mental_state, mental_change, focus, response, response_emotions):
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_mental_change_reward = executor.submit(
+                self.reward_mental_change, prev_mental_state, mental_change, history
+            )
+            future_focus_reward = executor.submit(
+                self.reward_focus, focus, history
+            )
+            future_response_reward = executor.submit(
+                self.reward_response, response, history
+            )
+            future_response_emotion_reward = executor.submit(
+                self.reward_response_emotions, response_emotions, history
+            )
+
+            mental_change_reward = future_mental_change_reward.result()
+            focus_reward = future_focus_reward.result()
+            response_reward = future_response_reward.result()
+            response_emotion_reward = future_response_emotion_reward.result()
+
+        return mental_change_reward, focus_reward, response_reward, response_emotion_reward
 
     def generate_response(self, history):
         message = history[-1]
@@ -136,21 +159,31 @@ class Persona():
         if self.training: 
             response_emotions = self.extract_emotions(response)
 
-            mental_change_reward = self.reward_mental_change(prev_mental_state, mental_change, history)
-            focus_reward = self.reward_focus(focus, history)
-            response_reward = self.reward_response(response, history)
-            response_emotion_reward = self.reward_response_emotions(response_emotions, history)
-            self.rl.update_policy(mental_change_reward, focus_reward, response_reward, response_emotion_reward)
+            mental_change_reward, focus_reward, response_reward, response_emotion_reward = self.manage_rewards(
+                history, 
+                prev_mental_state, 
+                mental_change, 
+                focus, 
+                response, 
+                response_emotions)
+            
+            self.rl.update_policy(
+                mental_change_reward, 
+                focus_reward, 
+                response_reward, 
+                response_emotion_reward)
         
-            self.recorder.record(Turn(message, 
-                                    embeddings, 
-                                    emotions, 
-                                    mental_change, 
-                                    mental_change_reward, 
-                                    focus,
-                                    focus_reward,
-                                    prompt, 
-                                    response, 
-                                    response_reward, 
-                                    response_emotions, 
-                                    response_emotion_reward))
+            self.recorder.record(
+                Turn(
+                    message,                 
+                    embeddings, 
+                    emotions, 
+                    mental_change, 
+                    mental_change_reward, 
+                    focus,
+                    focus_reward,
+                    prompt, 
+                    response, 
+                    response_reward, 
+                    response_emotions, 
+                    response_emotion_reward))
