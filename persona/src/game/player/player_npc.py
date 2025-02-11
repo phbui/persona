@@ -7,5 +7,4 @@ class NPC(Player):
         super().__init__(self.persona.name)
 
     def generate_message(self, history):
-        self.persona.generate_response(history)
-        return ""
+        return self.persona.generate_response(history)
