@@ -1,5 +1,5 @@
-from persona.src.game.player.player import Player
-from persona.src.game.player.persona import Persona
+from .player import Player
+from .persona import Persona
 
 class NPC(Player):
     def __init__(self, persona_path):

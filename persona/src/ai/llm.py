@@ -1,7 +1,7 @@
+import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 secret_key = os.getenv('hf_key')

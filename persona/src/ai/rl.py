@@ -1,4 +1,4 @@
-from persona.src.ai.policy import Policy
+from .policy import Policy
 import os
 import json
 import torch
@@ -38,7 +38,8 @@ class RL():
         self.values = []
 
         # Policy file path; stored in the 'trained' directory as persona_name.json.
-        self.policy_file = os.path.join("trained", f"{self.persona_name}.json")
+        formatted_name = self.persona_name.lower().replace(" ", "_")
+        self.policy_file = os.path.join("trained", f"{formatted_name}.json")
         self.load_policy()  # Load existing policy if available, otherwise create new.
 
     def load_policy(self):

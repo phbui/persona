@@ -1,4 +1,4 @@
-from persona.src.game.chat import Chat
+from .chat import Chat
 
 class Game:
     def __init__(self):

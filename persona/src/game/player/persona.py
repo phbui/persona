@@ -1,21 +1,29 @@
-from persona.src.game.player.validator import Validator
-from persona.src.data.recorder import Recorder
-from persona.src.data.turn import Turn
-from persona.src.ai.llm import LLM
-from persona.src.ai.rl import RL
+from .validator import Validator
+from ...data.recorder import Recorder
+from ...data.turn import Turn
+from ...ai.llm import LLM
+from ...ai.rl import RL
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 from concurrent.futures import ThreadPoolExecutor
 import torch
+import json
 
 class Persona():
     def __init__(self, persona_path, training=True):
-        print()
-        self.setting = ""
-        self.name = ""
-        self.backstory = ""
-        self.goals = ""
-        self.mental_state = {}
+        try:
+            with open(persona_path, "r") as f:
+                data = json.load(f)
+            print(f"[DEBUG] Loaded persona data from {persona_path}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load persona from {persona_path}: {e}")
+            data = {}
+        
+        self.setting = data.get("setting", "")
+        self.name = data.get("name", "")
+        self.backstory = data.get("backstory", "")
+        self.goals = data.get("goals", "")
+        self.mental_state = data.get("mental_state", {})
 
         self.training = training
         self.recorder = Recorder(self.name)
