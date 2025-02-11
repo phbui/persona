@@ -1,10 +1,18 @@
 import os
+import threading
+import signal
 from src.game.game import Game 
 from src.game.player.player_pc import PC
 from src.game.player.player_npc import NPC
 
+def signal_handler(sig, frame):
+    print("Ctrl+C detected, exiting...")
+    os._exit(0)
+
 if __name__ == "__main__":
-    personas_folder = os.path.join("src", "game", "player", "personas")
+    signal.signal(signal.SIGINT, signal_handler)
+
+    personas_folder = os.path.join(os.path.dirname(__file__), "src", "game", "player", "personas")
     persona_files = [f for f in os.listdir(personas_folder) if f.endswith(".json")]
     
     if not persona_files:
@@ -27,10 +35,16 @@ if __name__ == "__main__":
     selected_persona_path = os.path.join(personas_folder, persona_files[choice_idx])
     print("Selected persona file:", selected_persona_path)
     
-
     game = Game()
-
-    game.add_player(NPC(persona_path=selected_persona_path))
-    game.add_player(PC("User"))
+    npc = NPC(persona_path=selected_persona_path)
+    pc = PC("Player")
     
-    game.play_game(num_turns=10)
+    game.add_player(npc)
+    game.add_player(pc)
+    
+    # Run game loop in a separate thread.
+    game_thread = threading.Thread(target=game.play_game, args=(10,), daemon=True)
+    game_thread.start()
+    
+    # Start the Tkinter event loop for the persistent chat interface.
+    pc.root.mainloop()

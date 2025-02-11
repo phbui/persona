@@ -7,14 +7,17 @@ class Game:
         self.turn = 0
 
     def add_player(self, player):
-        self.add_player({"turn_order": len(self.players), "player": player})
+        self.players.append({"turn_order": len(self.players), "player": player})
 
     def play_turn(self):
         player = self.players[self.turn]
 
-        self.chat.add_turn(player.name, 
-                           player.generate_message(
-                               self.chat.history))
+        name = player['player'].name
+        message = player['player'].generate_message(
+                               self.chat.history)
+
+        self.chat.add_turn(name, 
+                           message)
 
         self.turn += 1
 
@@ -33,7 +36,7 @@ class Game:
         turn_counter = 0
 
         # Player 2 is the PC
-        self.chat.add_turn("[GAME WORLD]", f"{self.players[1]} approaches {self.players[0]}")
+        self.chat.add_turn("[GAME WORLD]", f"{self.players[1]['player'].name} approaches {self.players[0]['player'].name}")
 
         while turn_counter < num_turns:
             self.play_turn()

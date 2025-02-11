@@ -117,17 +117,17 @@ class Persona():
 
         return self.llm.generate_response(prompt_string, 128)
 
-    def reward_mental_change(self, mental_change):
-        return self.validator.validate_mental_change(mental_change)
+    def reward_mental_change(self, prev_mental_state, mental_change, history):
+        return self.validator.validate_mental_change(prev_mental_state, mental_change, history)
 
-    def reward_focus(self, focus):
-        return self.validator.validate_focus(focus)
+    def reward_focus(self, focus, history):
+        return self.validator.validate_focus(focus, history)
 
-    def reward_response(self, response):
-        return self.validator.validate_response(response)
+    def reward_response(self, response, history):
+        return self.validator.validate_response(response, history)
 
-    def reward_response_emotions(self, emotion):
-        return self.validator.validate_emotion(emotion)
+    def reward_response_emotions(self, emotion, history):
+        return self.validator.validate_emotion(emotion, history)
     
     def manage_rewards(self, 
                        history, 
@@ -170,7 +170,7 @@ class Persona():
                 response_emotion_reward)
 
     def generate_response(self, history):
-        message = history[-1]
+        message = history[-1]['message']
 
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)
@@ -216,3 +216,5 @@ class Persona():
                     response_emotions, 
                     response_emotion_reward,
                     self.rl.policy_net))
+            
+        return response

@@ -28,6 +28,7 @@ class LLM:
         )
             
     def generate_response(self, prompt: str, max_new_tokens: int = 64) -> str:
+        print("Querying LLM...")
         with torch.no_grad():
             inputs = self.tokenizer(prompt, return_tensors="pt")
             device = next(self.model.parameters()).device

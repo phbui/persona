@@ -1,6 +1,6 @@
+import os
 import tkinter as tk
-from tkinter import scrolledtext
-from tkinter import StringVar
+from tkinter import scrolledtext, StringVar
 from .player import Player  
 
 class PC(Player):
@@ -20,6 +20,14 @@ class PC(Player):
             print(f"[DEBUG] Creating chat interface for {self.name}.")
             self.root = tk.Tk()
             self.root.title(f"Chat Interface for {self.name}")
+
+            # Define a custom on_close handler.
+            def on_close():
+                print("[DEBUG] Window is closing, exiting...")
+                self.root.destroy()
+                os._exit(0)
+                
+            self.root.protocol("WM_DELETE_WINDOW", on_close)
 
             # Create the scrollable chat log.
             self.chat_log = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, state='disabled', width=80, height=20)
@@ -45,26 +53,16 @@ class PC(Player):
             print(f"[DEBUG] Chat interface for {self.name} created.")
 
     def update_chat_log(self, history):
-        """
-        Updates the chat log widget with the current conversation history.
-        Expects 'history' to be a list of dictionaries with keys "player_name" and "message".
-        """
         print(f"[DEBUG] {self.name}: Updating chat log.")
         self.chat_log.configure(state='normal')
         self.chat_log.delete("1.0", tk.END)
         for event in history:
-            # Format each event; for example: "Alice said "Hello!""
             self.chat_log.insert(tk.END, f"{event['player_name']} said \"{event['message']}\"\n")
         self.chat_log.configure(state='disabled')
         self.chat_log.yview(tk.END)
         print(f"[DEBUG] {self.name}: Chat log updated.")
 
     def _send_message(self):
-        """
-        Internal method triggered by pressing Enter or clicking Send.
-        It does not return anything but signals that input has been provided.
-        Once a message is entered, it disables the input to prevent further typing until next generate_message call.
-        """
         current_message = self.message_var.get().strip()
         if current_message:
             print(f"[DEBUG] {self.name}: _send_message triggered with message: {current_message}")
@@ -75,30 +73,13 @@ class PC(Player):
             print(f"[DEBUG] {self.name}: _send_message triggered but no message was entered.")
 
     def generate_message(self, history):
-        """
-        Called by the game to get a message from the user.
-        1. Updates the chat log with the current history.
-        2. Enables input so the user can type.
-        3. Waits until the user enters and submits a message.
-        4. Returns the message and then disables input.
-        """
-        # Update chat log to reflect the latest history.
         self.update_chat_log(history)
         print(f"[DEBUG] {self.name}: Enabling input for generate_message.")
-        
-        # Enable the message entry and send button.
         self.message_entry.config(state='normal')
         self.send_button.config(state='normal')
-        
-        # Clear any previous input.
         self.message_var.set("")
-        
         print(f"[DEBUG] {self.name}: Waiting for user input...")
-        # Block until the message_var is updated by _send_message.
         self.root.wait_variable(self.message_var)
-        
-        # When wait_variable returns, retrieve the message.
         message = self.message_var.get().strip()
         print(f"[DEBUG] {self.name}: generate_message returning: {message}")
         return message
-

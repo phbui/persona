@@ -12,7 +12,7 @@ response_weight = 1.0
 response_emotion_weight = 1.5
 
 class RL():
-    def __init__(self, persona_name, input_dim=768 + 5, action_dim=10, hidden_dim=128, lr=3e-4, gamma=0.99, clip_epsilon=0.2):
+    def __init__(self, persona_name, input_dim=768 + 6 + 7, action_dim=6, hidden_dim=128, lr=3e-4, gamma=0.99, clip_epsilon=0.2):
         """
         persona_name: Name of the persona (used to identify the policy file).
         input_dim: Dimension of the full state vector.
@@ -39,7 +39,7 @@ class RL():
 
         # Policy file path; stored in the 'trained' directory as persona_name.json.
         formatted_name = self.persona_name.lower().replace(" ", "_")
-        self.policy_file = os.path.join("trained", f"{formatted_name}.json")
+        self.policy_file = os.path.join(os.path.dirname(__file__), "trained", f"{formatted_name}.json")
         self.load_policy()  # Load existing policy if available, otherwise create new.
 
     def load_policy(self):
@@ -78,23 +78,27 @@ class RL():
         print(f"Policy saved to {self.policy_file}")
 
     def dynamic_emotion_vector(self, emotion_results):
-        print("Raw emotion classifier output:")
-        print(emotion_results)
-        if not emotion_results or not emotion_results[0]:
-            raise ValueError("No emotion results provided.")
-        emotions_list = emotion_results[0]
-        print("\nEmotions list extracted (first element):")
-        print(emotions_list)
-        sorted_emotions = sorted(emotions_list, key=lambda x: x['label'])
-        print("\nSorted emotions (by label):")
-        print(sorted_emotions)
-        scores = [entry['score'] for entry in sorted_emotions]
-        print("\nExtracted scores in sorted order:")
-        print(scores)
+
+        # Check if emotion_results is a dict; if so, use its items.
+        if isinstance(emotion_results, dict):
+            # Sort the dictionary items by key (emotion label) to ensure a consistent order.
+            sorted_emotions = sorted(emotion_results.items(), key=lambda x: x[0])
+
+            # Extract scores in sorted order.
+            scores = [score for label, score in sorted_emotions]
+        elif isinstance(emotion_results, list) and emotion_results:
+            # If emotion_results is a list, assume its first element contains the data.
+            emotions_list = emotion_results[0]
+            
+            # If it's a list of dicts, sort them by label.
+            sorted_emotions = sorted(emotions_list, key=lambda x: x['label'])
+            scores = [entry['score'] for entry in sorted_emotions]
+        else:
+            raise ValueError("No valid emotion results provided.")
+        
+        # Convert the scores list into a PyTorch tensor and move it to CUDA.
         emotion_tensor = torch.tensor(scores, dtype=torch.float32).to("cuda")
-        print("\nFinal emotion tensor:")
-        print(emotion_tensor)
-        print("Emotion tensor shape:", emotion_tensor.shape)
+        
         return emotion_tensor
 
     def select_action(self, mental_state, embeddings, emotion_results):
@@ -105,14 +109,10 @@ class RL():
         """
         # Convert dialogue embeddings to a torch tensor on CUDA
         state_embedding = torch.tensor(embeddings, dtype=torch.float32).to("cuda")
-        print("\nState embedding tensor:")
-        print(state_embedding)
-        
+
         # Convert the mental state dictionary to a vector (using sorted keys)
         mental_keys = sorted(mental_state.keys())
         mental_state_vector = torch.tensor([mental_state[k] for k in mental_keys], dtype=torch.float32).to("cuda")
-        print("\nMental state vector from dictionary (sorted keys):")
-        print(mental_state_vector)
         
         # Dynamically extract the emotion vector using our helper function
         emotion_vector = self.dynamic_emotion_vector(emotion_results)
@@ -120,22 +120,12 @@ class RL():
         # Concatenate the mental state vector, the dialogue embedding, and the emotion vector
         state = torch.cat([mental_state_vector, state_embedding, emotion_vector], dim=0)
         state = state.unsqueeze(0)  # Add batch dimension
-        print("\nCombined state vector (with batch dimension):")
-        print(state)
-        
         # Forward pass through the policy network
         action_mean, std, value = self.policy_net(state)
-        print("\nAction mean, std, and value from policy network:")
-        print("Action mean:", action_mean)
-        print("Std:", std)
-        print("Value:", value)
-        
         # Sample an action from the Gaussian distribution
         dist = Normal(action_mean, std)
         action = dist.sample()
         log_prob = dist.log_prob(action).sum(dim=-1)
-        print("\nSampled action:", action)
-        print("Log probability of action:", log_prob)
         
         # Store trajectory components for policy updates
         self.states.append(state)
