@@ -3,6 +3,8 @@ from persona.src.data.recorder import Recorder
 from persona.src.data.turn import Turn
 from persona.src.ai.llm import LLM
 from persona.src.ai.rl import RL
+from transformers import pipeline
+from sentence_transformers import SentenceTransformer
 
 class Persona():
     def __init__(self, persona_path, training=True):
@@ -10,7 +12,7 @@ class Persona():
         self.setting = ""
         self.name = ""
         self.backstory = ""
-        self.goal = ""
+        self.goals = ""
         self.style = ""
         self.mental_state = {}
 
@@ -19,6 +21,13 @@ class Persona():
         self.llm = LLM()
         self.validator = Validator(self, self.llm)
         self.rl = RL()
+        self.emotion_classifier = pipeline(
+            "text-classification",
+            model="j-hartmann/emotion-english-distilroberta-base",
+            tokenizer="j-hartmann/emotion-english-distilroberta-base",
+            return_all_scores=True
+        )
+        self.sentence_transformer = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
 
     def generate_instructions(self):
         return (
@@ -51,13 +60,18 @@ class Persona():
             f"{event['player_name']} said \"{event['message']}\""
         
         return "\n".join(formatted_lines)
-
-    def generate_prompt(self, focus):
-        return (
+    
+    def generate_background(self):
+        return (            
             f"[Setting]\n{self.setting}\n\n"
             f"[Your Name]\n{self.name}\n\n"
             f"[Your Backstory]\n{self.backstory}\n\n"
-            f"[Your Goal]\n{self.goal}\n\n"
+            f"[Your Goals]\n{self.goals}\n\n"
+            )
+
+    def generate_prompt(self, focus):
+        return (
+            f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Focus]\n{focus}\n\n"
             f"[Your Style]\n{self.style}\n\n"
@@ -65,19 +79,32 @@ class Persona():
             "[How do you answer?]\n"
         )
     
-    def extract_embedding(self, message):
-        #dialogue cse
-        #input setting, name, backstory, context
-        print()
+    def extract_embeddings(self, message, history):
+        context_string = (
+            f"{self.generate_background()}\n\n"
+            f"[Your Conversation So Far]\n{self.format_history(history[:-1])} \n\n"
+            f"[Player Message]\n{message}"
+        )
+
+        return self.sentence_transformer.encode(context_string)
     
-    def extract_emotion(self, message):
-        #j-hartmann/emotion-english-distilroberta-base
-        print()
+    def extract_emotions(self, message):
+        results = self.emotion_classifier(message)
+        emotion_scores = results[0]
+        emotions = {d['label'].lower(): d['score'] for d in emotion_scores}
+             
+        return emotions
 
     def generate_focus(self, history):
-        history_string = self.format_history(history)
+        prompt_string = (
+            f"{self.generate_background()}\n\n"
+            f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
+            f"[Your Mental State]\n{self.mental_state}"
+            f"[Instructions] Based on the above information, write in the second person as {self.name} describing what you are thinking right now. "
+            f"Keep it concise, reflective, and true to your character and mental state."
+        )
 
-        print()
+        return self.llm.generate_response(prompt_string, 128)
 
     def reward_mental_change(self, mental_change):
         return self.validator.validate_mental_change(mental_change)
@@ -88,20 +115,17 @@ class Persona():
     def reward_response(self, response):
         return self.validator.validate_response(response)
 
-    def reward_response_emotion(self, emotion):
+    def reward_response_emotions(self, emotion):
         return self.validator.validate_emotion(emotion)
 
     def generate_response(self, history):
         message = history[-1]
 
-        embedding = self.extract_embedding(message)
-        emotion = self.extract_emotion(message)
+        embeddings = self.extract_embeddings(message, history)
+        emotions = self.extract_emotions(message)
 
-        mental_change = self.rl.select_action(embedding, emotion)
-
-
-        # summarize history into thoughts
-
+        mental_change = self.rl.select_action(embeddings, emotions)
+        prev_mental_state = self.mental_state
         self.update_mental_state(mental_change)
 
         focus = self.generate_focus(history)
@@ -110,17 +134,17 @@ class Persona():
         response = self.llm.generate_response(prompt)
 
         if self.training: 
-            response_emotion = self.extract_emotion(response)
+            response_emotions = self.extract_emotions(response)
 
-            mental_change_reward = self.reward_mental_change(mental_change)
-            focus_reward = self.reward_focus(focus)
-            response_reward = self.reward_response(response)
-            response_emotion_reward = self.reward_response_emotion(response_emotion)
+            mental_change_reward = self.reward_mental_change(prev_mental_state, mental_change, history)
+            focus_reward = self.reward_focus(focus, history)
+            response_reward = self.reward_response(response, history)
+            response_emotion_reward = self.reward_response_emotions(response_emotions, history)
             self.rl.update_policy(mental_change_reward, focus_reward, response_reward, response_emotion_reward)
         
             self.recorder.record(Turn(message, 
-                                    embedding, 
-                                    emotion, 
+                                    embeddings, 
+                                    emotions, 
                                     mental_change, 
                                     mental_change_reward, 
                                     focus,
@@ -128,5 +152,5 @@ class Persona():
                                     prompt, 
                                     response, 
                                     response_reward, 
-                                    response_emotion, 
+                                    response_emotions, 
                                     response_emotion_reward))

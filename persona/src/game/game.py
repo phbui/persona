@@ -33,6 +33,9 @@ class Game:
         
         turn_counter = 0
 
+        # Player 2 is the PC
+        self.chat.add_turn("[GAME WORLD]", f"{self.players[1]} approaches {self.players[0]}")
+
         while turn_counter < num_turns:
             self.play_turn()
             turn_counter += 1
