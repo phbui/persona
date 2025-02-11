@@ -1,0 +1,1 @@
+from persona.src.game.game import Game

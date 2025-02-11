@@ -32,12 +32,12 @@ class Persona:
         )
 
         self.persona_data["mental_state"] = {
-                "valence": 0,
-                "arousal": 0,
-                "dominance": 0,
-                "confidence": 0,
-                "anxiety": 0,
-                "guilt": 0,
+                "valence": 50,
+                "arousal": 50,
+                "dominance": 50,
+                "confidence": 50,
+                "anxiety": 50,
+                "guilt": 50,
             }
 
     def _process_triggers(self):
@@ -87,12 +87,12 @@ class Persona:
     @property
     def mental_state(self) -> dict:
         return self.persona_data.get("mental_state", {
-                "valence": 0,
-                "arousal": 0,
-                "dominance": 0,
-                "confidence": 0,
-                "anxiety": 0,
-                "guilt": 0,
+                "valence": 50,
+                "arousal": 50,
+                "dominance": 50,
+                "confidence": 50,
+                "anxiety": 50,
+                "guilt": 50,
             })
     
     @property
@@ -151,7 +151,7 @@ class Persona:
 
     def update_mental_state(self, changes):
         """
-        Updates the mental state values based on given changes while ensuring they stay within [0, 10].
+        Updates the mental state values based on given changes while ensuring they stay within [50, 10].
         
         :param changes: Dictionary containing the keys of mental states to update and their corresponding delta values.
                         Example: {"guilt": +1, "confidence": -2}
@@ -159,12 +159,12 @@ class Persona:
         # Ensure the mental state dictionary exists
         if "mental_state" not in self.persona_data:
             self.persona_data["mental_state"] = {
-                "valence": 0,
-                "arousal": 0,
-                "dominance": 0,
-                "confidence": 0,
-                "anxiety": 0,
-                "guilt": 0,
+                "valence": 50,
+                "arousal": 50,
+                "dominance": 50,
+                "confidence": 50,
+                "anxiety": 50,
+                "guilt": 50,
             }
 
         for key, delta in changes.items():

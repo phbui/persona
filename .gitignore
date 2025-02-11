@@ -1,3 +1,4 @@
 dm-env/*
 dm_engine.egg-info/*
 secret_keys/*
+*.env

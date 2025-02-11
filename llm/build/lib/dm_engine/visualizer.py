@@ -63,9 +63,6 @@ class Visualizer(tk.Toplevel):
         self.emotion_vs_ms_ax = self.emotion_vs_ms_fig.add_subplot(111)
         self.emotion_vs_ms_canvas = FigureCanvasTkAgg(self.emotion_vs_ms_fig, master=self.emotion_vs_ms_frame)
         self.emotion_vs_ms_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        self.emotion_vs_ms_slider = tk.Scale(self.emotion_vs_ms_frame, from_=1, to=1, orient=tk.HORIZONTAL,
-                                             label="Dialogue Instance", command=self.on_emotion_vs_ms_slider_change, length=300)
-        self.emotion_vs_ms_slider.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
         self.update_sentiment_visualization()
         self.update_embeddings_visualization()
         self.update_mental_state_visualization()
@@ -217,39 +214,70 @@ class Visualizer(tk.Toplevel):
         self.radar_ax.plot(angles, values, linewidth=2, linestyle='solid', marker='o', markersize=10)
         self.radar_ax.fill(angles, values, 'b', alpha=0.25)
         self.radar_canvas.draw_idle()
-
+            
     def update_emotion_vs_ms_visualization(self):
+        print("DEBUG: Starting update_emotion_vs_ms_visualization")
         history = self.player_model.get_history_for_visualization()
+        print(f"DEBUG: Retrieved history with {len(history)} entries.")
+        
+        # Filter for non-player entries.
         non_player = [entry for entry in history if entry["role"] in ["assistant", "llm"]]
+        print(f"DEBUG: Filtered non-player entries: {len(non_player)} found.")
+        print(f"Non-Player history data: {non_player}")
+        
         if non_player:
-            self.emotion_vs_ms_slider.config(to=len(non_player))
-            idx = int(self.emotion_vs_ms_slider.get()) - 1
-            subset = non_player[:idx+1]
-            rows = []
+            # Use the full non-player history (remove slider usage)
+            subset = non_player
+            print(f"DEBUG: Using full non-player history: {len(subset)} entries")
+            
             emotions = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
             ms_keys = ["valence", "arousal", "dominance", "confidence", "anxiety", "guilt"]
+
+            rows = []
             for i, entry in enumerate(subset, start=1):
-                emo_dict = {d['label'].lower(): d['score'] for d in entry["sentiment_scores"]}
-                ms_dict = entry["mental_state"] if "mental_state" in entry else self.persona.mental_state
+                print(f"DEBUG: Processing dialogue entry {i}")
+                emo_dict = {emotion: entry["sentiment_scores"].get(emotion, 0) for emotion in emotions}
+                print(f"DEBUG: Emotion dict for dialogue {i}: {emo_dict}")
+                ms_dict = {key: entry["mental_state"].get(key, 0) for key in ms_keys}
+                print(f"DEBUG: Mental state dict for dialogue {i}: {ms_dict}")
                 row = {"dialogue": i}
                 row.update(emo_dict)
                 row.update(ms_dict)
+                print(f"DEBUG: Combined row for dialogue {i}: {row}")
                 rows.append(row)
+            
             df = pd.DataFrame(rows)
-            cols = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise", "valence", "arousal", "dominance", "confidence", "anxiety", "guilt"]
+            print(f"DEBUG: DataFrame created with shape {df.shape}")
+            cols = emotions + ms_keys
             df = df[cols]
-            corr_matrix = df.corr()
-            self.emotion_vs_ms_ax.clear()
-            sns.heatmap(corr_matrix.loc[emotions, ms_keys], annot=True, cmap="coolwarm", ax=self.emotion_vs_ms_ax, cbar_kws={"label": "Correlation"}, annot_kws={"fontsize":8})
-            self.emotion_vs_ms_ax.set_title("Correlation: Emotions vs Mental State", fontsize=10)
+            print("DEBUG: DataFrame columns reordered.")
+            
+            if len(df) < 2:
+                print("DEBUG: Not enough data points to compute correlations.")
+                self.emotion_vs_ms_ax.clear()
+                self.emotion_vs_ms_ax.text(0.5, 0.5, "Not enough data to compute correlations",
+                                            ha="center", va="center")
+            else:
+                corr_matrix = df.corr()
+                print("DEBUG: Correlation matrix calculated:")
+                print(corr_matrix)
+                self.emotion_vs_ms_ax.clear()
+                sns.heatmap(corr_matrix.loc[emotions, ms_keys],
+                            annot=True,
+                            cmap="coolwarm",
+                            ax=self.emotion_vs_ms_ax,
+                            cbar_kws={"label": "Correlation"},
+                            annot_kws={"fontsize":8})
+                self.emotion_vs_ms_ax.set_title("Correlation: Emotions vs Mental State", fontsize=10)
+                print("DEBUG: Heatmap plotted on the axes.")
         else:
+            print("DEBUG: No non-player data found, displaying message on axes.")
             self.emotion_vs_ms_ax.clear()
             self.emotion_vs_ms_ax.text(0.5, 0.5, "No non-player data", ha="center", va="center")
+        
         self.emotion_vs_ms_fig.tight_layout()
         self.emotion_vs_ms_canvas.draw_idle()
-
-    def on_emotion_vs_ms_slider_change(self, value):
-        self.update_emotion_vs_ms_visualization()
+        print("DEBUG: Finished update_emotion_vs_ms_visualization and canvas updated.")
 
     def on_scroll(self, event):
         if event.xdata is None:

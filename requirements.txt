@@ -1,0 +1,84 @@
+accelerate==1.3.0
+aiohappyeyeballs==2.4.4
+aiohttp==3.11.11
+aiosignal==1.3.2
+annotated-types==0.7.0
+attrs==25.1.0
+beautifulsoup4==4.12.3
+bitsandbytes==0.45.1
+Brotli @ file:///croot/brotli-split_1736182456865/work
+certifi @ file:///croot/certifi_1734473278428/work/certifi
+charset-normalizer @ file:///croot/charset-normalizer_1721748349566/work
+click==8.1.8
+contourpy==1.3.1
+cycler==0.12.1
+datasets==3.2.0
+dill==0.3.8
+dm_engine @ file:///mnt/c/Users/buiph/OneDrive/Documents/GitHub/dungeon-master/llm
+e==1.4.5
+einops==0.8.0
+filelock @ file:///croot/filelock_1700591183607/work
+fonttools==4.56.0
+frozenlist==1.5.0
+fsspec==2024.9.0
+gmpy2 @ file:///croot/gmpy2_1738085463648/work
+google==3.0.0
+hjson==3.1.0
+huggingface-hub==0.28.1
+idna @ file:///croot/idna_1714398848350/work
+Jinja2 @ file:///croot/jinja2_1737760107953/work
+joblib==1.4.2
+kiwisolver==1.4.8
+MarkupSafe @ file:///croot/markupsafe_1736366905094/work
+matplotlib==3.10.0
+mpi4py==4.0.2
+mplcursors==0.6
+mpmath @ file:///croot/mpmath_1690848262763/work
+msgpack==1.1.0
+multidict==6.1.0
+multiprocess==0.70.16
+networkx @ file:///croot/networkx_1737039604450/work
+ninja==1.11.1.3
+nltk==3.9.1
+numpy @ file:///home/conda/feedstock_root/build_artifacts/numpy_1737331065203/work/dist/numpy-2.2.2-cp311-cp311-linux_x86_64.whl#sha256=6384aec253ac1c4a8e4c91c88343657bb0a58927963bd1b7fad53f09d3fa122a
+nvidia-ml-py==12.570.86
+packaging==24.2
+pandas==2.2.3
+pillow @ file:///home/conda/feedstock_root/build_artifacts/pillow_1735929690690/work
+propcache==0.2.1
+protobuf==5.29.3
+psutil==6.1.1
+py-cpuinfo==9.0.0
+pyarrow==19.0.0
+pydantic==2.10.6
+pydantic_core==2.27.2
+pyparsing==3.2.1
+PySocks @ file:///work/ci_py311/pysocks_1676822712504/work
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+pytz==2025.1
+PyYAML @ file:///croot/pyyaml_1728657952215/work
+regex==2024.11.6
+requests @ file:///croot/requests_1730999120400/work
+safetensors==0.5.2
+scikit-learn==1.6.1
+scipy==1.15.1
+seaborn==0.13.2
+sentence-transformers==3.4.1
+sentencepiece==0.2.0
+six==1.17.0
+soupsieve==2.6
+sympy==1.13.1
+threadpoolctl==3.5.0
+tokenizers==0.21.0
+torch==2.5.1
+torchaudio==2.5.1
+torchvision==0.20.1
+tqdm==4.67.1
+transformers==4.48.2
+triton==3.1.0
+typing_extensions @ file:///croot/typing_extensions_1734714854207/work
+tzdata==2025.1
+urllib3 @ file:///croot/urllib3_1737133630106/work
+xxhash==3.5.0
+yarl==1.18.3

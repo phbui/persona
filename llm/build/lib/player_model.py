@@ -4,7 +4,7 @@ import datetime
 from transformers import pipeline
 
 class PlayerModel:
-    def __init__(self):
+    def __init__(self, persona):
         self.history = []  
         self.sentiment_counts = {"positive": 0, "neutral": 0, "negative": 0}
         self.role_sentiment_counts = {
@@ -18,6 +18,8 @@ class PlayerModel:
             tokenizer="j-hartmann/emotion-english-distilroberta-base",
             return_all_scores=True
         )
+
+        self.persona = persona
     
     def get_sentiment_emotion(self, text):
         """
@@ -75,7 +77,8 @@ class PlayerModel:
             "sentiment": sentiment,
             "sentiment_scores": scores,
             "role_sentiment_counts": self.role_sentiment_counts[role],
-            "overall_sentiment_counts": self.sentiment_counts
+            "overall_sentiment_counts": self.sentiment_counts,
+            "mental_state": self.persona.mental_state
         })
 
     def reduce_array(self, embeddings, n_components=3):
