@@ -1,15 +1,13 @@
 from persona.src.game.chat import Chat
-from persona.src.data.recorder import Recorder
 
 class Game:
     def __init__(self):
-        self.recorder = Recorder()
+
         self.chat = Chat()
         self.players = []
         self.turn = 0
 
     def add_player(self, player):
-        player.join_game(self)
         self.add_player({"turn_order": len(self.players), "player": player})
 
     def play_turn(self):
@@ -17,7 +15,7 @@ class Game:
 
         self.chat.add_turn(player.name, 
                            player.generate_message(
-                               self.chat.get_formatted_history()))
+                               self.chat.history))
 
         self.turn += 1
 
