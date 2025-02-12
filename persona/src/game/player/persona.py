@@ -34,7 +34,7 @@ class Persona():
             "text-classification",
             model="j-hartmann/emotion-english-distilroberta-base",
             tokenizer="j-hartmann/emotion-english-distilroberta-base",
-            return_all_scores=True
+            top_k=None
         )
         self.sentence_transformer = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
 
@@ -86,7 +86,7 @@ class Persona():
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Focus]\n{focus}\n\n"
-            f"[Instructions]\n{self.generate_instructions}\n\n"
+            f"[Instructions]\n{self.generate_instructions()}\n\n"
             f"[Last Message]\n{message['player_name']} said \"{message['message']}\"\n\n"
             "[How do you answer?]\n"
         )
@@ -113,7 +113,7 @@ class Persona():
             f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
             f"[Your Mental State]\n{self.mental_state}"
             f"[Instructions]\nBased on the above information, write in the second person as {self.name} describing what you are thinking right now. "
-            f"Keep it concise, reflective, and true to your character and mental state."
+            f"Keep it concise, reflective, and true to your character, what your character knows, and your mental state."
         )
 
         print("Generating focus...")
@@ -184,8 +184,10 @@ class Persona():
         focus = self.generate_focus(history)
         prompt = self.generate_prompt(focus, history[-1])
 
+        print(focus)
+
         print("Generating response...")
-        response = self.llm.generate_response(prompt)
+        response = self.llm.generate_response(prompt).replace("\n", "")
 
         if self.training: 
             response_emotions = self.extract_emotions(response)

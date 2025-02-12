@@ -21,7 +21,7 @@ class Game:
 
         self.turn += 1
 
-        if self.turn > len(self.players):
+        if self.turn == len(self.players):
             self.turn = 0
 
     def play_game(self, num_turns):
