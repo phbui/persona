@@ -1,9 +1,11 @@
 import os
 import threading
 import signal
+import tkinter as tk
 from src.game.game import Game 
 from src.game.player.player_pc import PC
 from src.game.player.player_npc import NPC
+from src.data.record_keeper_ui import RecordKeeperUI 
 
 def signal_handler(sig, frame):
     print("Ctrl+C detected, exiting...")
@@ -45,6 +47,9 @@ if __name__ == "__main__":
     # Run game loop in a separate thread.
     game_thread = threading.Thread(target=game.play_game, args=(10,), daemon=True)
     game_thread.start()
+
+    record_keeper_window = tk.Toplevel(pc.root)
+    record_keeper_window.title("Record Keeper")
+    record_keeper_ui = RecordKeeperUI(record_keeper_window)
     
-    # Start the Tkinter event loop for the persistent chat interface.
     pc.root.mainloop()

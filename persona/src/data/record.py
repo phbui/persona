@@ -1,4 +1,4 @@
-from record_keeper import RecordKeeper
+from .record_keeper import RecordKeeper
 
 class Record:
     def __init__(self, persona_name):
