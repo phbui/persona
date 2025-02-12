@@ -55,9 +55,8 @@ class Persona():
         )
 
     def update_mental_state(self, changes):
-        for key, delta in changes.items():
+        for key, new_value in changes.items():
             if key in self.mental_state:
-                new_value = self.mental_state[key] + delta
                 self.mental_state[key] = max(0, min(100, new_value))
 
     def format_mental_state(self):
@@ -224,6 +223,7 @@ class Persona():
                     message,                 
                     embeddings, 
                     emotions, 
+                    prev_mental_state,
                     mental_change, 
                     mental_change_reward, 
                     focus,

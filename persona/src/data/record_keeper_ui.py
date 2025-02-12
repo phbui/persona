@@ -86,30 +86,19 @@ class TurnFrame(tk.Frame):
         )
         self.header.pack(fill="x")
         
-        # Create a frame that will hold expandable fields.
+        # Create a details frame that will hold expandable fields.
         self.details_frame = tk.Frame(self, bg="#eee")
-        # Initially hide the details frame.
         self.details_frame.pack(fill="x", padx=10, pady=5)
         self.details_frame.pack_forget()
         
-        # Dictionary of fields to display.
-        fields = {
-            "input_message": turn.input_message,
-            "input_message_embedding": turn.input_message_embedding,
-            "input_message_emotion": turn.input_message_emotion,
-            "mental_change": turn.mental_change,
-            "reward_mental_change": turn.reward_mental_change,
-            "focus": turn.focus,
-            "focus_reward": turn.focus_reward,
-            "prompt": turn.prompt,
-            "response": turn.response,
-            "response_reward": turn.response_reward,
-            "response_emotion": turn.response_emotion,
-            "response_emotion_reward": turn.response_emotion_reward,
-            "policy": turn.policy
-        }
-        # Create an ExpandableField for each field.
-        for key, value in fields.items():
+        # Dynamically get all attributes from the turn object.
+        # This uses turn.__dict__ to iterate over all key/value pairs.
+        # If needed, you can filter out any keys here.
+        for key, value in turn.__dict__.items():
+            # Skip internal attributes if necessary (e.g., those starting with "_")
+            if key.startswith("_"):
+                continue
+            # Create an ExpandableField for each attribute.
             ef = ExpandableField(self.details_frame, key, value, bg="#F5F5F5")
             ef.pack(fill="x", padx=5, pady=2)
             
