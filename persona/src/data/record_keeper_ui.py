@@ -21,7 +21,51 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-# A custom widget representing a single Turn as an expandable/collapsible frame.
+# This widget shows a single field (key/value) and lets you click to expand or collapse the full value.
+class ExpandableField(tk.Frame):
+    def __init__(self, master, field_name, field_value, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        self.field_name = field_name
+        self.field_value = field_value
+        self.expanded = False
+
+        # Create a truncated summary (if necessary)
+        summary = str(field_value)
+        if len(summary) > 50:
+            summary = summary[:50] + "..."
+        self.header = tk.Button(
+            self, 
+            text=f"{field_name}: {summary}", 
+            relief="flat", 
+            bg="#ccc", 
+            anchor="w", 
+            command=self.toggle
+        )
+        self.header.pack(fill="x")
+
+        # Create the details label that will show the full value.
+        self.details = tk.Label(
+            self, 
+            text=str(field_value), 
+            anchor="w", 
+            justify="left", 
+            bg="#eee", 
+            wraplength=700
+        )
+        # Initially hidden.
+        self.details.pack(fill="x", padx=20, pady=2)
+        self.details.pack_forget()
+
+    def toggle(self):
+        if self.expanded:
+            self.details.pack_forget()
+            self.expanded = False
+        else:
+            self.details.pack(fill="x", padx=20, pady=2)
+            self.expanded = True
+
+# The TurnFrame widget represents one Turn with an overall header that shows a summary
+# and a details frame that contains one ExpandableField widget per field.
 class TurnFrame(tk.Frame):
     def __init__(self, master, turn, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -32,10 +76,17 @@ class TurnFrame(tk.Frame):
         summary_input = turn.input_message if len(turn.input_message) < 50 else turn.input_message[:50] + "..."
         summary_response = turn.response if len(turn.response) < 50 else turn.response[:50] + "..."
         summary_text = f"Input: {summary_input} | Response: {summary_response}"
-        self.header = tk.Button(self, text=summary_text, relief="flat", bg="#ddd", anchor="w", command=self.toggle)
+        self.header = tk.Button(
+            self, 
+            text=summary_text, 
+            relief="flat", 
+            bg="#ddd", 
+            anchor="w", 
+            command=self.toggle
+        )
         self.header.pack(fill="x")
         
-        # Create a details frame that contains labels for each field.
+        # Create a frame that will hold expandable fields.
         self.details_frame = tk.Frame(self, bg="#eee")
         # Initially hide the details frame.
         self.details_frame.pack(fill="x", padx=10, pady=5)
@@ -57,9 +108,10 @@ class TurnFrame(tk.Frame):
             "response_emotion_reward": turn.response_emotion_reward,
             "policy": turn.policy
         }
+        # Create an ExpandableField for each field.
         for key, value in fields.items():
-            label = tk.Label(self.details_frame, text=f"{key}: {value}", anchor="w", justify="left", bg="#eee", wraplength=700)
-            label.pack(fill="x", anchor="w")
+            ef = ExpandableField(self.details_frame, key, value, bg="#F5F5F5")
+            ef.pack(fill="x", padx=5, pady=2)
             
     def toggle(self):
         if self.expanded:
@@ -68,7 +120,7 @@ class TurnFrame(tk.Frame):
         else:
             self.details_frame.pack(fill="x", padx=10, pady=5)
             self.expanded = True
-
+            
 # The main RecordKeeper UI, which creates a tab for each record and updates it manually.
 class RecordKeeperUI:
     def __init__(self, master):
