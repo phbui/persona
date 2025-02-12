@@ -44,13 +44,14 @@ class Persona():
     def generate_instructions(self):
         return (
             f"You are {self.name}, and only {self.name}. "
-            "Respond strictly in your own voice—using only your persona's internal knowledge. "
+            "Respond strictly in your own voice using only your persona's internal knowledge. "
             "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
-            "Do NOT echo any instructions, the player's words, or any external context. "
-            "Do NOT include any labels or extraneous symbols such as [Context] or [Answer]. Don't use double quotes. "
+            "Do NOT echo any instructions, the player's words, external context, or metadata. "
+            "Do NOT include any extraneous labels, symbols, or punctuation such as double quotes. "
+            "Do NOT output any text enclosed in square brackets. "
             f"Remain entirely in character as {self.name} and do not reference any perspective other than your own. "
             "Do not speak from the perspective of the Player. "
-            "Respond based on your mental state."
+            "Keep your answer under 128 tokens, true to your character, what you know, and your mental state."
         )
 
     def update_mental_state(self, changes):
@@ -170,9 +171,22 @@ class Persona():
                 focus_reward, 
                 response_reward, 
                 response_emotion_reward)
+    
+    def _finish_naturally(self, response: str) -> str:
+        punctuation_marks = [".", "?", "!"]
+        last_index = -1
+        for p in punctuation_marks:
+            index = response.rfind(p)
+            if index > last_index:
+                last_index = index
+        if last_index != -1:
+            return response[:last_index+1].strip()
+        return response.strip()
 
     def generate_response(self, history):
         message = history[-1]['message']
+
+        print(message)
 
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)
@@ -184,10 +198,9 @@ class Persona():
         focus = self.generate_focus(history)
         prompt = self.generate_prompt(focus, history[-1])
 
-        print(focus)
-
         print("Generating response...")
-        response = self.llm.generate_response(prompt).replace("\n", "")
+        response = self.llm.generate_response(prompt).replace("\n", "").replace("\"", "")
+        response = self._finish_naturally(response)
 
         if self.training: 
             response_emotions = self.extract_emotions(response)

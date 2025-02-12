@@ -5,3 +5,5 @@ class Recorder:
 
     def record(self, turn):
         self.records.append(turn)
+        # print(f"[RECORD]\n{turn}\n\n")
+

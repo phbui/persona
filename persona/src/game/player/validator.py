@@ -23,7 +23,7 @@ class Validator:
         for header, content in sections.items():
             prompt_parts.append(f"[{header}]\n{content}\n\n")
 
-        base_instructions = " Your response must include only the integer, with no additional text, whitespace, or punctuation.\n\n[Answer]\n"
+        base_instructions = " Be harsh but fair with grading. Your response must include only the integer, with no additional text, whitespace, or punctuation.\n\n[Answer]\n"
         instruction = instruction + base_instructions
         prompt_parts.append(f"[Instructions]\n{instruction}")
         prompt_string = "\n\n".join(prompt_parts)

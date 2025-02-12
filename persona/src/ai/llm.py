@@ -17,7 +17,7 @@ class LLM:
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            use_auth_token=secret_key  # updated parameter name for clarity
+            token=secret_key  # updated parameter name for clarity
         )
         
         # Set up bitsandbytes quantization configuration for 4-bit (Q4) mode
@@ -32,10 +32,10 @@ class LLM:
             model_name,
             device_map="auto",
             quantization_config=quantization_config,
-            use_auth_token=secret_key  # ensure you authenticate if needed
+            token=secret_key  # ensure you authenticate if needed
         )
             
-    def generate_response(self, prompt: str, max_new_tokens: int = 64) -> str:
+    def generate_response(self, prompt: str, max_new_tokens: int = 128) -> str:
         with torch.no_grad():
             inputs = self.tokenizer(prompt, return_tensors="pt")
             device = next(self.model.parameters()).device

@@ -26,3 +26,22 @@ class Turn:
         self.response_emotion = response_emotion
         self.response_emotion_reward = response_emotion_reward,
         self.policy = policy
+
+    def __str__(self):
+        return (
+            f"Turn(\n"
+            f"  input_message: {self.input_message}\n"
+            f"  input_message_embedding: {self.input_message_embedding}\n"
+            f"  input_message_emotion: {self.input_message_emotion}\n"
+            f"  mental_change: {self.mental_change}\n"
+            f"  reward_mental_change: {self.reward_mental_change}\n"
+            f"  focus: {self.focus}\n"
+            f"  focus_reward: {self.focus_reward}\n"
+            f"  prompt: {self.prompt}\n"
+            f"  response: {self.response}\n"
+            f"  response_reward: {self.response_reward}\n"
+            f"  response_emotion: {self.response_emotion}\n"
+            f"  response_emotion_reward: {self.response_emotion_reward}\n"
+            f"  policy: {self.policy}\n"
+            f")"
+        )
