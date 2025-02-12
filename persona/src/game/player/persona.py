@@ -47,7 +47,7 @@ class Persona():
             "Respond strictly in your own voice—using only your persona's internal knowledge. "
             "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
             "Do NOT echo any instructions, the player's words, or any external context. "
-            "Do NOT include any labels or extraneous symbols such as [Context] or [Answer]. "
+            "Do NOT include any labels or extraneous symbols such as [Context] or [Answer]. Don't use double quotes. "
             f"Remain entirely in character as {self.name} and do not reference any perspective other than your own. "
             "Do not speak from the perspective of the Player. "
             "Respond based on your mental state."
@@ -113,11 +113,11 @@ class Persona():
             f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
             f"[Your Mental State]\n{self.mental_state}"
             f"[Instructions]\nBased on the above information, write in the second person as {self.name} describing what you are thinking right now. "
-            f"Keep it concise, reflective, and true to your character, what your character knows, and your mental state."
+            f"Keep it concise (under 256 tokens), reflective, and true to your character, what your character knows, and your mental state."
         )
 
         print("Generating focus...")
-        return self.llm.generate_response(prompt_string, 128)
+        return self.llm.generate_response(prompt_string, 256)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
         return self.validator.validate_mental_change(prev_mental_state, mental_change, history)

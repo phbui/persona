@@ -28,7 +28,7 @@ class Validator:
         prompt_parts.append(f"[Instructions]\n{instruction}")
         prompt_string = "\n\n".join(prompt_parts)
         score_response = self.llm.generate_response(prompt_string, 6)
-        print(f"Score: {score_response}")
+        # print(f"Score: {score_response}")
         return self.extract_numeric_score(score_response)
     
     def validate_mental_change(self, prev_mental_state, mental_change, history):
@@ -39,7 +39,7 @@ class Validator:
         instruction = ("Based on all of the above information, respond with only a single integer "
                        "between 0 and 100 that represents how accurate your new mental state is for your character.")
         
-        print("Validating mental state...")
+        # print("Validating mental state...")
         return self._validate(history, sections, instruction)
     
     def validate_focus(self, focus, history):
@@ -49,7 +49,7 @@ class Validator:
         instruction = ("Based on all of the above information, respond with only a single integer "
                        "between 0 and 100 that represents how accurate your focus is for your character.")
         
-        print("Validating focus...")
+        # print("Validating focus...")
         return self._validate(history, sections, instruction)
     
     def validate_response(self, response, history):
@@ -59,7 +59,7 @@ class Validator:
         instruction = ("Based on all of the above information, respond with only a single integer "
                        "between 0 and 100 that represents how accurate your response is for your character.")
         
-        print("Validating response...")
+        # print("Validating response...")
         return self._validate(history, sections, instruction)
     
     def validate_emotions(self, emotions, history):
@@ -69,5 +69,5 @@ class Validator:
         instruction = ("Based on all of the above information, respond with only a single integer "
                        "between 0 and 100 that represents how accurate your emotions are for your character.")
         
-        print("Validating emotions...")
+        # print("Validating emotions...")
         return self._validate(history, sections, instruction)

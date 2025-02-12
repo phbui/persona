@@ -18,13 +18,13 @@ class PC(Player):
 
     def start_chat_interface(self):
         if self.root is None:
-            print(f"[DEBUG] Creating chat interface for {self.name}.")
+            # print(f"[DEBUG] Creating chat interface for {self.name}.")
             self.root = tk.Tk()
             self.root.title(f"Chat Interface for {self.name}")
 
             # Define a custom on_close handler.
             def on_close():
-                print("[DEBUG] Window is closing, exiting...")
+                # print("[DEBUG] Window is closing, exiting...")
                 self.root.destroy()
                 os._exit(0)
                 
@@ -54,17 +54,17 @@ class PC(Player):
             self.message_entry.config(state='disabled')
             self.send_button.config(state='disabled')
 
-            print(f"[DEBUG] Chat interface for {self.name} created.")
+            # print(f"[DEBUG] Chat interface for {self.name} created.")
 
     def update_chat_log(self, history):
-        print(f"[DEBUG] {self.name}: Updating chat log.")
+        # print(f"[DEBUG] {self.name}: Updating chat log.")
         self.chat_log.configure(state='normal')
         self.chat_log.delete("1.0", tk.END)
         for event in history:
-            self.chat_log.insert(tk.END, f"{event['player_name']} said \"{event['message']}\"\n")
+            self.chat_log.insert(tk.END, f"{event['player_name']}: {event['message']}\n\n")
         self.chat_log.configure(state='disabled')
         self.chat_log.yview(tk.END)
-        print(f"[DEBUG] {self.name}: Chat log updated.")
+        # print(f"[DEBUG] {self.name}: Chat log updated.")
 
     def _send_message(self, event=None):
         if event is not None and event.keysym != "Return":
@@ -72,27 +72,27 @@ class PC(Player):
 
         current_message = self.message_var.get().strip()
         if current_message:
-            print(f"[DEBUG] {self.name}: _send_message triggered with message: {current_message}")
+            # print(f"[DEBUG] {self.name}: _send_message triggered with message: {current_message}")
             # Disable input immediately once a message is sent.
             self.message_entry.config(state='disabled')
             self.send_button.config(state='disabled')
             # Signal that the message is ready so that wait_variable() can continue.
             self.message_ready.set(True)
-        else:
-            print(f"[DEBUG] {self.name}: _send_message triggered but no message was entered.")
+        # else:
+            # print(f"[DEBUG] {self.name}: _send_message triggered but no message was entered.")
 
     def generate_message(self, history):
         self.update_chat_log(history)
-        print(f"[DEBUG] {self.name}: Enabling input for generate_message.")
+        # print(f"[DEBUG] {self.name}: Enabling input for generate_message.")
         # Enable input.
         self.message_entry.config(state='normal')
         self.send_button.config(state='normal')
         self.message_var.set("")  # Clear any previous message.
         # Reset the flag.
         self.message_ready.set(False)
-        print(f"[DEBUG] {self.name}: Waiting for user input...")
+        # print(f"[DEBUG] {self.name}: Waiting for user input...")
         # Wait here until the message is committed by pressing Enter or Send.
         self.root.wait_variable(self.message_ready)
         message = self.message_var.get().strip()
-        print(f"[DEBUG] {self.name}: generate_message returning: {message}")
+        # print(f"[DEBUG] {self.name}: generate_message returning: {message}")
         return message

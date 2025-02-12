@@ -75,7 +75,7 @@ class RL():
         os.makedirs(os.path.dirname(self.policy_file), exist_ok=True)
         with open(self.policy_file, "w") as f:
             json.dump(state_dict_json, f)
-        print(f"Policy saved to {self.policy_file}")
+        # print(f"Policy saved to {self.policy_file}")
 
     def dynamic_emotion_vector(self, emotion_results):
 
