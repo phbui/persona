@@ -1,5 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext
+import numpy as np
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+
 from .record_keeper import RecordKeeper  # Assumes a singleton RecordKeeper exists
 
 # A scrollable frame that will be used in each tab.
@@ -64,8 +70,7 @@ class ExpandableField(tk.Frame):
             self.details.pack(fill="x", padx=20, pady=2)
             self.expanded = True
 
-# The TurnFrame widget represents one Turn with an overall header that shows a summary
-# and a details frame that contains one ExpandableField widget per field.
+# The TurnFrame widget represents one Turn with an overall header and expandable fields.
 class TurnFrame(tk.Frame):
     def __init__(self, master, turn, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -92,13 +97,9 @@ class TurnFrame(tk.Frame):
         self.details_frame.pack_forget()
         
         # Dynamically get all attributes from the turn object.
-        # This uses turn.__dict__ to iterate over all key/value pairs.
-        # If needed, you can filter out any keys here.
         for key, value in turn.__dict__.items():
-            # Skip internal attributes if necessary (e.g., those starting with "_")
             if key.startswith("_"):
                 continue
-            # Create an ExpandableField for each attribute.
             ef = ExpandableField(self.details_frame, key, value, bg="#F5F5F5")
             ef.pack(fill="x", padx=5, pady=2)
             
@@ -109,55 +110,200 @@ class TurnFrame(tk.Frame):
         else:
             self.details_frame.pack(fill="x", padx=10, pady=5)
             self.expanded = True
+
+class AnalysisUI:
+    def __init__(self, master):
+        self.master = master
+        # Do not call configure(bg="white") on a ttk widget.
+        # Instead, if desired, you can set a style for ttk widgets.
+        
+        # Create an analysis container.
+        self.analysis_container = ttk.Frame(master)
+        self.analysis_container.pack(fill="both", expand=True)
+        
+        # Create a Matplotlib Figure with 2x2 subplots.
+        self.figure = Figure(figsize=(6, 4), dpi=100)
+        self.ax_reward = self.figure.add_subplot(221)      # Response Reward over Turns
+        self.ax_correlation = self.figure.add_subplot(222)   # Mental State vs. Response Emotion
+        self.ax_focus = self.figure.add_subplot(223)         # Focus Trend over Turns
+        self.ax_mental_change = self.figure.add_subplot(224) # Distribution of Mental Change
+        
+        # Set titles and labels.
+        self.ax_reward.set_title("Response Reward over Turns")
+        self.ax_reward.set_xlabel("Turn Number")
+        self.ax_reward.set_ylabel("Response Reward")
+        
+        self.ax_correlation.set_title("Mental State vs. Response Emotion")
+        self.ax_correlation.set_xlabel("Mental State (After Change)")
+        self.ax_correlation.set_ylabel("Response Emotion")
+        
+        self.ax_focus.set_title("Focus Trend over Turns")
+        self.ax_focus.set_xlabel("Turn Number")
+        self.ax_focus.set_ylabel("Focus")
+        
+        self.ax_mental_change.set_title("Distribution of Mental Change")
+        self.ax_mental_change.set_xlabel("Mental Change")
+        self.ax_mental_change.set_ylabel("Frequency")
+        
+        # Embed the figure.
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self.analysis_container)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+        
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self.analysis_container)
+        self.toolbar.update()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+        
+        # Create an Update Analysis button.
+        self.update_button = tk.Button(master, text="Update Analysis", command=self.update_analysis,
+                                       bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
+        self.update_button.pack(side="bottom", pady=10)
+    
+    def update_analysis(self):
+        """Update analysis plots based on current record data.
+           Each Turn is a data point; x-axis is turn number.
+        """
+        self.ax_reward.cla()
+        self.ax_correlation.cla()
+        self.ax_focus.cla()
+        self.ax_mental_change.cla()
+        
+        # Reset titles and labels.
+        self.ax_reward.set_title("Response Reward over Turns")
+        self.ax_reward.set_xlabel("Turn Number")
+        self.ax_reward.set_ylabel("Response Reward")
+        
+        self.ax_correlation.set_title("Mental State vs. Response Emotion")
+        self.ax_correlation.set_xlabel("Mental State (After Change)")
+        self.ax_correlation.set_ylabel("Response Emotion")
+        
+        self.ax_focus.set_title("Focus Trend over Turns")
+        self.ax_focus.set_xlabel("Turn Number")
+        self.ax_focus.set_ylabel("Focus")
+        
+        self.ax_mental_change.set_title("Distribution of Mental Change")
+        self.ax_mental_change.set_xlabel("Mental Change")
+        self.ax_mental_change.set_ylabel("Frequency")
+        
+        record_keeper = RecordKeeper.instance()
+        
+        # Loop over each record.
+        for record in record_keeper.records:
+            if not record.records:
+                continue
+            turn_nums = np.arange(1, len(record.records) + 1)
+            rewards = []
+            mental_states = []      # Assuming mental_change represents the updated mental state.
+            response_emotions = []
+            focus_values = []
+            mental_changes = []
             
-# The main RecordKeeper UI, which creates a tab for each record and updates it manually.
+            for turn in record.records:
+                try:
+                    reward = float(turn.response_reward)
+                except Exception:
+                    try:
+                        reward = float(turn.response_reward[0])
+                    except Exception:
+                        reward = 0
+                rewards.append(reward)
+                
+                try:
+                    ms = float(turn.mental_change)
+                except Exception:
+                    try:
+                        ms = float(turn.mental_change[0])
+                    except Exception:
+                        ms = 0
+                mental_states.append(ms)
+                
+                try:
+                    re_em = float(turn.response_emotion)
+                except Exception:
+                    try:
+                        re_em = float(turn.response_emotion[0])
+                    except Exception:
+                        re_em = 0
+                response_emotions.append(re_em)
+                
+                try:
+                    focus_val = float(turn.focus)
+                except Exception:
+                    try:
+                        focus_val = float(turn.focus[0])
+                    except Exception:
+                        focus_val = 0
+                focus_values.append(focus_val)
+                
+                try:
+                    mc = float(turn.mental_change)
+                except Exception:
+                    try:
+                        mc = float(turn.mental_change[0])
+                    except Exception:
+                        mc = 0
+                mental_changes.append(mc)
+            
+            self.ax_reward.plot(turn_nums, rewards, label=record.persona_name)
+            self.ax_focus.plot(turn_nums, focus_values, label=record.persona_name)
+            self.ax_correlation.scatter(mental_states, response_emotions, label=record.persona_name)
+            self.ax_mental_change.hist(mental_changes, bins=20, alpha=0.5, label=record.persona_name)
+        
+        self.ax_reward.legend()
+        self.ax_focus.legend()
+        self.ax_correlation.legend()
+        self.ax_mental_change.legend()
+        self.canvas.draw()
+
 class RecordKeeperUI:
     def __init__(self, master):
         self.master = master
         self.master.title("Record Keeper")
         self.master.geometry("800x600")
         
-        # Create a Notebook (tabbed interface).
-        self.notebook = ttk.Notebook(master)
-        self.notebook.pack(fill="both", expand=True)
+        # Create a top-level Notebook with two main tabs: Log & Analyze.
+        self.main_notebook = ttk.Notebook(master)
+        self.main_notebook.pack(fill="both", expand=True)
         
-        # Dictionary mapping each record's persona_name to its scrollable frame.
-        self.tabs = {}
+        self.log_frame = ttk.Frame(self.main_notebook)
+        self.analyze_frame = ttk.Frame(self.main_notebook)
+        self.main_notebook.add(self.log_frame, text="Log")
+        self.main_notebook.add(self.analyze_frame, text="Analyze")
         
-        # Initialize tabs for any existing records.
-        self.update_tabs()
+        # Create a sub-notebook inside the Log tab for each record.
+        self.log_notebook = ttk.Notebook(self.log_frame)
+        self.log_notebook.pack(fill="both", expand=True)
+        self.tabs = {}  # Maps each record's persona_name to its scrollable frame.
+        self.update_log_tabs()
         
-        # Create an Update button at the bottom of the window.
-        self.update_button = tk.Button(master, text="Update Records", command=self.refresh, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
-        self.update_button.pack(side="bottom", pady=10)
+        # Create an Update button in the Log tab.
+        self.update_log_button = tk.Button(self.log_frame, text="Update Records", command=self.refresh_log, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
+        self.update_log_button.pack(side="bottom", pady=10)
         
-    def update_tabs(self):
+        # Instantiate the Analysis UI as part of the RecordKeeperUI.
+        self.analysis_ui = AnalysisUI(self.analyze_frame)
+    
+    def update_log_tabs(self):
         """Check the RecordKeeper singleton for new records and add a new tab if needed."""
         record_keeper = RecordKeeper.instance()  # Assumes RecordKeeper singleton exists.
         for record in record_keeper.records:
             if record.persona_name not in self.tabs:
-                # Create a new frame for the record.
-                frame = ttk.Frame(self.notebook)
-                self.notebook.add(frame, text=record.persona_name)
-                # Create a scrollable frame inside the tab.
+                frame = ttk.Frame(self.log_notebook)
+                self.log_notebook.add(frame, text=record.persona_name)
                 scrollable = ScrollableFrame(frame)
                 scrollable.pack(fill="both", expand=True)
                 self.tabs[record.persona_name] = scrollable.scrollable_frame
                 # print(f"[DEBUG] Added tab for {record.persona_name}")
-
-    def refresh(self):
+    
+    def refresh_log(self):
         """Manually update each tab with the latest turns for each record."""
         record_keeper = RecordKeeper.instance()
-        # Update tabs if there are new records.
-        self.update_tabs()
-        
+        self.update_log_tabs()
         for record in record_keeper.records:
             content_frame = self.tabs.get(record.persona_name)
             if content_frame is not None:
-                # Clear previous content.
                 for widget in content_frame.winfo_children():
                     widget.destroy()
-                # Create a TurnFrame widget for each turn.
                 for turn in record.records:
                     tf = TurnFrame(content_frame, turn, bg="#F5F5F5", bd=1, relief="solid")
                     tf.pack(fill="x", padx=5, pady=5)
