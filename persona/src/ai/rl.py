@@ -152,7 +152,7 @@ class RL():
             response_weight * (response_reward - 75) +
             response_emotion_weight * (response_emotion_reward - 75)
         )
-        print(f"Total reward: {total_reward}")
+        # print(f"Total reward: {total_reward}")
         self.rewards.append(total_reward)
 
         # 2. Compute discounted returns for the trajectory.
@@ -161,52 +161,52 @@ class RL():
         for r in reversed(self.rewards):
             R = r + self.gamma * R
             returns.insert(0, R)
-        print(f"Discounted returns (list): {returns}")
+        # print(f"Discounted returns (list): {returns}")
         returns = torch.tensor(returns, dtype=torch.float32)
         if self.values:
             returns = returns.to(self.values[0].device)
-        print(f"Discounted returns (tensor): {returns}")
+        # print(f"Discounted returns (tensor): {returns}")
 
         # 3. Convert stored trajectories into tensors.
         states = torch.cat(self.states, dim=0)      # Shape: [batch, input_dim]
         actions = torch.cat(self.actions, dim=0)      # Shape: [batch, action_dim]
         old_log_probs = torch.stack(self.log_probs)   # Shape: [batch]
         values = torch.cat(self.values, dim=0).squeeze()  # Shape: [batch]
-        print(f"States shape: {states.shape}")
-        print(f"Actions shape: {actions.shape}")
-        print(f"Old log_probs shape: {old_log_probs.shape}")
-        print(f"Values shape: {values.shape}")
+        # print(f"States shape: {states.shape}")
+        # print(f"Actions shape: {actions.shape}")
+        # print(f"Old log_probs shape: {old_log_probs.shape}")
+        # print(f"Values shape: {values.shape}")
 
         # 4. Normalize returns (using unbiased=False to handle single-element tensors).
         returns = (returns - returns.mean()) / (returns.std(unbiased=False) + 1e-5)
-        print(f"Normalized returns: {returns}")
+        # print(f"Normalized returns: {returns}")
 
         # 5. Compute advantages.
         advantages = returns - values.detach()
-        print(f"Advantages: {advantages}")
+        # print(f"Advantages: {advantages}")
 
         # 6. Forward pass through the policy network.
         action_means, stds, new_values = self.policy_net(states)
-        print(f"Action means: {action_means}")
-        print(f"Standard deviations: {stds}")
+        # print(f"Action means: {action_means}")
+        # print(f"Standard deviations: {stds}")
         dist = Normal(action_means, stds)
         new_log_probs = dist.log_prob(actions).sum(dim=-1)
-        print(f"New log_probs: {new_log_probs}")
+        # print(f"New log_probs: {new_log_probs}")
 
         # 7. Compute the PPO surrogate objective.
         ratios = torch.exp(new_log_probs - old_log_probs)
         surr1 = ratios * advantages
         surr2 = torch.clamp(ratios, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages
         actor_loss = -torch.min(surr1, surr2).mean()
-        print(f"Actor loss: {actor_loss.item()}")
+        # print(f"Actor loss: {actor_loss.item()}")
 
         # 8. Compute the critic loss.
         critic_loss = nn.MSELoss()(new_values.squeeze(), returns)
-        print(f"Critic loss: {critic_loss.item()}")
+        # print(f"Critic loss: {critic_loss.item()}")
 
         # 9. Total loss.
         loss = actor_loss + critic_loss
-        print(f"Total loss: {loss.item()}")
+        # print(f"Total loss: {loss.item()}")
 
         # 10. Backpropagation step.
         self.optimizer.zero_grad()
@@ -219,6 +219,6 @@ class RL():
         self.log_probs.clear()
         self.rewards.clear()
         self.values.clear()
-        print("Trajectory buffers cleared.")
-        print(f"Policy updated. Loss: {loss.item():.4f}")
+        # print("Trajectory buffers cleared.")
+        # print(f"Policy updated. Loss: {loss.item():.4f}")
         self.save_policy()
