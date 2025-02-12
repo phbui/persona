@@ -1,6 +1,6 @@
 import os
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,18 +17,25 @@ class LLM:
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            token=secret_key
+            use_auth_token=secret_key  # updated parameter name for clarity
+        )
+        
+        # Set up bitsandbytes quantization configuration for 4-bit (Q4) mode
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type='nf4',  # or 'fp4' depending on your needs
+            bnb_4bit_compute_dtype=torch.float16
         )
         
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             device_map="auto",
-            torch_dtype=torch.float16,
-            token=secret_key
+            quantization_config=quantization_config,
+            use_auth_token=secret_key  # ensure you authenticate if needed
         )
             
     def generate_response(self, prompt: str, max_new_tokens: int = 64) -> str:
-        print("Querying LLM...")
         with torch.no_grad():
             inputs = self.tokenizer(prompt, return_tensors="pt")
             device = next(self.model.parameters()).device

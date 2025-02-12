@@ -153,6 +153,74 @@ class RL():
         )
         self.rewards.append(total_reward)
         
+        # Compute discounted returns for the trajectory.
+        returns = []
+        R = 0
+        for r in reversed(self.rewards):
+            R = r + self.gamma * R
+            returns.insert(0, R)
+        # Create the returns tensor and move it to the same device as values.
+        returns = torch.tensor(returns, dtype=torch.float32)
+        
+        # Ensure returns is on the same device as values (which are on cuda).
+        if self.values:
+            returns = returns.to(self.values[0].device)
+        
+        # Convert stored states, actions, log probabilities, and values to tensors.
+        states = torch.cat(self.states, dim=0)  # Shape: [batch, input_dim]
+        actions = torch.cat(self.actions, dim=0)  # Shape: [batch, action_dim]
+        old_log_probs = torch.stack(self.log_probs)  # Shape: [batch]
+        values = torch.cat(self.values, dim=0).squeeze()  # Shape: [batch]
+        
+        # Normalize returns for stability.
+        returns = (returns - returns.mean()) / (returns.std() + 1e-5)
+        
+        # Compute advantage estimates (returns - baseline values).
+        advantages = returns - values.detach()
+        
+        # Forward pass through the policy network for all collected states.
+        action_means, stds, new_values = self.policy_net(states)
+        dist = Normal(action_means, stds)
+        new_log_probs = dist.log_prob(actions).sum(dim=-1)
+        
+        # Compute probability ratios for PPO.
+        ratios = torch.exp(new_log_probs - old_log_probs)
+        
+        # PPO surrogate objective with clipping.
+        surr1 = ratios * advantages
+        surr2 = torch.clamp(ratios, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages
+        actor_loss = -torch.min(surr1, surr2).mean()
+        
+        # Critic loss: Mean squared error between predicted values and returns.
+        critic_loss = nn.MSELoss()(new_values.squeeze(), returns)
+        
+        # Total loss (you can add additional entropy bonuses if desired).
+        loss = actor_loss + critic_loss
+        
+        # Perform a backpropagation step.
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        # Clear trajectory buffers after update.
+        self.states.clear()
+        self.actions.clear()
+        self.log_probs.clear()
+        self.rewards.clear()
+        self.values.clear()
+        
+        print(f"Policy updated. Loss: {loss.item():.4f}")
+        # Save policy after update.
+        self.save_policy()
+
+        total_reward = (
+            mental_change_weight * mental_change_reward +
+            focus_weight * focus_reward +
+            response_weight * response_reward +
+            response_emotion_weight * response_emotion_reward
+        )
+        self.rewards.append(total_reward)
+        
         # Compute discounted returns for the trajectory
         returns = []
         R = 0

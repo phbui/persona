@@ -81,12 +81,13 @@ class Persona():
             f"[Your Goals]\n{self.goals}\n\n"
             )
 
-    def generate_prompt(self, focus):
+    def generate_prompt(self, focus, message):
         return (
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Focus]\n{focus}\n\n"
             f"[Instructions]\n{self.generate_instructions}\n\n"
+            f"[Last Message]\n{message['player_name']} said \"{message['message']}\"\n\n"
             "[How do you answer?]\n"
         )
     
@@ -111,10 +112,11 @@ class Persona():
             f"{self.generate_background()}\n\n"
             f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
             f"[Your Mental State]\n{self.mental_state}"
-            f"[Instructions] Based on the above information, write in the second person as {self.name} describing what you are thinking right now. "
+            f"[Instructions]\nBased on the above information, write in the second person as {self.name} describing what you are thinking right now. "
             f"Keep it concise, reflective, and true to your character and mental state."
         )
 
+        print("Generating focus...")
         return self.llm.generate_response(prompt_string, 128)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
@@ -127,7 +129,7 @@ class Persona():
         return self.validator.validate_response(response, history)
 
     def reward_response_emotions(self, emotion, history):
-        return self.validator.validate_emotion(emotion, history)
+        return self.validator.validate_emotions(emotion, history)
     
     def manage_rewards(self, 
                        history, 
@@ -180,8 +182,9 @@ class Persona():
         self.update_mental_state(mental_change)
 
         focus = self.generate_focus(history)
-        prompt = self.generate_prompt(focus)
+        prompt = self.generate_prompt(focus, history[-1])
 
+        print("Generating response...")
         response = self.llm.generate_response(prompt)
 
         if self.training: 
