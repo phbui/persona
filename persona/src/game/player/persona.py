@@ -1,5 +1,5 @@
 from .validator import Validator
-from ...data.recorder import Recorder
+from ...data.record import Record
 from ...data.turn import Turn
 from ...ai.llm import LLM
 from ...ai.rl import RL
@@ -14,7 +14,7 @@ class Persona():
         try:
             with open(persona_path, "r") as f:
                 data = json.load(f)
-            print(f"[DEBUG] Loaded persona data from {persona_path}")
+            print(f"[DEBUG] Persona: Loaded persona data from {persona_path}")
         except Exception as e:
             print(f"[ERROR] Failed to load persona from {persona_path}: {e}")
             data = {}
@@ -26,7 +26,7 @@ class Persona():
         self.mental_state = data.get("mental_state", {})
 
         self.training = training
-        self.recorder = Recorder(self.name)
+        self.record = Record(self.name)
         self.llm = LLM()
         self.validator = Validator(self, self.llm)
         self.rl = RL(self.name)
@@ -117,7 +117,7 @@ class Persona():
             f"Keep it concise (under 256 tokens), reflective, and true to your character, what your character knows, and your mental state."
         )
 
-        print("Generating focus...")
+        print("[DEBUG] Persona: Generating focus...")
         return self.llm.generate_response(prompt_string, 256)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
@@ -185,8 +185,7 @@ class Persona():
 
     def generate_response(self, history):
         message = history[-1]['message']
-
-        print(message)
+        history = history[-10:]
 
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)
@@ -198,11 +197,12 @@ class Persona():
         focus = self.generate_focus(history)
         prompt = self.generate_prompt(focus, history[-1])
 
-        print("Generating response...")
+        print("[DEBUG] Persona: Generating response...")
         response = self.llm.generate_response(prompt).replace("\n", "").replace("\"", "")
         response = self._finish_naturally(response)
 
         if self.training: 
+            print("[DEBUG] Persona: Updating policy...")
             response_emotions = self.extract_emotions(response)
 
             mental_change_reward, focus_reward, response_reward, response_emotion_reward = self.manage_rewards(
@@ -219,7 +219,7 @@ class Persona():
                 response_reward, 
                 response_emotion_reward)
         
-            self.recorder.record(
+            self.record.record(
                 Turn(
                     message,                 
                     embeddings, 

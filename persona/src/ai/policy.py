@@ -34,3 +34,27 @@ class Policy(nn.Module):
         # Expand the log_std to match action_mean dimensions and exponentiate to get std
         std = self.log_std.exp().expand_as(action_mean)
         return action_mean, std, value
+    
+    def __str__(self):
+        # Build a detailed string describing the Policy network
+        description = "Policy Network:\n"
+        description += "  Actor Network (Gaussian policy):\n"
+        # Access the layers in the actor network (assumes structure: Linear -> ReLU -> Linear)
+        actor_layer1 = self.actor[0]
+        actor_activation = self.actor[1]
+        actor_layer2 = self.actor[2]
+        description += f"    - First Linear Layer: in_features={actor_layer1.in_features}, out_features={actor_layer1.out_features}\n"
+        description += f"    - Activation: {actor_activation.__class__.__name__}\n"
+        description += f"    - Second Linear Layer: in_features={actor_layer2.in_features}, out_features={actor_layer2.out_features}\n"
+        description += f"    - Learnable log_std parameter (initial values): {self.log_std.data.tolist()}\n\n"
+        
+        description += "  Critic Network (State-value estimator):\n"
+        # Access the layers in the critic network (assumes structure: Linear -> ReLU -> Linear)
+        critic_layer1 = self.critic[0]
+        critic_activation = self.critic[1]
+        critic_layer2 = self.critic[2]
+        description += f"    - First Linear Layer: in_features={critic_layer1.in_features}, out_features={critic_layer1.out_features}\n"
+        description += f"    - Activation: {critic_activation.__class__.__name__}\n"
+        description += f"    - Second Linear Layer: in_features={critic_layer2.in_features}, out_features={critic_layer2.out_features}\n"
+        
+        return description

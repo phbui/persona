@@ -11,6 +11,7 @@ class Game:
 
     def play_turn(self):
         player = self.players[self.turn]
+        print(f"[DEBUG] Game: {player['player'].name}'s turn now.")
 
         name = player['player'].name
         message = player['player'].generate_message(

@@ -2,6 +2,7 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from dotenv import load_dotenv
+from accelerate import Accelerator  # Import Accelerator
 
 load_dotenv()
 secret_key = os.getenv('hf_key')
@@ -15,12 +16,13 @@ class LLM:
             self.device = "cpu"
             print("Warning: CUDA is not available. Running on CPU.")
 
+        # Load the tokenizer.
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name,
-            token=secret_key  # updated parameter name for clarity
+            token=secret_key  # ensure you authenticate if needed
         )
         
-        # Set up bitsandbytes quantization configuration for 4-bit (Q4) mode
+        # Set up bitsandbytes quantization configuration for 4-bit (Q4) mode.
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
@@ -28,16 +30,27 @@ class LLM:
             bnb_4bit_compute_dtype=torch.float16
         )
         
+        # Load the model with quantization.
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             device_map="auto",
             quantization_config=quantization_config,
-            token=secret_key  # ensure you authenticate if needed
+            token=secret_key
         )
+        
+        # Use torch.compile to optimize the model (PyTorch 2.0+).
+        if hasattr(torch, "compile"):
+            print("Compiling model with torch.compile for speed improvements...")
+            self.model = torch.compile(self.model)
+        
+        # Set up the accelerator and prepare the model.
+        self.accelerator = Accelerator()
+        self.model = self.accelerator.prepare(self.model)
             
     def generate_response(self, prompt: str, max_new_tokens: int = 128) -> str:
         with torch.no_grad():
             inputs = self.tokenizer(prompt, return_tensors="pt")
+            # Move inputs to the correct device.
             device = next(self.model.parameters()).device
             inputs = {k: v.to(device) for k, v in inputs.items()}
             

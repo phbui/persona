@@ -21,7 +21,7 @@ class PC(Player):
 
     def start_chat_interface(self):
         if self.root is None:
-            # print(f"[DEBUG] Creating chat interface for {self.name}.")
+            print(f"[DEBUG] Creating chat interface for {self.name}.")
             self.root = tk.Tk()
             self.root.title(f"Chat Interface for {self.name}")
             self.root.geometry("700x600")
@@ -32,12 +32,12 @@ class PC(Player):
                 from ctypes import windll
                 windll.shcore.SetProcessDpiAwareness(1)
             except Exception as e:
-                # print("[DEBUG] DPI awareness not set:", e)
+                print("[DEBUG] DPI awareness not set:", e)
                 pass
 
             # Define a custom on_close handler.
             def on_close():
-                # print("[DEBUG] Window is closing, exiting...")
+                print("[DEBUG] Window is closing, exiting...")
                 self.root.destroy()
                 os._exit(0)
             self.root.protocol("WM_DELETE_WINDOW", on_close)
@@ -45,7 +45,6 @@ class PC(Player):
             # Create a header frame with a modern background and title.
             self.header_frame = tk.Frame(self.root, bg="#4CAF50", height=60)
             self.header_frame.pack(fill="x")
-            # Optionally, load an icon image if available.
             try:
                 icon_img = Image.open("images/chat_icon.png")
                 icon_img = icon_img.resize((40, 40), Image.ANTIALIAS)
@@ -57,7 +56,7 @@ class PC(Player):
                 pass
             header_label = tk.Label(self.header_frame, text="Chat", font=("Helvetica", 18, "bold"), fg="white", bg="#4CAF50")
             header_label.pack(side="left", padx=10)
-            # print(f"[DEBUG] Header for {self.name} created.")
+            print(f"[DEBUG] Header for {self.name} created.")
 
             # Create the scrollable chat log with refined colors and font.
             self.chat_log = scrolledtext.ScrolledText(
@@ -71,7 +70,7 @@ class PC(Player):
                 relief="flat"
             )
             self.chat_log.pack(padx=20, pady=(10,0), fill="both", expand=True)
-            # print(f"[DEBUG] Chat log for {self.name} created.")
+            print(f"[DEBUG] Chat log for {self.name} created.")
 
             # Create a frame to hold the message entry and send button.
             input_frame = tk.Frame(self.root, bg="#ECECEC")
@@ -99,15 +98,15 @@ class PC(Player):
             # Create the Send button using ttk.
             self.send_button = ttk.Button(input_frame, text="Send", command=self._send_message)
             self.send_button.grid(row=0, column=1, pady=10)
-            # print(f"[DEBUG] Input widgets for {self.name} created.")
+            print(f"[DEBUG] Input widgets for {self.name} created.")
 
             # Initially disable input.
             self.message_entry.config(state='disabled')
             self.send_button.config(state='disabled')
-            # print(f"[DEBUG] Chat interface for {self.name} created.")
+            print(f"[DEBUG] Chat interface for {self.name} created.")
 
     def update_chat_log(self, history):
-        # print(f"[DEBUG] {self.name}: Updating chat log.")
+        print(f"[DEBUG] {self.name}: Updating chat log.")
         self.chat_log.configure(state='normal')
         self.chat_log.delete("1.0", tk.END)
         for event in history:
@@ -115,7 +114,7 @@ class PC(Player):
             self.chat_log.insert(tk.END, f"{event['player_name']}: {event['message']}\n\n")
         self.chat_log.configure(state='disabled')
         self.chat_log.yview(tk.END)
-        # print(f"[DEBUG] {self.name}: Chat log updated.")
+        print(f"[DEBUG] {self.name}: Chat log updated.")
 
     def _send_message(self, event=None):
         # If triggered by a key event, only proceed if the Return key was pressed.
@@ -124,29 +123,29 @@ class PC(Player):
 
         current_message = self.message_var.get().strip()
         if current_message:
-            # print(f"[DEBUG] {self.name}: _send_message triggered with message: {current_message}")
+            print(f"[DEBUG] {self.name}: _send_message triggered with message: {current_message}")
             # Disable input once a message is sent.
             self.message_entry.config(state='disabled')
             self.send_button.config(state='disabled')
             # Signal that the message is ready.
             self.message_ready.set(True)
         # else:
-            # print(f"[DEBUG] {self.name}: _send_message triggered but no message was entered.")
+            print(f"[DEBUG] {self.name}: _send_message triggered but no message was entered.")
 
     def generate_message(self, history):
         self.update_chat_log(history)
-        # print(f"[DEBUG] {self.name}: Enabling input for generate_message.")
+        print(f"[DEBUG] {self.name}: Enabling input for generate_message.")
         # Enable input.
         self.message_entry.config(state='normal')
         self.send_button.config(state='normal')
         self.message_var.set("")  # Clear any previous message.
         # Reset the flag.
         self.message_ready.set(False)
-        # print(f"[DEBUG] {self.name}: Waiting for user input...")
+        print(f"[DEBUG] {self.name}: Waiting for user input...")
         # Wait until the user sends a message.
         self.root.wait_variable(self.message_ready)
         message = self.message_var.get().strip()
-        # print(f"[DEBUG] {self.name}: generate_message returning: {message}")
+        print(f"[DEBUG] {self.name}: generate_message returning: {message}")
 
         return message
       
