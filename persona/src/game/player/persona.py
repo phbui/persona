@@ -193,9 +193,18 @@ class Persona():
         if last_index != -1:
             return response[:last_index+1].strip()
         return response.strip()
+    
+    def _count_unique_players(self, history):
+       return len({entry["player_name"] for entry in history})
+
 
     def generate_response(self, history):
-        message = history[-1]['message']
+        num_opponents = self._count_unique_players(history)
+        messages = history[-num_opponents:]
+
+        print(messages)
+        
+        message = "\n".join(f"[{msg['player_name']}]: {msg['message']}" for msg in messages)
 
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)

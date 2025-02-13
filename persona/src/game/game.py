@@ -30,8 +30,6 @@ class Game:
             print('Not enough players!')
             return
         
-        print(self.players)
-        
         turn_counter = 0
         player_names = "".join(f"[{p['player'].name}]" for p in self.players)
         message = f"{player_names} all run into each other."

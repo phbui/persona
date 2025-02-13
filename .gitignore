@@ -2,4 +2,5 @@ dm-env/*
 dm_engine.egg-info/*
 secret_keys/*
 *.env
+persona/src/data/saved
 __pycache__
