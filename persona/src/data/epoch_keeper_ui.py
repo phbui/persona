@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
@@ -28,6 +28,58 @@ class ScrollableFrame(ttk.Frame):
         self.scrollbar.pack(side="right", fill="y")
 
 #---------------------------
+# EpochExpandableFrame: a collapsible frame for one epoch.
+#---------------------------
+class EpochExpandableFrame(tk.Frame):
+    def __init__(self, parent, epoch_index, epoch_data, *args, **kwargs):
+        """
+        epoch_index: The epoch number.
+        epoch_data: A list of turn records (each is a dict) for this epoch.
+        """
+        super().__init__(parent, *args, **kwargs)
+        self.epoch_index = epoch_index
+        self.epoch_data = epoch_data
+        self.expanded = False
+
+        self.header_button = tk.Button(
+            self,
+            text=f"Epoch {epoch_index} (click to expand)",
+            relief="raised",
+            bg="#4CAF50",
+            fg="white",
+            font=("Helvetica", 12, "bold"),
+            command=self.toggle
+        )
+        self.header_button.pack(fill="x", padx=5, pady=5)
+
+        # Frame to hold the detailed log
+        self.content_frame = tk.Frame(self)
+        # Initially, content is hidden.
+
+    def toggle(self):
+        if self.expanded:
+            self.content_frame.pack_forget()
+            self.expanded = False
+            self.header_button.config(text=f"Epoch {self.epoch_index} (click to expand)")
+        else:
+            self.content_frame.pack(fill="both", expand=True, padx=5, pady=5)
+            self.expanded = True
+            self.header_button.config(text=f"Epoch {self.epoch_index} (click to collapse)")
+            self.populate_content()
+
+    def populate_content(self):
+        # Clear any existing content.
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        # Create a Text widget to show the epoch's log.
+        text_widget = tk.Text(self.content_frame, wrap="word", font=("Helvetica", 12), height=10)
+        text_widget.pack(fill="both", expand=True)
+        for turn in self.epoch_data:
+            line = f"[{turn.get('player_name', 'Unknown')}]: {turn.get('message', '')}\n"
+            text_widget.insert("end", line)
+        text_widget.config(state="disabled")
+
+#---------------------------
 # EpochAnalysisPanel: displays a single graph for one persona.
 #---------------------------
 class EpochAnalysisPanel(ttk.Frame):
@@ -51,15 +103,19 @@ class EpochAnalysisPanel(ttk.Frame):
         self.update_button.pack(side="bottom", pady=5)
         
         self.update_plot()
-        
+            
     def update_plot(self):
         record_keeper = RecordKeeper.instance()
-        epochs = record_keeper.epochs  # List of epochs; each epoch is a list of turn records.
+        epochs = record_keeper.epochs  # Each epoch is a list of Record objects.
         epoch_avg_rewards = []
         for epoch in epochs:
             # Filter records for this persona.
-            persona_records = [record for record in epoch if record.get("persona_name") == self.persona]
-            rewards = [record.get("reward", 0) for record in persona_records]
+            matching_records = [record for record in epoch if record.persona_name == self.persona]
+            rewards = []
+            # For each matching Record, iterate over its turns.
+            for rec in matching_records:
+                for turn in rec.records:
+                    rewards.append(getattr(turn, "reward", 0))
             if rewards:
                 avg_reward = sum(rewards) / len(rewards)
             else:
@@ -67,7 +123,7 @@ class EpochAnalysisPanel(ttk.Frame):
             epoch_avg_rewards.append(avg_reward)
         
         ax = self.figure.gca()
-        ax.cla()
+        ax.cla()  # Clear the axes.
         if epoch_avg_rewards:
             epochs_range = range(1, len(epoch_avg_rewards) + 1)
             ax.plot(epochs_range, epoch_avg_rewards, marker="o", linestyle="-", color="blue")
@@ -93,14 +149,9 @@ class EpochRecordKeeperUI:
         self.main_notebook = ttk.Notebook(master)
         self.main_notebook.pack(fill="both", expand=True)
         
-        # LOG TAB: Aggregated log over all epochs.
+        # LOG TAB: Aggregated log over all epochs as expandable sections.
         self.log_frame = ttk.Frame(self.main_notebook)
         self.main_notebook.add(self.log_frame, text="Log")
-        self.log_text = tk.Text(self.log_frame, wrap=tk.WORD, font=("Helvetica", 12))
-        self.log_text.pack(fill="both", expand=True)
-        self.log_scrollbar = ttk.Scrollbar(self.log_frame, orient="vertical", command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=self.log_scrollbar.set)
-        self.log_scrollbar.pack(side="right", fill="y")
         self.refresh_log_button = tk.Button(
             self.log_frame,
             text="Refresh Log",
@@ -109,13 +160,15 @@ class EpochRecordKeeperUI:
         )
         self.refresh_log_button.pack(side="bottom", pady=10)
         
+        # Create a ScrollableFrame to hold epoch expandable frames.
+        self.log_scrollable = ScrollableFrame(self.log_frame)
+        self.log_scrollable.pack(fill="both", expand=True)
+        
         # ANALYZE TAB: Contains a Notebook with sub-tabs for each persona.
         self.analysis_frame = ttk.Frame(self.main_notebook)
         self.main_notebook.add(self.analysis_frame, text="Analysis")
         self.analysis_notebook = ttk.Notebook(self.analysis_frame)
         self.analysis_notebook.pack(fill="both", expand=True)
-        
-        # Determine unique personas from the epochs.
         record_keeper = RecordKeeper.instance()
         unique_personas = set()
         for epoch in record_keeper.epochs:
@@ -125,7 +178,6 @@ class EpochRecordKeeperUI:
                     unique_personas.add(persona)
         if not unique_personas:
             unique_personas = {"Default"}
-        
         self.analysis_panels = {}
         for persona in sorted(unique_personas):
             frame = ttk.Frame(self.analysis_notebook)
@@ -139,22 +191,19 @@ class EpochRecordKeeperUI:
         self.master.bind("<Destroy>", self.on_destroy)
     
     def refresh_log_overview(self):
-        """Aggregate logs from all epochs and display in the Log tab."""
         record_keeper = RecordKeeper.instance()
-        self.log_text.delete("1.0", tk.END)
+        # Clear the scrollable frame content.
+        for widget in self.log_scrollable.scrollable_frame.winfo_children():
+            widget.destroy()
         if not record_keeper.epochs:
-            self.log_text.insert(tk.END, "No epoch data available.")
+            tk.Label(self.log_scrollable.scrollable_frame, text="No epoch data available.", font=("Helvetica", 12)).pack()
             return
         for epoch_idx, epoch in enumerate(record_keeper.epochs, start=1):
-            self.log_text.insert(tk.END, f"Epoch {epoch_idx}:\n")
-            for turn in epoch:
-                # Each turn is expected to be a dict with keys: player_name and message.
-                line = f"[{turn.get('player_name', 'Unknown')}]: {turn.get('message', '')}\n"
-                self.log_text.insert(tk.END, line)
-            self.log_text.insert(tk.END, "\n" + "-" * 40 + "\n\n")
+            epoch_frame = EpochExpandableFrame(self.log_scrollable.scrollable_frame, epoch_idx, epoch)
+            epoch_frame.pack(fill="x", pady=5)
     
     def on_tab_changed(self, event):
-        # You can add behavior to collapse/refresh panels when switching tabs if needed.
+        # Optional: collapse expanded sections when switching tabs.
         pass
     
     def on_close(self):

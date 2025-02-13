@@ -2,10 +2,11 @@ import os
 import signal
 import threading
 import tkinter as tk
+
 from src.game.game import Game 
-from src.game.player.player_pc import PC
 from src.game.player.player_npc import NPC
 from src.data.record_keeper import RecordKeeper
+from src.data.record_keeper_ui import RecordKeeperUI
 from src.data.epoch_keeper_ui import EpochRecordKeeperUI
 
 def signal_handler(sig, frame):
@@ -14,8 +15,36 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
+# Global variables for the UI root and the currently open RecordKeeperUI window.
+ui_root = None
+current_record_keeper_window = None
+
+def run_ui():
+    global ui_root
+    ui_root = tk.Tk()
+    ui_root.title("Main Epoch UI")
+    ui_root.geometry("800x600")
+    # Launch the aggregated EpochRecordKeeperUI in a persistent window.
+    epoch_keeper_window = tk.Toplevel(ui_root)
+    epoch_keeper_window.title("Epoch Aggregated UI")
+    epoch_keeper_ui = EpochRecordKeeperUI(epoch_keeper_window)
+    ui_root.mainloop()
+
+def create_record_keeper_window(epoch_number):
+    global current_record_keeper_window, ui_root
+    # Close previous RecordKeeperUI window if it exists.
+    if current_record_keeper_window is not None:
+        try:
+            current_record_keeper_window.destroy()
+        except Exception as e:
+            print("Error closing previous RecordKeeperUI:", e)
+    # Create a new Toplevel window for this epoch.
+    current_record_keeper_window = tk.Toplevel(ui_root)
+    current_record_keeper_window.title(f"Record Keeper - Epoch {epoch_number}")
+    # Instantiate the RecordKeeperUI (which shows logs and analysis for that epoch).
+    record_keeper_ui = RecordKeeperUI(current_record_keeper_window)
+
 # ---------- Gather Training Parameters ----------
-# Locate the folder with persona JSON files.
 personas_folder = os.path.join(os.path.dirname(__file__), "src", "game", "player", "personas")
 persona_files = [f for f in os.listdir(personas_folder) if f.endswith(".json")]
 if not persona_files:
@@ -26,7 +55,6 @@ print("Available Personas:")
 for idx, filename in enumerate(persona_files):
     print(f"{idx+1}: {filename}")
 
-# Ask how many NPC personas to use.
 while True:
     try:
         num_personas = int(input("Enter the number of personas to use for NPCs: ").strip())
@@ -54,7 +82,6 @@ for i in range(num_personas):
     selected_personas.add(persona_files[choice_idx])
     print(f"Selected persona for NPC {i+1}: {persona_files[choice_idx]}")
 
-# Ask for the number of turns per game.
 while True:
     try:
         num_turns = int(input("Enter the number of turns per game: ").strip())
@@ -64,7 +91,6 @@ while True:
     except ValueError as e:
         print("Invalid input:", e)
 
-# Ask for the number of epochs (each epoch is a separate game).
 while True:
     try:
         num_epochs = int(input("Enter the number of epochs (games) for training: ").strip())
@@ -73,12 +99,6 @@ while True:
         break
     except ValueError as e:
         print("Invalid input:", e)
-
-def run_epoch_ui():
-    root = tk.Tk()
-    ui = EpochRecordKeeperUI(root)
-    root.mainloop()
-
 
 # ---------- Define the Training Loop Function ----------
 def training_loop():
@@ -98,20 +118,22 @@ def training_loop():
         # Save the epoch's records and clear them for the next game.
         RecordKeeper.instance().save_epoch()
         print(f"Epoch {epoch+1} complete.\n")
+        
+        # Schedule creation of a new RecordKeeperUI window for this epoch on the UI thread.
+        if ui_root is not None:
+            ui_root.after(0, lambda epoch_num=epoch+1: create_record_keeper_window(epoch_num))
+    
     print("Training complete. All epochs finished.")
 
-# ---------- Start the Training Loop in a Non-Blocking Thread ----------
-# Launch the UI in its own thread.
-ui_thread = threading.Thread(target=run_epoch_ui, daemon=False)
+# ---------- Start the UI in its own thread ----------
+ui_thread = threading.Thread(target=run_ui, daemon=False)
 ui_thread.start()
+print("Main Epoch UI is running in its own thread.")
 
-# The main thread can continue running other tasks here.
-print("Epoch Record Keeper UI is running in its own thread.")
-
+# ---------- Start the Training Loop in its own thread ----------
 training_thread = threading.Thread(target=training_loop, daemon=True)
 training_thread.start()
 
 # Wait for the training thread to complete.
 training_thread.join()
 print("Training complete. All epochs finished.")
-
