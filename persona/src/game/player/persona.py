@@ -87,7 +87,7 @@ class Persona():
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Current Thoughts]\n{notes}\n\n"
-            f"[Last Message]\n{history[-1]['player_name']}: \"{message}\"\n\n"
+            f"[Recent Conversation]\n{message}\n\n"
             f"[Instructions]\n{self.generate_instructions()}\n\n"
             "[Your Response]\n"
         )
@@ -95,8 +95,8 @@ class Persona():
     def extract_embeddings(self, message, history):
         context_string = (
             f"{self.generate_background()}\n\n"
-            f"[Your Conversation So Far]\n{self.format_history(history[:-1])} \n\n"
-            f"[Player Message]\n{message}"
+            f"[Entire Conversation History]\n{self.format_history(history[:-1])} \n\n"
+            f"[Recent Conversation]\n{message}"
         )
 
         return self.sentence_transformer.encode(context_string)
@@ -111,9 +111,9 @@ class Persona():
     def generate_notes(self, message, history):
         prompt_string = (
             f"{self.generate_background()}\n\n"
-            f"[Conversation History]\n{self.format_history(history[:-1])}\n\n"
+            f"[Entire Conversation History]\n{self.format_history(history[:-1])}\n\n"
             f"[Current Mental State]\n{self.mental_state}\n\n"
-            f"[Last Message]\n{history[-1]['player_name']} said \"{message}\"\n\n"
+            f"[Recent Conversation]\n{message}\n\n"
             "[Instructions]\n"
             f"Based on the setting, your backstory, your goals, and your current mental state, write a detailed, easy-to-digest summary in the second person as {self.name}. "
             "Your summary should be a bulleted list capturing all names, ideas, topics, and tasks mentioned in the Conversation History. "

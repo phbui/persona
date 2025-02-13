@@ -152,8 +152,9 @@ class GraphPanel(tk.Frame):
                 break
 
 class AnalysisUI:
-    def __init__(self, master):
+    def __init__(self, master, persona=None):
         self.master = master
+        self.persona = persona  # If specified, only analyze records for this persona
         # Container for all graph panels
         self.container = ttk.Frame(master)
         self.container.pack(fill="both", expand=True)
@@ -218,11 +219,14 @@ class AnalysisUI:
                                        font=("Helvetica", 12, "bold"))
         self.update_button.pack(side="bottom", pady=10)
 
+    def get_filtered_records(self):
+        # Return only records matching the specified persona (if any)
+        record_keeper = RecordKeeper.instance()
+        if self.persona:
+            return [record for record in record_keeper.records if record.persona_name == self.persona]
+        return record_keeper.records
+
     def info_callback(self, turn):
-        """
-        Called by a GraphPanel when a turn is clicked (or cleared).
-        If turn is None, clear the info panel; otherwise, show it.
-        """
         if turn is None:
             self.clear_info_tab()
         else:
@@ -249,23 +253,28 @@ class AnalysisUI:
                 panel.canvas.draw()
 
     def update_reward_graph(self, figure):
+        records = self.get_filtered_records()
         self.plot_multi_line(figure, 
                              "Rewards Over Turns", 
                              "Turn Number", 
                              "Reward Value", 
                              ["Mental Change Reward", "Notes Reward", "Response Reward", "Response Emotion Reward"],
-                             lambda turn: [turn.reward_mental_change, turn.notes_reward, turn.response_reward, turn.response_emotion_reward])
+                             lambda turn: [turn.reward_mental_change, turn.notes_reward, turn.response_reward, turn.response_emotion_reward],
+                             records)
 
     def update_mental_state_graph(self, figure):
+        records = self.get_filtered_records()
         self.plot_multi_line(figure, 
                              "Mental State Evolution Over Turns", 
                              "Turn Number", 
                              "Mental State Value", 
                              ["Valence", "Arousal", "Dominance", "Confidence", "Anxiety", "Guilt"],
-                             lambda turn: [turn.mental_change["valence"], turn.mental_change["arousal"], turn.mental_change["dominance"], turn.mental_change["confidence"], turn.mental_change["anxiety"], turn.mental_change["guilt"]])
+                             lambda turn: [turn.mental_change["valence"], turn.mental_change["arousal"], turn.mental_change["dominance"], turn.mental_change["confidence"], turn.mental_change["anxiety"], turn.mental_change["guilt"]],
+                             records)
 
     def update_emotions_graph(self, figure, emotion_type):
         labels = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
+        records = self.get_filtered_records()
         self.plot_multi_line(
             figure,
             f"{emotion_type.capitalize()} Emotions Over Turns",
@@ -276,18 +285,17 @@ class AnalysisUI:
                 turn.input_message_emotion.get(label, 0) if emotion_type == "input" 
                 else turn.response_emotion.get(label, 0) 
                 for label in labels
-            ]
-        )
+            ],
+            records)
 
-    def plot_multi_line(self, figure, title, xlabel, ylabel, labels, data_extractor):
+    def plot_multi_line(self, figure, title, xlabel, ylabel, labels, data_extractor, records):
         ax = figure.gca()
         ax.cla()
         ax.set_title(title)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        record_keeper = RecordKeeper.instance()
         colors = plt.cm.viridis(np.linspace(0, 1, len(labels)))
-        for record in record_keeper.records:
+        for record in records:
             if not record.records:
                 continue
             turn_nums = np.arange(1, len(record.records) + 1)
@@ -302,13 +310,11 @@ class AnalysisUI:
         figure.canvas.draw()
 
     def plot_dict_correlation_matrix(self, figure, field1, field2, default=0, record_keeper=None):
-        if record_keeper is None:
-            record_keeper = RecordKeeper.instance()
-
+        records = self.get_filtered_records()
         # Gather all sub-keys from both fields.
         subkeys1 = set()
         subkeys2 = set()
-        for record in record_keeper.records:
+        for record in records:
             for turn in record.records:
                 dict1 = getattr(turn, field1, {}) or {}
                 dict2 = getattr(turn, field2, {}) or {}
@@ -324,7 +330,7 @@ class AnalysisUI:
         for i, key1 in enumerate(subkeys1):
             for j, key2 in enumerate(subkeys2):
                 x_values, y_values = [], []
-                for record in record_keeper.records:
+                for record in records:
                     for turn in record.records:
                         dict1 = getattr(turn, field1, {}) or {}
                         dict2 = getattr(turn, field2, {}) or {}
@@ -375,12 +381,27 @@ class RecordKeeperUI:
         self.update_log_button = tk.Button(self.log_frame, text="Update Records", command=self.refresh_log, 
                                            bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
         self.update_log_button.pack(side="bottom", pady=10)
-        self.analysis_ui = AnalysisUI(self.analyze_frame)
-        
+
+        # Create a Notebook inside the Analyze tab to separate analysis per persona.
+        self.analysis_notebook = ttk.Notebook(self.analyze_frame)
+        self.analysis_notebook.pack(fill="both", expand=True)
+        # For each unique persona in the records, create a sub-tab.
+        record_keeper = RecordKeeper.instance()
+        unique_personas = sorted({record.persona_name for record in record_keeper.records if record.persona_name})
+        # If there are no personas, create one default tab.
+        if not unique_personas:
+            unique_personas = ["Default"]
+        self.analysis_ui_instances = {}
+        for persona in unique_personas:
+            frame = ttk.Frame(self.analysis_notebook)
+            self.analysis_notebook.add(frame, text=persona)
+            analysis_ui = AnalysisUI(frame, persona=persona)
+            self.analysis_ui_instances[persona] = analysis_ui
+
         # Bind the window close event so we can save the plots.
         self.master.protocol("WM_DELETE_WINDOW", self.on_close)        
         self.master.bind("<Destroy>", self.on_destroy)
-
+      
     def update_log_tabs(self):
         record_keeper = RecordKeeper.instance()
         for record in record_keeper.records:
@@ -406,11 +427,12 @@ class RecordKeeperUI:
     def on_tab_changed(self, event):
         selected = event.widget.tab(event.widget.index("current"), "text")
         if selected != "Analyze":
-            # Collapse any expanded graphs and clear the info panel
-            for panel in self.analysis_ui.graph_panels:
-                if panel.expanded:
-                    panel.collapse()
-            self.analysis_ui.clear_info_tab()
+            # Collapse any expanded graphs in all analysis UI instances
+            for analysis_ui in self.analysis_ui_instances.values():
+                for panel in analysis_ui.graph_panels:
+                    if panel.expanded:
+                        panel.collapse()
+                analysis_ui.clear_info_tab()
 
     def on_close(self):
         if self._closing:
