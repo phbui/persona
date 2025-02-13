@@ -201,8 +201,6 @@ class Persona():
         notes = self.generate_notes(message, history)
         prompt = self.generate_prompt(notes, message, history)
 
-        print(notes)
-
         print("[DEBUG] Persona: Generating response...")
         response = self.llm.generate_response(prompt).replace("\n", "").replace("\"", "")
         response = self._finish_naturally(response)

@@ -1,4 +1,5 @@
 import re
+import random
 from src.ai.llm import LLM
 
 class Validator:
@@ -6,14 +7,16 @@ class Validator:
         self.persona = persona
         self.llm = llm
 
-    def extract_numeric_score(self, response: str) -> int:
+    def extract_numeric_score(self, response: str, noise_scale: float = 1.0) -> float:
         cleaned = response.strip()
         match = re.search(r'\d+(\.\d{1,2})?', cleaned)
         if not match:
             raise ValueError("No numeric value found")
         num = float(match.group())
         clamped_num = max(0, min(num, 100))
-        return round(clamped_num, 2)
+        noise = random.gauss(0, noise_scale)
+        noisy_score = clamped_num + noise
+        return round(max(0, min(noisy_score, 100)), 2)
     
     def _validate(self,
                   history, 
@@ -29,8 +32,7 @@ class Validator:
         instruction = instruction + base_instructions
         prompt_parts.append(f"[Instructions]\n{instruction}")
         prompt_string = "\n\n".join(prompt_parts)
-        score_response = self.llm.generate_response(prompt_string, 6)
-        print(f"{prompt_string}\n\n[Score]\n{score_response}")
+        score_response = self.llm.generate_response(prompt_string, 6, 0.7)
         return self.extract_numeric_score(score_response)
     
     def validate_mental_change(self, prev_mental_state, mental_change, history):
@@ -129,8 +131,6 @@ class Validator:
 
     def format_mental_state_change(self, prev_mental_state: dict, curr_mental_state: dict) -> str:
         output_lines = []
-        print(prev_mental_state)
-        print(curr_mental_state)
 
         for state in curr_mental_state:
             prev_value = prev_mental_state.get(state, 0)
