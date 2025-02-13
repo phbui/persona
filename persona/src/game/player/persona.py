@@ -87,7 +87,7 @@ class Persona():
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Current Thoughts]\n{notes}\n\n"
             f"[Instructions]\n{self.generate_instructions()}\n\n"
-            f"[Last Message]\n{history[-1]['player_name']} said \"{message}\"\n\n"
+            f"[Last Message]\n{history[-1]['player_name']}: \"{message}\"\n\n"
             "[How do you answer?]\n"
         )
     

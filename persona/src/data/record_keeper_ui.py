@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import os
 import datetime
 import json
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 # (Assuming RecordKeeper is defined elsewhere)
 from .record_keeper import RecordKeeper
@@ -84,7 +85,7 @@ class TurnFrame(tk.Frame):
 class GraphPanel(tk.Frame):
     def __init__(self, master, title, description, update_callback, info_callback=None, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
-        self.panel_title = title  # Save title for file naming later
+        self.panel_title = title 
         self.update_callback = update_callback
         self.info_callback = info_callback  # Callback for showing/clearing the turn info panel
         self.expanded = False
@@ -341,10 +342,52 @@ class RecordKeeperUI:
             self.analysis_ui.clear_info_tab()
 
     def on_close(self):
-        """Save graphs and records in structured folders when closing."""
-        record_keeper = RecordKeeper.instance()
+        if self._closing:
+            return
+        self._closing = True
 
-        print("[DEBUG] Saving records...")
+        record_keeper = RecordKeeper.instance()
+        print("[DEBUG] Refreshing analysis before saving records...")
+
+        # Force update for all graph panels regardless of expansion.
+        for panel in self.analysis_ui.graph_panels:
+            # Determine a valid container: try panel.graph_container first, then self.master.
+            container = None
+            try:
+                if panel.graph_container and panel.graph_container.winfo_exists():
+                    container = panel.graph_container
+                elif self.master and self.master.winfo_exists():
+                    container = self.master
+            except Exception:
+                container = None
+
+            if panel.figure is None:
+                # Create a new figure.
+                panel.figure = Figure(figsize=(5, 5), dpi=100)
+                # Use TkAgg if we have a valid container, otherwise use Agg.
+                if container is not None:
+                    panel.canvas = FigureCanvasTkAgg(panel.figure, master=container)
+                    panel.canvas.mpl_connect("button_press_event", panel.on_click)
+                else:
+                    panel.canvas = FigureCanvasAgg(panel.figure)
+            else:
+                # If figure exists but no canvas, create one using a valid container if possible.
+                if not hasattr(panel, 'canvas') or panel.canvas is None:
+                    if container is not None:
+                        panel.canvas = FigureCanvasTkAgg(panel.figure, master=container)
+                        panel.canvas.mpl_connect("button_press_event", panel.on_click)
+                    else:
+                        panel.canvas = FigureCanvasAgg(panel.figure)
+
+            # Update and draw the figure.
+            panel.update_callback(panel.figure)
+            panel.canvas.draw()
+
+        try:
+            if self.master and self.master.winfo_exists():
+                self.master.update_idletasks()  # Process any pending UI updates
+        except Exception:
+            pass  # If master doesn't exist, ignore.
 
         # Timestamped session folder
         date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -354,7 +397,6 @@ class RecordKeeperUI:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         saved_dir = os.path.join(current_dir, "saved")
         chat_folder_path = os.path.join(saved_dir, chat_folder_name)
-
         os.makedirs(chat_folder_path, exist_ok=True)
 
         for record in record_keeper.records:
@@ -367,17 +409,20 @@ class RecordKeeperUI:
             # Save each graph panel's figure in this persona's folder
             for panel in self.analysis_ui.graph_panels:
                 if panel.figure:
+                    # Redraw to ensure the latest data is rendered.
+                    panel.canvas.draw()
                     file_name = f"{panel.panel_title}.png"
                     file_path = os.path.join(persona_folder_path, file_name)
                     panel.figure.savefig(file_path)
+                    print(f"[INFO] Saved plot: {file_path}")
 
             # Save the record as a JSON file
             json_file_path = os.path.join(persona_folder_path, f"{persona_name}.json")
             with open(json_file_path, "w", encoding="utf-8") as json_file:
                 json.dump(record.to_dict(), json_file, indent=4, ensure_ascii=False)
+            print(f"[INFO] Saved record: {json_file_path}")
 
         print(f"[INFO] Records saved at {chat_folder_path}")
-        
         self.master.destroy()
 
     def on_destroy(self, event):

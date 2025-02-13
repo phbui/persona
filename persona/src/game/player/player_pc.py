@@ -23,7 +23,7 @@ class PC(Player):
         if self.root is None:
             print(f"[DEBUG] Creating chat interface.")
             self.root = tk.Tk()
-            self.root.title(f"Chatting with {self.name}")
+            self.root.title(f"{self.name}'s Chat Room")
             self.root.geometry("700x600")
             self.root.configure(bg="#ECECEC")
             
