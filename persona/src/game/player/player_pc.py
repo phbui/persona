@@ -65,7 +65,7 @@ class PC(Player):
                 state='disabled',
                 bg="#F5F5F5",
                 fg="#333333",
-                font=("Helvetica", 12),
+                font=("Segoe UI", 12),
                 bd=0,
                 relief="flat"
             )

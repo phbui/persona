@@ -26,18 +26,14 @@ class Game:
             self.turn = 0
 
     def play_game(self, num_turns):
-        if len(self.players) > 2:
-            print('Too many players!')
-            return
-
         if len(self.players) < 2:
             print('Not enough players!')
             return
         
         turn_counter = 0
-
-        # Player 2 is the PC
-        self.chat.add_turn("[GAME WORLD]", f"{self.players[1]['player'].name} approaches {self.players[0]['player'].name}.")
+        player_names = "".join(f"[{p['player'].name}]" for p in self.players)
+        message = f"{player_names} all run into each other."
+        self.chat.add_turn("[Story So Far]", message)
 
         while turn_counter < num_turns:
             self.play_turn()

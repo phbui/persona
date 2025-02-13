@@ -12,8 +12,7 @@ import os
 import datetime
 import json
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-
-# (Assuming RecordKeeper is defined elsewhere)
+from scipy.stats import pearsonr
 from .record_keeper import RecordKeeper
 
 def reduce_to_3d(df):
@@ -195,6 +194,26 @@ class AnalysisUI:
         self.response_emotions_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.response_emotions_panel)
         
+        self.input_vs_mental_panel = GraphPanel(
+            self.container,
+            "Input vs Mental Correlation Matrix",
+            "Heatmap comparing input_message_emotion and mental_change",
+            lambda fig: self.plot_dict_correlation_matrix(fig, "input_message_emotion", "mental_change"),
+            info_callback=self.info_callback
+        )
+        self.input_vs_mental_panel.pack(fill="x", pady=5)
+        self.graph_panels.append(self.input_vs_mental_panel)
+        
+        self.mental_vs_response_panel = GraphPanel(
+            self.container,
+            "Mental vs Response Correlation Matrix",
+            "Heatmap comparing mental_change and response_emotion",
+            lambda fig: self.plot_dict_correlation_matrix(fig, "mental_change", "response_emotion"),
+            info_callback=self.info_callback
+        )
+        self.mental_vs_response_panel.pack(fill="x", pady=5)
+        self.graph_panels.append(self.mental_vs_response_panel)
+        
         self.update_button = tk.Button(master, text="Update Analysis", command=self.update_all, bg="#4CAF50", fg="white",
                                        font=("Helvetica", 12, "bold"))
         self.update_button.pack(side="bottom", pady=10)
@@ -210,9 +229,7 @@ class AnalysisUI:
             self.show_info_tab(turn)
 
     def show_info_tab(self, turn):
-        # Clear any previous info panel first.
         self.clear_info_tab()
-        # Create an info panel at the bottom of the Analyze tab.
         self.info_frame = tk.Frame(self.master, bg="#eee", bd=2, relief="sunken")
         self.info_frame.pack(fill="x", padx=5, pady=5)
         st = scrolledtext.ScrolledText(self.info_frame, wrap=tk.WORD, font=("Helvetica", 10), height=10)
@@ -284,12 +301,66 @@ class AnalysisUI:
         ax.legend()
         figure.canvas.draw()
 
+    def plot_dict_correlation_matrix(self, figure, field1, field2, default=0, record_keeper=None):
+        if record_keeper is None:
+            record_keeper = RecordKeeper.instance()
+
+        # Gather all sub-keys from both fields.
+        subkeys1 = set()
+        subkeys2 = set()
+        for record in record_keeper.records:
+            for turn in record.records:
+                dict1 = getattr(turn, field1, {}) or {}
+                dict2 = getattr(turn, field2, {}) or {}
+                if isinstance(dict1, dict):
+                    subkeys1.update(dict1.keys())
+                if isinstance(dict2, dict):
+                    subkeys2.update(dict2.keys())
+        subkeys1 = sorted(list(subkeys1))
+        subkeys2 = sorted(list(subkeys2))
+
+        # Initialize a correlation matrix.
+        corr_matrix = np.zeros((len(subkeys1), len(subkeys2)))
+        for i, key1 in enumerate(subkeys1):
+            for j, key2 in enumerate(subkeys2):
+                x_values, y_values = [], []
+                for record in record_keeper.records:
+                    for turn in record.records:
+                        dict1 = getattr(turn, field1, {}) or {}
+                        dict2 = getattr(turn, field2, {}) or {}
+                        x = dict1.get(key1, default) if isinstance(dict1, dict) else default
+                        y = dict2.get(key2, default) if isinstance(dict2, dict) else default
+                        x_values.append(x)
+                        y_values.append(y)
+                if len(x_values) > 1:
+                    corr, _ = pearsonr(x_values, y_values)
+                else:
+                    corr = 0.0
+                corr_matrix[i, j] = corr
+
+        # Plot a heatmap in the provided figure.
+        figure.clf()
+        ax = figure.add_subplot(111)
+        cax = ax.imshow(corr_matrix, cmap="coolwarm", vmin=-1, vmax=1)
+        figure.colorbar(cax)
+        ax.set_xticks(np.arange(len(subkeys2)))
+        ax.set_yticks(np.arange(len(subkeys1)))
+        ax.set_xticklabels(subkeys2, rotation=45, ha="right", fontsize=8)
+        ax.set_yticklabels(subkeys1, fontsize=8)
+        ax.set_title(f"{field1} vs {field2} Correlation Matrix", fontsize=12)
+        # Annotate each cell with the correlation value.
+        for i in range(len(subkeys1)):
+            for j in range(len(subkeys2)):
+                ax.text(j, i, f"{corr_matrix[i, j]:.2f}", ha="center", va="center", color="black", fontsize=8)
+        figure.tight_layout()
+        figure.canvas.draw()
+
 class RecordKeeperUI:
     def __init__(self, master):
         self.master = master
         self._closing = False
         self.master.title("Record Keeper")
-        self.master.geometry("800x800")
+        self.master.geometry("800x1000")
         self.main_notebook = ttk.Notebook(master)
         self.main_notebook.pack(fill="both", expand=True)
         self.log_frame = ttk.Frame(self.main_notebook)

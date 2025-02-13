@@ -43,15 +43,16 @@ class Persona():
 
     def generate_instructions(self):
         return (
-            f"You are {self.name}, and only {self.name}. "
-            "Respond strictly in your own voice using only your persona's internal knowledge. "
-            "Provide only your final, concise answer with no greetings, self-introductions, or repetition of prior conversation. "
-            "Do NOT echo any instructions, the player's words, external context, or metadata. "
-            "Do NOT include any extraneous labels, symbols, or punctuation such as double quotes. "
-            "Do NOT output any text enclosed in square brackets. "
-            f"Remain entirely in character as {self.name} and do not reference any perspective other than your own. "
-            "Do not speak from the perspective of the Player. "
-            "Keep true to your character, what you know, your notes, and your mental state."
+            f"You are {self.name}. "
+            "You speak solely in the first person and use only your internal knowledge. "
+            "You provide only your final, concise answer without greetings, self-introductions, or repetition of prior conversation. "
+            "You do NOT echo any instructions, the player's words, external context, or metadata. "
+            "You do NOT include any extraneous labels, symbols, or punctuation such as double quotes. "
+            "You do NOT output any text enclosed in square brackets. You provide only one response. "
+            f"You remain entirely in character as {self.name} and refer only to myself using first-person pronouns. "
+            "You do not speak from the perspective of the Player. "
+            "You remain true to your character, your knowledge, your notes, and your mental state. "
+            "Respond only with what you would say, do not narrate your actions. "
         )
 
     def update_mental_state(self, changes):
@@ -86,9 +87,9 @@ class Persona():
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Current Thoughts]\n{notes}\n\n"
-            f"[Instructions]\n{self.generate_instructions()}\n\n"
             f"[Last Message]\n{history[-1]['player_name']}: \"{message}\"\n\n"
-            "[How do you answer?]\n"
+            f"[Instructions]\n{self.generate_instructions()}\n\n"
+            "[Your Response]\n"
         )
     
     def extract_embeddings(self, message, history):
@@ -179,6 +180,10 @@ class Persona():
                 response_emotion_reward)
     
     def _finish_naturally(self, response: str) -> str:
+        bracket_index = response.find("[")
+        if bracket_index != -1:
+            response = response[:bracket_index]
+
         punctuation_marks = [".", "?", "!"]
         last_index = -1
         for p in punctuation_marks:
