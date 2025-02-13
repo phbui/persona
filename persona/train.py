@@ -22,12 +22,11 @@ current_record_keeper_window = None
 def run_ui():
     global ui_root
     ui_root = tk.Tk()
-    ui_root.title("Main Epoch UI")
-    ui_root.geometry("800x600")
-    # Launch the aggregated EpochRecordKeeperUI in a persistent window.
-    epoch_keeper_window = tk.Toplevel(ui_root)
-    epoch_keeper_window.title("Epoch Aggregated UI")
-    epoch_keeper_ui = EpochRecordKeeperUI(epoch_keeper_window)
+    # Use the main root as the aggregated Epoch Keeper UI.
+    ui_root.title("Epoch Aggregated UI")
+    ui_root.geometry("800x1000")
+    # Instantiate the aggregated UI on the main root.
+    EpochRecordKeeperUI(ui_root)
     ui_root.mainloop()
 
 def create_record_keeper_window(epoch_number):
@@ -42,7 +41,7 @@ def create_record_keeper_window(epoch_number):
     current_record_keeper_window = tk.Toplevel(ui_root)
     current_record_keeper_window.title(f"Record Keeper - Epoch {epoch_number}")
     # Instantiate the RecordKeeperUI (which shows logs and analysis for that epoch).
-    record_keeper_ui = RecordKeeperUI(current_record_keeper_window)
+    RecordKeeperUI(current_record_keeper_window)
 
 # ---------- Gather Training Parameters ----------
 personas_folder = os.path.join(os.path.dirname(__file__), "src", "game", "player", "personas")
@@ -125,15 +124,9 @@ def training_loop():
     
     print("Training complete. All epochs finished.")
 
-# ---------- Start the UI in its own thread ----------
-ui_thread = threading.Thread(target=run_ui, daemon=False)
-ui_thread.start()
-print("Main Epoch UI is running in its own thread.")
-
 # ---------- Start the Training Loop in its own thread ----------
 training_thread = threading.Thread(target=training_loop, daemon=True)
 training_thread.start()
 
-# Wait for the training thread to complete.
-training_thread.join()
-print("Training complete. All epochs finished.")
+# Run the UI in the main thread.
+run_ui()
