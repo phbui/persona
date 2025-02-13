@@ -1,17 +1,19 @@
 import re
+from src.ai.llm import LLM
 
 class Validator:
-    def __init__(self, persona, llm):
+    def __init__(self, persona, llm: LLM):
         self.persona = persona
         self.llm = llm
 
     def extract_numeric_score(self, response: str) -> int:
         cleaned = response.strip()
-        match = re.search(r'\d+', cleaned)
+        match = re.search(r'\d+(\.\d{1,2})?', cleaned)
         if not match:
             raise ValueError("No numeric value found")
-        num = int(match.group())
-        return max(0, min(num, 100))
+        num = float(match.group())
+        clamped_num = max(0, min(num, 100))
+        return round(clamped_num, 2)
     
     def _validate(self,
                   history, 
@@ -28,15 +30,17 @@ class Validator:
         prompt_parts.append(f"[Instructions]\n{instruction}")
         prompt_string = "\n\n".join(prompt_parts)
         score_response = self.llm.generate_response(prompt_string, 6)
+        print(f"{prompt_string}\n\n[Score]\n{score_response}")
         return self.extract_numeric_score(score_response)
     
     def validate_mental_change(self, prev_mental_state, mental_change, history):
         sections = {
             "Your PREVIOUS Mental State": self.format_mental_state(prev_mental_state),
+            "Your Mental State Change": self.format_mental_state_change(prev_mental_state, mental_change),
             "Your NEW Mental State": self.format_mental_state(mental_change)
         }
         instruction = ("Based on all of the above information, respond with only a single integer "
-                       "between 0 and 100 that represents how accurate your new mental state is for your character.")
+                       "between 0 and 100 that represents how accurate the mental state change is for your character.")
         
         print("[DEBUG] Validator: Validating mental state...")
         return self._validate(history, sections, instruction)
@@ -75,26 +79,26 @@ class Validator:
         output_lines = []
         for emotion, value in emotions.items():
             if value >= 0.9:
-                intensity = "overwhelmingly"
+                intensity = "overwhelmingly feel"
             elif value >= 0.8:
-                intensity = "extremely"
+                intensity = "very strongly"
             elif value >= 0.7:
-                intensity = "very"
+                intensity = "strongly feel"
             elif value >= 0.6:
-                intensity = "quite"
+                intensity = "somewhat feel"
             elif value >= 0.5:
-                intensity = "moderately"
+                intensity = "moderately feel"
             elif value >= 0.4:
-                intensity = "somewhat"
+                intensity = "somewhat feel"
             elif value >= 0.3:
-                intensity = "mildly"
+                intensity = "mildly feel"
             elif value >= 0.2:
-                intensity = "slightly"
+                intensity = "slightly feel"
             elif value >= 0.1:
-                intensity = "barely"
+                intensity = "feel barely any"
             else:
-                intensity = "hardly"
-            output_lines.append(f"I feel {intensity} {emotion}.")
+                intensity = "feel hardly any"
+            output_lines.append(f"I {intensity} {emotion}.")
         return " ".join(output_lines)
 
     def format_mental_state(self, mental_state: dict) -> str:
@@ -120,5 +124,46 @@ class Validator:
                 descriptor = "extremely poor"
             else:
                 descriptor = "abysmal"
-            output_lines.append(f"My mental state for {state} is {descriptor} ({value}).")
+            output_lines.append(f"My mental state for {state} is {descriptor}.")
+        return " ".join(output_lines)
+
+    def format_mental_state_change(self, prev_mental_state: dict, curr_mental_state: dict) -> str:
+        output_lines = []
+        print(prev_mental_state)
+        print(curr_mental_state)
+
+        for state in curr_mental_state:
+            prev_value = prev_mental_state.get(state, 0)
+            curr_value = curr_mental_state[state]
+            delta = curr_value - prev_value
+
+            if delta >= 80:
+                descriptor = "exceptionally improved"
+            elif delta >= 60:
+                descriptor = "tremendously improved"
+            elif delta >= 40:
+                descriptor = "dramatically improved"
+            elif delta >= 20:
+                descriptor = "significantly improved"
+            elif delta >= 10:
+                descriptor = "moderately improved"
+            elif delta > 0:
+                descriptor = "slightly improved"
+            elif delta == 0:
+                descriptor = "remained unchanged"
+            elif delta > -10:
+                descriptor = "slightly declined"
+            elif delta > -20:
+                descriptor = "moderately declined"
+            elif delta > -40:
+                descriptor = "significantly declined"
+            elif delta > -60:
+                descriptor = "dramatically declined"
+            elif delta > -80:
+                descriptor = "tremendously declined"
+            else:
+                descriptor = "exceptionally declined"
+
+            output_lines.append(f"My mental state for {state} has {descriptor} (change: {delta}).")
+
         return " ".join(output_lines)

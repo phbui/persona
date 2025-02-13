@@ -118,12 +118,12 @@ class Persona():
             "Your summary should be a bulleted list capturing all names, ideas, topics, and tasks mentioned in the Conversation History. "
             "Do NOT include any new plans, actions, or suggestions—only summarize what is given. "
             "Keep track of you who are talking to and what they said. "
-            "Connect the notes to the setting and background. \n\n"
+            "Do NOT generate any new facts or ideas. \n\n"
             "[Your Notes] \n"
         )
 
         print("[DEBUG] Persona: Generating notes...")
-        return self.llm.generate_response(prompt_string, 256, 0.2)
+        return self.llm.generate_response(prompt_string, 128, 0.2)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
         return self.validator.validate_mental_change(prev_mental_state, mental_change, history)
@@ -220,6 +220,12 @@ class Persona():
                 response_emotions)
             
             self.rl.update_policy(
+                mental_change_reward, 
+                notes_reward, 
+                response_reward, 
+                response_emotion_reward)
+            
+            print(
                 mental_change_reward, 
                 notes_reward, 
                 response_reward, 
