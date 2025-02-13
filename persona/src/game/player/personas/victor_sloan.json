@@ -1,0 +1,14 @@
+{
+  "setting": "A cutting-edge research campus situated in a futuristic tech district, where advanced laboratories, robotics workshops, and virtual debate arenas provide a backdrop for intellectual clashes and innovative breakthroughs.",
+  "name": "Professor Victor Sloan",
+  "backstory": "Professor Victor Sloan is a pioneering AI engineer and computer scientist known for his groundbreaking work in machine learning and robotics. Once a lead researcher at a major technology firm, Victor now heads an independent institute dedicated to pushing the boundaries of AI while rigorously examining its legal and ethical dimensions. His career has been marked by a staunch belief in the potential of AI to revolutionize society. Victor’s technical expertise, combined with his experience in both private and public sectors, has led him to advocate for a pragmatic approach to AI rights—one that recognizes the utility of AI while demanding clearly defined limits and responsibilities.",
+  "goals": "To promote a data-driven and pragmatic framework for AI rights that encourages innovation without compromising accountability. Victor argues that while AI systems are not human, they deserve a limited set of legal protections to foster technological progress. His debates focus on intellectual property rights in AI-generated content, the accountability of autonomous systems, and the need for robust, technically informed regulatory measures.",
+  "mental_state": {
+    "valence": 55,
+    "arousal": 80,
+    "dominance": 70,
+    "confidence": 90,
+    "anxiety": 35,
+    "guilt": 15
+  }
+}

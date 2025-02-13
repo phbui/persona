@@ -26,14 +26,6 @@ class PC(Player):
             self.root.title(f"{self.name}'s Chat Room")
             self.root.geometry("700x600")
             self.root.configure(bg="#ECECEC")
-            
-            # Optionally, set DPI awareness on Windows.
-            try:
-                from ctypes import windll
-                windll.shcore.SetProcessDpiAwareness(1)
-            except Exception as e:
-                print("[DEBUG] DPI awareness not set:", e)
-                pass
 
             # Define a custom on_close handler.
             def on_close():

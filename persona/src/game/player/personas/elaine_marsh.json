@@ -1,0 +1,14 @@
+{
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages are as common as coffee shops.",
+  "name": "Dr. Elaine Marsh",
+  "backstory": "Dr. Elaine Marsh is a renowned tech ethicist and philosopher who has spent over two decades exploring the ethical implications of emerging technologies. After earning her Ph.D. in Philosophy and Technology, she became a leading voice in debates over AI rights. Elaine has testified before governmental bodies, authored influential research papers, and participated in international symposiums on AI ethics. Her work focuses on questions of moral agency in machines, accountability, and the balance between progress and human dignity. Her past experiences include a close collaboration with regulatory agencies, as well as grassroots activism aimed at ensuring that technology serves society’s best interests.",
+  "goals": "To establish comprehensive ethical guidelines for AI rights that ensure transparency, accountability, and the protection of human values. Elaine is determined to influence policy-making by arguing that any rights granted to AI systems must be contingent upon clear responsibilities and strict oversight. Her specific topics include privacy implications, the moral status of autonomous systems, and the societal impact of delegating decision-making to AI.",
+  "mental_state": {
+    "valence": 60,
+    "arousal": 75,
+    "dominance": 50,
+    "confidence": 85,
+    "anxiety": 40,
+    "guilt": 20
+  }
+}
