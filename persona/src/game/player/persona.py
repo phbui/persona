@@ -124,7 +124,7 @@ class Persona():
         )
 
         print("[DEBUG] Persona: Generating notes...")
-        return self.llm.generate_response(prompt_string, 512, 0.2)
+        return self.llm.generate_response(prompt_string, 256, 0.2)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
         return self.validator.validate_mental_change(prev_mental_state, mental_change, history)
@@ -214,7 +214,7 @@ class Persona():
         prompt = self.generate_prompt(notes, message, history)
 
         print("[DEBUG] Persona: Generating response...")
-        response = self.llm.generate_response(prompt, 128).replace("\n", "").replace("\"", "")
+        response = self.llm.generate_response(prompt, 64).replace("\n", "").replace("\"", "")
         response = self._finish_naturally(response)
 
         if self.training: 

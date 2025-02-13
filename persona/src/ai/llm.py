@@ -57,16 +57,16 @@ class LLM:
         # Set up the accelerator and prepare the model.
         self.accelerator = Accelerator()
         self.model = self.accelerator.prepare(self.model)
-            
+                
     def generate_response(self, prompt: str, max_new_tokens: int = 256, temperature: float = 1.0) -> str:
-        with torch.no_grad():
+        with torch.inference_mode():
             inputs = self.tokenizer(prompt, return_tensors="pt")
             # Move inputs to the correct device.
             device = next(self.model.parameters()).device
             inputs = {k: v.to(device) for k, v in inputs.items()}
-            
+
             prompt_length = inputs["input_ids"].shape[1]
-            
+
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
@@ -74,6 +74,6 @@ class LLM:
                 do_sample=True,
                 temperature=temperature
             )
-            
+
             new_tokens = outputs[0][prompt_length:]
             return self.tokenizer.decode(new_tokens, skip_special_tokens=True)
