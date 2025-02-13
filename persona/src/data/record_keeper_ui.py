@@ -2,13 +2,14 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext
 import numpy as np
 import matplotlib
-import pandas as pd
 matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
 from .record_keeper import RecordKeeper
+import matplotlib.pyplot as plt
+import numpy as np
 
 def reduce_to_3d(df):
     pca = PCA(n_components=3)
@@ -160,15 +161,30 @@ class GraphPanel(tk.Frame):
         self.nav_text.delete("1.0", tk.END)
         self.nav_text.insert(tk.END, text)
 
+
 class AnalysisUI:
     def __init__(self, master):
         self.master = master
         self.container = ttk.Frame(master)
         self.container.pack(fill="both", expand=True)
         self.graph_panels = []
+        
         self.reward_panel = GraphPanel(self.container, "Aggregate Rewards over Turns", "Line graph for all 4 rewards", self.update_reward_graph)
         self.reward_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.reward_panel)
+        
+        self.mental_state_panel = GraphPanel(self.container, "Mental State Evolution", "Line graph for mental state attributes", self.update_mental_state_graph)
+        self.mental_state_panel.pack(fill="x", pady=5)
+        self.graph_panels.append(self.mental_state_panel)
+        
+        self.input_emotions_panel = GraphPanel(self.container, "Input Emotions Over Turns", "Line graph for input emotions", lambda fig: self.update_emotions_graph(fig, "input"))
+        self.input_emotions_panel.pack(fill="x", pady=5)
+        self.graph_panels.append(self.input_emotions_panel)
+        
+        self.response_emotions_panel = GraphPanel(self.container, "Response Emotions Over Turns", "Line graph for response emotions", lambda fig: self.update_emotions_graph(fig, "response"))
+        self.response_emotions_panel.pack(fill="x", pady=5)
+        self.graph_panels.append(self.response_emotions_panel)
+        
         self.update_button = tk.Button(master, text="Update Analysis", command=self.update_all, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
         self.update_button.pack(side="bottom", pady=10)
 
@@ -179,62 +195,49 @@ class AnalysisUI:
                 panel.canvas.draw()
 
     def update_reward_graph(self, figure):
+        self.plot_multi_line(figure, "Rewards Over Turns", "Turn Number", "Reward Value", ["Mental Change Reward", "Notes Reward", "Response Reward", "Response Emotion Reward"],
+                            lambda turn: [turn.reward_mental_change, turn.notes_reward, turn.response_reward, turn.response_emotion_reward])
+
+    def update_mental_state_graph(self, figure):
+        self.plot_multi_line(figure, "Mental State Evolution Over Turns", "Turn Number", "Mental State Value", ["Valence", "Arousal", "Dominance", "Confidence", "Anxiety", "Guilt"],
+                            lambda turn: [turn.mental_change["valence"], turn.mental_change["arousal"], turn.mental_change["dominance"], turn.mental_change["confidence"], turn.mental_change["anxiety"], turn.mental_change["guilt"]])
+
+    def update_emotions_graph(self, figure, emotion_type):
+        labels = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
+
+        self.plot_multi_line(
+            figure,
+            f"{emotion_type.capitalize()} Emotions Over Turns",
+            "Turn Number",
+            "Emotion Score",
+            labels,
+            lambda turn: [
+                turn.input_message_emotion.get(label, 0) if emotion_type == "input" 
+                else turn.response_emotion.get(label, 0) 
+                for label in labels
+            ]
+        )
+
+    def plot_multi_line(self, figure, title, xlabel, ylabel, labels, data_extractor):
         ax = figure.gca()
         ax.cla()
-        ax.set_title("Aggregate Rewards over Turns")
-        ax.set_xlabel("Turn Number")
-        ax.set_ylabel("Reward Value")
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
         record_keeper = RecordKeeper.instance()
-        data_points = []
-        colors = {"reward_mental_change": "blue", "notes_reward": "green", "response_reward": "red", "response_emotion_reward": "purple"}
+        colors = plt.cm.viridis(np.linspace(0, 1, len(labels)))
         for record in record_keeper.records:
             if not record.records:
                 continue
             turn_nums = np.arange(1, len(record.records) + 1)
-            rm_rewards, f_rewards, r_rewards, re_rewards = [], [], [], []
-            for i, turn in enumerate(record.records):
-                try:
-                    rm = float(turn.reward_mental_change)
-                except Exception:
-                    try:
-                        rm = float(turn.reward_mental_change[0])
-                    except Exception:
-                        rm = 0
-                try:
-                    f = float(turn.notes_reward)
-                except Exception:
-                    try:
-                        f = float(turn.notes_reward[0])
-                    except Exception:
-                        f = 0
-                try:
-                    r = float(turn.response_reward)
-                except Exception:
-                    try:
-                        r = float(turn.response_reward[0])
-                    except Exception:
-                        r = 0
-                try:
-                    re = float(turn.response_emotion_reward)
-                except Exception:
-                    try:
-                        re = float(turn.response_emotion_reward[0])
-                    except Exception:
-                        re = 0
-                rm_rewards.append(rm)
-                f_rewards.append(f)
-                r_rewards.append(r)
-                re_rewards.append(re)
-                data_points.append({"x": turn_nums[i], "y": rm, "reward_type": "reward_mental_change", "turn": turn})
-                data_points.append({"x": turn_nums[i], "y": f, "reward_type": "notes_reward", "turn": turn})
-                data_points.append({"x": turn_nums[i], "y": r, "reward_type": "response_reward", "turn": turn})
-                data_points.append({"x": turn_nums[i], "y": re, "reward_type": "response_emotion_reward", "turn": turn})
-            ax.plot(turn_nums, rm_rewards, marker="o", color=colors["reward_mental_change"], label=f"{record.persona_name} mental change")
-            ax.plot(turn_nums, f_rewards, marker="o", color=colors["notes_reward"], label=f"{record.persona_name} notes")
-            ax.plot(turn_nums, r_rewards, marker="o", color=colors["response_reward"], label=f"{record.persona_name} response")
-            ax.plot(turn_nums, re_rewards, marker="o", color=colors["response_emotion_reward"], label=f"{record.persona_name} response emotion")
+            series_data = [[] for _ in labels]
+            for turn in record.records:
+                extracted_data = data_extractor(turn)
+                for i, value in enumerate(extracted_data):
+                    series_data[i].append(value)
+            for i, series in enumerate(series_data):
+                ax.plot(turn_nums, series, marker="o", linestyle="-", label=f"{labels[i]}", color=colors[i])
         ax.legend()
-        self.reward_panel.data_points = data_points
         figure.canvas.draw()
 
 class RecordKeeperUI:

@@ -51,7 +51,7 @@ class Persona():
             "Do NOT output any text enclosed in square brackets. "
             f"Remain entirely in character as {self.name} and do not reference any perspective other than your own. "
             "Do not speak from the perspective of the Player. "
-            "Keep your answer under 128 tokens, true to your character, what you know, and your mental state."
+            "Keep true to your character, what you know, your notes, and your mental state."
         )
 
     def update_mental_state(self, changes):
@@ -123,7 +123,7 @@ class Persona():
         )
 
         print("[DEBUG] Persona: Generating notes...")
-        return self.llm.generate_response(prompt_string, 128, 0.2)
+        return self.llm.generate_response(prompt_string, 256, 0.2)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
         return self.validator.validate_mental_change(prev_mental_state, mental_change, history)

@@ -60,7 +60,7 @@ class LLM:
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 use_cache=True,
-                do_sample=False,
+                do_sample=True,
                 temperature=temperature
             )
             
