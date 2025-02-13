@@ -164,9 +164,12 @@ class GraphPanel(tk.Frame):
         self.update_nav_window()
 
     def update_nav_window(self):
-        turn = self.data_points[self.nav_index]["turn"]
+        point = self.data_points[self.nav_index]
+        turn = point["turn"]
+        reward_type = point.get("reward_type", "")
+        text = f"Reward Type: {reward_type}\n\n" + str(turn)
         self.nav_text.delete("1.0", tk.END)
-        self.nav_text.insert(tk.END, str(turn))
+        self.nav_text.insert(tk.END, text)
 
     def nav_prev(self):
         if self.nav_index > 0:
@@ -188,13 +191,9 @@ class AnalysisUI:
         self.container = ttk.Frame(master)
         self.container.pack(fill="both", expand=True)
         self.graph_panels = []
-        self.reward_panel = GraphPanel(self.container, "Response Reward over Turns", "Line plot showing response rewards per turn", self.update_reward_graph)
+        self.reward_panel = GraphPanel(self.container, "Aggregate Rewards over Turns", "Line graph for all 4 rewards", self.update_reward_graph)
         self.reward_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.reward_panel)
-        self.threeD_mental_emotional = GraphPanel(self.container, "3D Projection", "3D scatter plot (PCA) of mental state and emotion data. Use toolbar to zoom/drag.", self.update_3d_mental_emotional)
-        self.threeD_mental_emotional.pack(fill="x", pady=5)
-        self.graph_panels.append(self.threeD_mental_emotional)
-        self.graph_panels.append(self.heatmap_panel)
         self.update_button = tk.Button(master, text="Update Analysis", command=self.update_all, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
         self.update_button.pack(side="bottom", pady=10)
 
@@ -207,67 +206,60 @@ class AnalysisUI:
     def update_reward_graph(self, figure):
         ax = figure.gca()
         ax.cla()
-        ax.set_title("Response Reward over Turns")
+        ax.set_title("Aggregate Rewards over Turns")
         ax.set_xlabel("Turn Number")
-        ax.set_ylabel("Response Reward")
-        data_points = []
+        ax.set_ylabel("Reward Value")
         record_keeper = RecordKeeper.instance()
+        data_points = []
+        colors = {"reward_mental_change": "blue", "focus_reward": "green", "response_reward": "red", "response_emotion_reward": "purple"}
         for record in record_keeper.records:
             if not record.records:
                 continue
             turn_nums = np.arange(1, len(record.records) + 1)
-            rewards = []
+            rm_rewards, f_rewards, r_rewards, re_rewards = [], [], [], []
             for i, turn in enumerate(record.records):
                 try:
-                    reward = float(turn.response_reward)
+                    rm = float(turn.reward_mental_change)
                 except Exception:
                     try:
-                        reward = float(turn.response_reward[0])
+                        rm = float(turn.reward_mental_change[0])
                     except Exception:
-                        reward = 0
-                rewards.append(reward)
-                data_points.append({"x": turn_nums[i], "y": reward, "turn": turn})
-            ax.plot(turn_nums, rewards, marker="o", label=record.persona_name)
+                        rm = 0
+                try:
+                    f = float(turn.focus_reward)
+                except Exception:
+                    try:
+                        f = float(turn.focus_reward[0])
+                    except Exception:
+                        f = 0
+                try:
+                    r = float(turn.response_reward)
+                except Exception:
+                    try:
+                        r = float(turn.response_reward[0])
+                    except Exception:
+                        r = 0
+                try:
+                    re = float(turn.response_emotion_reward)
+                except Exception:
+                    try:
+                        re = float(turn.response_emotion_reward[0])
+                    except Exception:
+                        re = 0
+                rm_rewards.append(rm)
+                f_rewards.append(f)
+                r_rewards.append(r)
+                re_rewards.append(re)
+                data_points.append({"x": turn_nums[i], "y": rm, "reward_type": "reward_mental_change", "turn": turn})
+                data_points.append({"x": turn_nums[i], "y": f, "reward_type": "focus_reward", "turn": turn})
+                data_points.append({"x": turn_nums[i], "y": r, "reward_type": "response_reward", "turn": turn})
+                data_points.append({"x": turn_nums[i], "y": re, "reward_type": "response_emotion_reward", "turn": turn})
+            ax.plot(turn_nums, rm_rewards, marker="o", color=colors["reward_mental_change"], label=f"{record.persona_name} mental change")
+            ax.plot(turn_nums, f_rewards, marker="o", color=colors["focus_reward"], label=f"{record.persona_name} focus")
+            ax.plot(turn_nums, r_rewards, marker="o", color=colors["response_reward"], label=f"{record.persona_name} response")
+            ax.plot(turn_nums, re_rewards, marker="o", color=colors["response_emotion_reward"], label=f"{record.persona_name} response emotion")
         ax.legend()
         self.reward_panel.data_points = data_points
-
-    def update_3d_mental_emotional(self, figure):
-        figure.clf()
-        ax = figure.add_subplot(111, projection='3d')
-        ax.cla()
-        ax.set_title("3D Projection of Mental State & Emotion")
-        record_keeper = RecordKeeper.instance()
-        data = []
-        for record in record_keeper.records:
-            for turn in record.records:
-                row = {}
-                for key, val in turn.mental_change.items():
-                    try:
-                        row[key] = float(val)
-                    except Exception as e:
-                        row[key] = np.nan
-                if isinstance(turn.input_message_emotion, dict):
-                    for emotion, val in turn.input_message_emotion.items():
-                        try:
-                            row[f"input_emotion_{emotion}"] = float(val)
-                        except Exception as e:
-                            row[f"input_emotion_{emotion}"] = np.nan
-                else:
-                    try:
-                        row["input_emotion"] = float(turn.input_message_emotion)
-                    except Exception as e:
-                        row["input_emotion"] = np.nan
-                data.append(row)
-        df = pd.DataFrame(data).dropna()
-        if df.shape[0] < 3:
-            ax.text(0.5, 0.5, 0.5, "Not enough data for 3D projection", transform=ax.transAxes, ha="center")
-            figure.canvas.draw()
-            return
-        reduced = reduce_to_3d(df)
-        sc = ax.scatter(reduced[:,0], reduced[:,1], reduced[:,2], c=reduced[:,0], cmap="viridis")
-        if hasattr(self, "cb") and self.cb is not None:
-            self.cb.remove()
-        self.cb = figure.colorbar(sc, ax=ax)
         figure.canvas.draw()
 
 class RecordKeeperUI:

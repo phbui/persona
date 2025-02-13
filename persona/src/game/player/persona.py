@@ -81,13 +81,13 @@ class Persona():
             f"[Your Goals]\n{self.goals}\n\n"
             )
 
-    def generate_prompt(self, focus, message):
+    def generate_prompt(self, focus, history):
         return (
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
             f"[Your Focus]\n{focus}\n\n"
+            f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
             f"[Instructions]\n{self.generate_instructions()}\n\n"
-            f"[Last Message]\n{message['player_name']} said \"{message['message']}\"\n\n"
             "[How do you answer?]\n"
         )
     
@@ -113,7 +113,8 @@ class Persona():
             f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
             f"[Your Mental State]\n{self.mental_state}"
             f"[Instructions]\nBased on the above information, write in the second person as {self.name} describing what you are thinking right now. "
-            f"Keep it concise (under 256 tokens), reflective, and true to your character, what your character knows, and your mental state."
+            f"Keep it concise (under 256 tokens), reflective, and true to your character, what your character knows, and your mental state. "
+            "Keep track of pronouns, names, and ideas that come up during the conversation."
         )
 
         print("[DEBUG] Persona: Generating focus...")
@@ -184,7 +185,6 @@ class Persona():
 
     def generate_response(self, history):
         message = history[-1]['message']
-        history = history[-10:]
 
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)
@@ -194,7 +194,7 @@ class Persona():
         self.update_mental_state(mental_change)
 
         focus = self.generate_focus(history)
-        prompt = self.generate_prompt(focus, history[-1])
+        prompt = self.generate_prompt(focus, history)
 
         print("[DEBUG] Persona: Generating response...")
         response = self.llm.generate_response(prompt).replace("\n", "").replace("\"", "")
