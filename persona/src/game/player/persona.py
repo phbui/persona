@@ -201,9 +201,6 @@ class Persona():
     def generate_response(self, history):
         num_opponents = self._count_unique_players(history)
         messages = history[-num_opponents:]
-
-        print(messages)
-        
         message = "\n".join(f"[{msg['player_name']}]: {msg['message']}" for msg in messages)
 
         embeddings = self.extract_embeddings(message, history)

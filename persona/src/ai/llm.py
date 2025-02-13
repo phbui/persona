@@ -2,13 +2,24 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from dotenv import load_dotenv
-from accelerate import Accelerator  # Import Accelerator
+from accelerate import Accelerator
 
 load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class LLM:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(LLM, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, model_name="mistralai/Mistral-7B-Instruct-v0.3"):
+        if getattr(self, "_initialized", False):
+            return
+        self._initialized = True
+
         if torch.cuda.is_available():
             self.device = "cuda"
             print("CUDA is available. Loading model on GPU...")
@@ -47,7 +58,7 @@ class LLM:
         self.accelerator = Accelerator()
         self.model = self.accelerator.prepare(self.model)
             
-    def generate_response(self, prompt: str, max_new_tokens: int = 256, temperature = 1.0) -> str:
+    def generate_response(self, prompt: str, max_new_tokens: int = 256, temperature: float = 1.0) -> str:
         with torch.no_grad():
             inputs = self.tokenizer(prompt, return_tensors="pt")
             # Move inputs to the correct device.

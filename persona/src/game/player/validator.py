@@ -42,7 +42,7 @@ class Validator:
             "Your NEW Mental State": self.format_mental_state(mental_change)
         }
         instruction = ("Based on all of the above information, respond with only a single number "
-                       "between 0.00 and 100.00 that grades how accurate the mental state change is for your character.")
+                       "between 0.00 and 100.00 that grades how accurate the mental state change is for your character and how it fits in the conversation.")
         
         print("[DEBUG] Validator: Validating mental state...")
         return self._validate(history, sections, instruction)
@@ -52,7 +52,7 @@ class Validator:
             "Your notes": notes
         }
         instruction = ("Based on all of the above information, respond with only a single number "
-                       "between 0.00 and 100.00 that grades how accurate your notes are for your character.")
+                       "between 0.00 and 100.00 that grades how accurate your notes are for your character and how it fits in the conversation.")
         
         print("[DEBUG] Validator: Validating notes...")
         return self._validate(history, sections, instruction)
@@ -62,7 +62,7 @@ class Validator:
             "Your Response": response
         }
         instruction = ("Based on all of the above information, respond with only a single number "
-                       "between 0.00 and 100.00 that grades how accurate your response is for your character.")
+                       "between 0.00 and 100.00 that grades how accurate your response is for your character and how it fits in the conversation.")
         
         print("[DEBUG] Validator: Validating response...")
         return self._validate(history, sections, instruction)
@@ -72,7 +72,7 @@ class Validator:
             "Your Emotions": self.format_emotions(emotions)
         }
         instruction = ("Based on all of the above information, respond with only a single number "
-                       "between 0.00 and 100.00 that grades how accurate your emotions are for your character.")
+                       "between 0.00 and 100.00 that grades how accurate your emotions are for your character and how it fits in the conversation.")
         
         print("[DEBUG] Validator: Validating emotions...")
         return self._validate(history, sections, instruction)
