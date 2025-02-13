@@ -223,12 +223,6 @@ class Persona():
                 response_reward, 
                 response_emotion_reward)
             
-            print(
-                mental_change_reward, 
-                notes_reward, 
-                response_reward, 
-                response_emotion_reward)
-        
             self.record.record(
                 Turn(
                     message,                 
