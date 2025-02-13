@@ -26,7 +26,7 @@ class Turn:
         self.response = response
         self.response_reward = response_reward
         self.response_emotion = response_emotion
-        self.response_emotion_reward = response_emotion_reward,
+        self.response_emotion_reward = response_emotion_reward
         self.policy = policy
 
     def __str__(self):

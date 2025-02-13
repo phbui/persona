@@ -39,7 +39,7 @@ class Policy(nn.Module):
         # Build a detailed string describing the Policy network
         description = "Policy Network:\n"
         description += "  Actor Network (Gaussian policy):\n"
-        # Access the layers in the actor network (assumes structure: Linear -> ReLU -> Linear)
+        # Access the layers in the actor network (structure: Linear -> ReLU -> Linear)
         actor_layer1 = self.actor[0]
         actor_activation = self.actor[1]
         actor_layer2 = self.actor[2]
@@ -49,7 +49,7 @@ class Policy(nn.Module):
         description += f"    - Learnable log_std parameter (initial values): {self.log_std.data.tolist()}\n\n"
         
         description += "  Critic Network (State-value estimator):\n"
-        # Access the layers in the critic network (assumes structure: Linear -> ReLU -> Linear)
+        # Access the layers in the critic network (structure: Linear -> ReLU -> Linear)
         critic_layer1 = self.critic[0]
         critic_activation = self.critic[1]
         critic_layer2 = self.critic[2]
