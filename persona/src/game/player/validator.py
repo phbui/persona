@@ -11,7 +11,7 @@ class Validator:
         cleaned = response.strip()
         match = re.search(r'\d+(\.\d{1,2})?', cleaned)
         if not match:
-            raise ValueError("No numeric value found")
+            num = 75.00
         num = float(match.group())
         clamped_num = max(0, min(num, 100))
         noise = random.gauss(0, noise_scale)
@@ -28,7 +28,7 @@ class Validator:
         for header, content in sections.items():
             prompt_parts.append(f"[{header}]\n{content}\n\n")
 
-        base_instructions = " Be harsh but fair with grading. Be very precise down to the hundredth's place. Your response must include only the integer, with no additional text, whitespace, or punctuation.\n\n[Answer]\n"
+        base_instructions = " Be harsh but fair with grading. Be very precise down to the hundredth's place. Your response must include only the number, with no additional text, whitespace, or punctuation.\n\n[Answer]\n"
         instruction = instruction + base_instructions
         prompt_parts.append(f"[Instructions]\n{instruction}")
         prompt_string = "\n\n".join(prompt_parts)
@@ -41,8 +41,8 @@ class Validator:
             "Your Mental State Change": self.format_mental_state_change(prev_mental_state, mental_change),
             "Your NEW Mental State": self.format_mental_state(mental_change)
         }
-        instruction = ("Based on all of the above information, respond with only a single integer "
-                       "between 0 and 100 that represents how accurate the mental state change is for your character.")
+        instruction = ("Based on all of the above information, respond with only a single number "
+                       "between 0.00 and 100.00 that grades how accurate the mental state change is for your character.")
         
         print("[DEBUG] Validator: Validating mental state...")
         return self._validate(history, sections, instruction)
@@ -51,8 +51,8 @@ class Validator:
         sections = {
             "Your notes": notes
         }
-        instruction = ("Based on all of the above information, respond with only a single integer "
-                       "between 0 and 100 that represents how accurate your notes are for your character.")
+        instruction = ("Based on all of the above information, respond with only a single number "
+                       "between 0.00 and 100.00 that grades how accurate your notes are for your character.")
         
         print("[DEBUG] Validator: Validating notes...")
         return self._validate(history, sections, instruction)
@@ -61,8 +61,8 @@ class Validator:
         sections = {
             "Your Response": response
         }
-        instruction = ("Based on all of the above information, respond with only a single integer "
-                       "between 0 and 100 that represents how accurate your response is for your character.")
+        instruction = ("Based on all of the above information, respond with only a single number "
+                       "between 0.00 and 100.00 that grades how accurate your response is for your character.")
         
         print("[DEBUG] Validator: Validating response...")
         return self._validate(history, sections, instruction)
@@ -71,8 +71,8 @@ class Validator:
         sections = {
             "Your Emotions": self.format_emotions(emotions)
         }
-        instruction = ("Based on all of the above information, respond with only a single integer "
-                       "between 0 and 100 that represents how accurate your emotions are for your character.")
+        instruction = ("Based on all of the above information, respond with only a single number "
+                       "between 0.00 and 100.00 that grades how accurate your emotions are for your character.")
         
         print("[DEBUG] Validator: Validating emotions...")
         return self._validate(history, sections, instruction)

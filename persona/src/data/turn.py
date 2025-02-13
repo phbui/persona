@@ -1,3 +1,5 @@
+import numpy as np
+
 class Turn:
     def __init__(self, 
                  input_message, 
@@ -48,3 +50,28 @@ class Turn:
             f"  policy: {self.policy}\n"
             f")"
         )
+    
+    def to_dict(self):
+        return {
+            "input_message": self.input_message,
+            "input_message_embedding": self._convert_numpy(self.input_message_embedding),
+            "input_message_emotion": self._convert_numpy(self.input_message_emotion),
+            "prev_mental_state": self._convert_numpy(self.prev_mental_state),
+            "mental_change": self._convert_numpy(self.mental_change),
+            "reward_mental_change": self.reward_mental_change,
+            "notes": self.notes,
+            "notes_reward": self.notes_reward,
+            "prompt": self.prompt,
+            "response": self.response,
+            "response_reward": self.response_reward,
+            "response_emotion": self._convert_numpy(self.response_emotion),
+            "response_emotion_reward": self.response_emotion_reward,
+            "policy": self.policy.to_dict()
+        }
+
+    def _convert_numpy(self, data):
+        if isinstance(data, np.ndarray):
+            return data.tolist()
+        elif isinstance(data, dict):
+            return {k: self._convert_numpy(v) for k, v in data.items()} 
+        return data 

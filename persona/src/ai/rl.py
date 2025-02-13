@@ -147,10 +147,10 @@ class RL():
     def update_policy(self, mental_change_reward, notes_reward, response_reward, response_emotion_reward):
         # 1. Compute the weighted total reward (using a baseline offset of 75).
         total_reward = (
-            mental_change_weight * (mental_change_reward - 75) +
-            notes_weight * (notes_reward - 75) +
-            response_weight * (response_reward - 75) +
-            response_emotion_weight * (response_emotion_reward - 75)
+            mental_change_weight * mental_change_reward +
+            notes_weight * notes_reward +
+            response_weight * response_reward +
+            response_emotion_weight * response_emotion_reward
         )
         # print(f"Total reward: {total_reward}")
         self.rewards.append(total_reward)

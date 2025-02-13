@@ -7,9 +7,13 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
-from .record_keeper import RecordKeeper
 import matplotlib.pyplot as plt
-import numpy as np
+import os
+import datetime
+import json
+
+# (Assuming RecordKeeper is defined elsewhere)
+from .record_keeper import RecordKeeper
 
 def reduce_to_3d(df):
     pca = PCA(n_components=3)
@@ -78,11 +82,14 @@ class TurnFrame(tk.Frame):
             self.expanded = True
 
 class GraphPanel(tk.Frame):
-    def __init__(self, master, title, description, update_callback, *args, **kwargs):
+    def __init__(self, master, title, description, update_callback, info_callback=None, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
+        self.panel_title = title  # Save title for file naming later
         self.update_callback = update_callback
+        self.info_callback = info_callback  # Callback for showing/clearing the turn info panel
         self.expanded = False
-        self.header = tk.Button(self, text=f"{title} - {description}", relief="raised", bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"), command=self.toggle)
+        self.header = tk.Button(self, text=f"{title} - {description}", relief="raised", bg="#4CAF50", fg="white",
+                                font=("Helvetica", 12, "bold"), command=self.toggle)
         self.header.pack(fill="x")
         self.graph_container = tk.Frame(self)
         self.graph_container.pack(fill="both", expand=True)
@@ -90,16 +97,14 @@ class GraphPanel(tk.Frame):
         self.figure = None
         self.canvas = None
         self.toolbar = None
-        self.data_points = []
+        self.data_points = []  # Expect dictionaries with keys "x", "y", and "turn"
         self.detail_windows = []
-        self.nav_window = None
-        self.nav_index = None
-        self.cb = None
 
     def toggle(self):
         if self.expanded:
             self.collapse()
         else:
+            # Collapse any sibling GraphPanel that is expanded
             for sibling in self.master.winfo_children():
                 if isinstance(sibling, GraphPanel) and sibling is not self and sibling.expanded:
                     sibling.collapse()
@@ -123,10 +128,13 @@ class GraphPanel(tk.Frame):
     def collapse(self):
         self.expanded = False
         self.graph_container.pack_forget()
+        # When collapsing, clear any info panel that might be visible.
+        if self.info_callback:
+            self.info_callback(None)
         for win in self.detail_windows:
             try:
                 win.destroy()
-            except:
+            except Exception:
                 pass
         self.detail_windows.clear()
 
@@ -138,55 +146,83 @@ class GraphPanel(tk.Frame):
             dx = event.xdata - point["x"]
             dy = event.ydata - point["y"]
             if np.sqrt(dx*dx + dy*dy) < tolerance:
-                self.open_navigation_window(i)
+                if self.info_callback:
+                    # Instead of opening a Toplevel window, call the info callback
+                    self.info_callback(point["turn"])
                 break
-
-    def open_navigation_window(self, index):
-        if self.nav_window is not None:
-            self.nav_window.destroy()
-        self.nav_index = index
-        self.nav_window = tk.Toplevel(self.master)
-        self.nav_window.title("Turn Details Navigation")
-        self.nav_text = scrolledtext.ScrolledText(self.nav_window, wrap=tk.WORD, font=("Helvetica", 10))
-        self.nav_text.pack(fill="both", expand=True)
-        btn_frame = tk.Frame(self.nav_window)
-        btn_frame.pack(fill="x")
-        self.update_nav_window()
-
-    def update_nav_window(self):
-        point = self.data_points[self.nav_index]
-        turn = point["turn"]
-        reward_type = point.get("reward_type", "")
-        text = f"Reward Type: {reward_type}\n\n" + str(turn)
-        self.nav_text.delete("1.0", tk.END)
-        self.nav_text.insert(tk.END, text)
-
 
 class AnalysisUI:
     def __init__(self, master):
         self.master = master
+        # Container for all graph panels
         self.container = ttk.Frame(master)
         self.container.pack(fill="both", expand=True)
+        # This will hold our turn info panel when needed.
+        self.info_frame = None
         self.graph_panels = []
         
-        self.reward_panel = GraphPanel(self.container, "Aggregate Rewards over Turns", "Line graph for all 4 rewards", self.update_reward_graph)
+        # Pass self.info_callback as the callback for each GraphPanel.
+        self.reward_panel = GraphPanel(self.container, 
+                                       "Aggregate Rewards over Turns", 
+                                       "Line graph for all 4 rewards", 
+                                       self.update_reward_graph, 
+                                       info_callback=self.info_callback)
         self.reward_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.reward_panel)
         
-        self.mental_state_panel = GraphPanel(self.container, "Mental State Evolution", "Line graph for mental state attributes", self.update_mental_state_graph)
+        self.mental_state_panel = GraphPanel(self.container, 
+                                             "Mental State Evolution", 
+                                             "Line graph for mental state attributes", 
+                                             self.update_mental_state_graph,
+                                             info_callback=self.info_callback)
         self.mental_state_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.mental_state_panel)
         
-        self.input_emotions_panel = GraphPanel(self.container, "Input Emotions Over Turns", "Line graph for input emotions", lambda fig: self.update_emotions_graph(fig, "input"))
+        self.input_emotions_panel = GraphPanel(self.container, 
+                                               "Input Emotions Over Turns", 
+                                               "Line graph for input emotions", 
+                                               lambda fig: self.update_emotions_graph(fig, "input"),
+                                               info_callback=self.info_callback)
         self.input_emotions_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.input_emotions_panel)
         
-        self.response_emotions_panel = GraphPanel(self.container, "Response Emotions Over Turns", "Line graph for response emotions", lambda fig: self.update_emotions_graph(fig, "response"))
+        self.response_emotions_panel = GraphPanel(self.container, 
+                                                  "Response Emotions Over Turns", 
+                                                  "Line graph for response emotions", 
+                                                  lambda fig: self.update_emotions_graph(fig, "response"),
+                                                  info_callback=self.info_callback)
         self.response_emotions_panel.pack(fill="x", pady=5)
         self.graph_panels.append(self.response_emotions_panel)
         
-        self.update_button = tk.Button(master, text="Update Analysis", command=self.update_all, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
+        self.update_button = tk.Button(master, text="Update Analysis", command=self.update_all, bg="#4CAF50", fg="white",
+                                       font=("Helvetica", 12, "bold"))
         self.update_button.pack(side="bottom", pady=10)
+
+    def info_callback(self, turn):
+        """
+        Called by a GraphPanel when a turn is clicked (or cleared).
+        If turn is None, clear the info panel; otherwise, show it.
+        """
+        if turn is None:
+            self.clear_info_tab()
+        else:
+            self.show_info_tab(turn)
+
+    def show_info_tab(self, turn):
+        # Clear any previous info panel first.
+        self.clear_info_tab()
+        # Create an info panel at the bottom of the Analyze tab.
+        self.info_frame = tk.Frame(self.master, bg="#eee", bd=2, relief="sunken")
+        self.info_frame.pack(fill="x", padx=5, pady=5)
+        st = scrolledtext.ScrolledText(self.info_frame, wrap=tk.WORD, font=("Helvetica", 10), height=10)
+        st.pack(fill="both", expand=True)
+        st.insert(tk.END, str(turn))
+        st.config(state="disabled")
+
+    def clear_info_tab(self):
+        if self.info_frame is not None:
+            self.info_frame.destroy()
+            self.info_frame = None
 
     def update_all(self):
         for panel in self.graph_panels:
@@ -195,16 +231,23 @@ class AnalysisUI:
                 panel.canvas.draw()
 
     def update_reward_graph(self, figure):
-        self.plot_multi_line(figure, "Rewards Over Turns", "Turn Number", "Reward Value", ["Mental Change Reward", "Notes Reward", "Response Reward", "Response Emotion Reward"],
-                            lambda turn: [turn.reward_mental_change, turn.notes_reward, turn.response_reward, turn.response_emotion_reward])
+        self.plot_multi_line(figure, 
+                             "Rewards Over Turns", 
+                             "Turn Number", 
+                             "Reward Value", 
+                             ["Mental Change Reward", "Notes Reward", "Response Reward", "Response Emotion Reward"],
+                             lambda turn: [turn.reward_mental_change, turn.notes_reward, turn.response_reward, turn.response_emotion_reward])
 
     def update_mental_state_graph(self, figure):
-        self.plot_multi_line(figure, "Mental State Evolution Over Turns", "Turn Number", "Mental State Value", ["Valence", "Arousal", "Dominance", "Confidence", "Anxiety", "Guilt"],
-                            lambda turn: [turn.mental_change["valence"], turn.mental_change["arousal"], turn.mental_change["dominance"], turn.mental_change["confidence"], turn.mental_change["anxiety"], turn.mental_change["guilt"]])
+        self.plot_multi_line(figure, 
+                             "Mental State Evolution Over Turns", 
+                             "Turn Number", 
+                             "Mental State Value", 
+                             ["Valence", "Arousal", "Dominance", "Confidence", "Anxiety", "Guilt"],
+                             lambda turn: [turn.mental_change["valence"], turn.mental_change["arousal"], turn.mental_change["dominance"], turn.mental_change["confidence"], turn.mental_change["anxiety"], turn.mental_change["guilt"]])
 
     def update_emotions_graph(self, figure, emotion_type):
         labels = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
-
         self.plot_multi_line(
             figure,
             f"{emotion_type.capitalize()} Emotions Over Turns",
@@ -243,6 +286,7 @@ class AnalysisUI:
 class RecordKeeperUI:
     def __init__(self, master):
         self.master = master
+        self._closing = False
         self.master.title("Record Keeper")
         self.master.geometry("800x800")
         self.main_notebook = ttk.Notebook(master)
@@ -256,9 +300,14 @@ class RecordKeeperUI:
         self.log_notebook.pack(fill="both", expand=True)
         self.tabs = {}
         self.update_log_tabs()
-        self.update_log_button = tk.Button(self.log_frame, text="Update Records", command=self.refresh_log, bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
+        self.update_log_button = tk.Button(self.log_frame, text="Update Records", command=self.refresh_log, 
+                                           bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
         self.update_log_button.pack(side="bottom", pady=10)
         self.analysis_ui = AnalysisUI(self.analyze_frame)
+        
+        # Bind the window close event so we can save the plots.
+        self.master.protocol("WM_DELETE_WINDOW", self.on_close)        
+        self.master.bind("<Destroy>", self.on_destroy)
 
     def update_log_tabs(self):
         record_keeper = RecordKeeper.instance()
@@ -285,6 +334,53 @@ class RecordKeeperUI:
     def on_tab_changed(self, event):
         selected = event.widget.tab(event.widget.index("current"), "text")
         if selected != "Analyze":
+            # Collapse any expanded graphs and clear the info panel
             for panel in self.analysis_ui.graph_panels:
                 if panel.expanded:
                     panel.collapse()
+            self.analysis_ui.clear_info_tab()
+
+    def on_close(self):
+        """Save graphs and records in structured folders when closing."""
+        record_keeper = RecordKeeper.instance()
+
+        print("[DEBUG] Saving records...")
+
+        # Timestamped session folder
+        date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        chat_folder_name = f"chat - {date_str}"
+
+        # Base directory where all saves will go
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        saved_dir = os.path.join(current_dir, "saved")
+        chat_folder_path = os.path.join(saved_dir, chat_folder_name)
+
+        os.makedirs(chat_folder_path, exist_ok=True)
+
+        for record in record_keeper.records:
+            persona_name = record.persona_name or "Unknown"
+
+            # Persona-specific folder inside the chat folder
+            persona_folder_path = os.path.join(chat_folder_path, f"{persona_name} - {date_str}")
+            os.makedirs(persona_folder_path, exist_ok=True)
+
+            # Save each graph panel's figure in this persona's folder
+            for panel in self.analysis_ui.graph_panels:
+                if panel.figure:
+                    file_name = f"{panel.panel_title}.png"
+                    file_path = os.path.join(persona_folder_path, file_name)
+                    panel.figure.savefig(file_path)
+
+            # Save the record as a JSON file
+            json_file_path = os.path.join(persona_folder_path, f"{persona_name}.json")
+            with open(json_file_path, "w", encoding="utf-8") as json_file:
+                json.dump(record.to_dict(), json_file, indent=4, ensure_ascii=False)
+
+        print(f"[INFO] Records saved at {chat_folder_path}")
+        
+        self.master.destroy()
+
+    def on_destroy(self, event):
+        # If the main window is being destroyed (via any means) and cleanup hasn't run, call on_close.
+        if event.widget == self.master and not self._closing:
+            self.on_close()

@@ -8,3 +8,9 @@ class Record:
 
     def record(self, turn):
         self.records.append(turn)
+
+    def to_dict(self):
+        return {
+            "persona_name": self.persona_name,
+            "records": [turn.to_dict() for turn in self.records]
+        }

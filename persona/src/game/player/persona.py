@@ -117,13 +117,13 @@ class Persona():
             f"Based on the setting, your backstory, your goals, and your current mental state, write a detailed, easy-to-digest summary in the second person as {self.name}. "
             "Your summary should be a bulleted list capturing all names, ideas, topics, and tasks mentioned in the Conversation History. "
             "Do NOT include any new plans, actions, or suggestions—only summarize what is given. "
-            "Keep track of you who are talking to and what they said. "
+            "Keep track of you who are talking to, what they said, an where you are. "
             "Do NOT generate any new facts or ideas. \n\n"
             "[Your Notes] \n"
         )
 
         print("[DEBUG] Persona: Generating notes...")
-        return self.llm.generate_response(prompt_string, 256, 0.2)
+        return self.llm.generate_response(prompt_string, 512, 0.2)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
         return self.validator.validate_mental_change(prev_mental_state, mental_change, history)
@@ -143,7 +143,8 @@ class Persona():
                        mental_change, 
                        notes, 
                        response, 
-                       response_emotions):
+                       response_emotions,
+                       offset = 75):
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_mental_change_reward = executor.submit(
                 self.reward_mental_change, 
@@ -167,10 +168,10 @@ class Persona():
                 history
             )
 
-            mental_change_reward = future_mental_change_reward.result()
-            notes_reward = future_notes_reward.result()
-            response_reward = future_response_reward.result()
-            response_emotion_reward = future_response_emotion_reward.result()
+            mental_change_reward = future_mental_change_reward.result() - offset
+            notes_reward = future_notes_reward.result() - offset
+            response_reward = future_response_reward.result() - offset
+            response_emotion_reward = future_response_emotion_reward.result() - offset
 
         return (mental_change_reward, 
                 notes_reward, 
@@ -202,7 +203,7 @@ class Persona():
         prompt = self.generate_prompt(notes, message, history)
 
         print("[DEBUG] Persona: Generating response...")
-        response = self.llm.generate_response(prompt).replace("\n", "").replace("\"", "")
+        response = self.llm.generate_response(prompt, 128).replace("\n", "").replace("\"", "")
         response = self._finish_naturally(response)
 
         if self.training: 

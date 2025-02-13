@@ -21,9 +21,9 @@ class PC(Player):
 
     def start_chat_interface(self):
         if self.root is None:
-            print(f"[DEBUG] Creating chat interface for {self.name}.")
+            print(f"[DEBUG] Creating chat interface.")
             self.root = tk.Tk()
-            self.root.title(f"Chat Interface for {self.name}")
+            self.root.title(f"Chatting with {self.name}")
             self.root.geometry("700x600")
             self.root.configure(bg="#ECECEC")
             

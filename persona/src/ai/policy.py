@@ -58,3 +58,34 @@ class Policy(nn.Module):
         description += f"    - Second Linear Layer: in_features={critic_layer2.in_features}, out_features={critic_layer2.out_features}\n"
         
         return description
+    
+    def to_dict(self):
+        """
+        Converts the Policy network into a serializable dictionary format.
+        """
+        return {
+            "actor": {
+                "layer1": {
+                    "in_features": self.actor[0].in_features,
+                    "out_features": self.actor[0].out_features
+                },
+                "activation": self.actor[1].__class__.__name__,
+                "layer2": {
+                    "in_features": self.actor[2].in_features,
+                    "out_features": self.actor[2].out_features
+                },
+                "log_std": self.log_std.data.tolist()  # Convert tensor to list
+            },
+            "critic": {
+                "layer1": {
+                    "in_features": self.critic[0].in_features,
+                    "out_features": self.critic[0].out_features
+                },
+                "activation": self.critic[1].__class__.__name__,
+                "layer2": {
+                    "in_features": self.critic[2].in_features,
+                    "out_features": self.critic[2].out_features
+                }
+            },
+            "state_dict": {k: v.tolist() for k, v in self.state_dict().items()}  # Save model parameters
+        }
