@@ -1,4 +1,4 @@
-# RL NPC Dialogue System
+# Persona: A RL NPC Dialogue System
 
 A reinforcement learning (RL) driven dialogue system for generating immersive NPC responses. This system dynamically updates an NPC's internal mental state based on player input, dialogue embeddings, and emotion analysis. It uses large language models (LLMs) for response generation and multiple reward signals to guide the RL policy.
 
