@@ -8,6 +8,7 @@ import os
 import datetime
 import json
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from .record_keeper import RecordKeeper
 from .analysis_ui import AnalysisUI
 

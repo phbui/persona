@@ -27,7 +27,9 @@ def run_ui():
     ui_root.geometry("800x1000")
     # Instantiate the aggregated UI on the main root.
     EpochRecordKeeperUI(ui_root)
+    ui_root.after(0, lambda: create_record_keeper_window(1))
     ui_root.mainloop()
+
 
 def create_record_keeper_window(epoch_number):
     global current_record_keeper_window, ui_root
@@ -102,6 +104,7 @@ while True:
 # ---------- Define the Training Loop Function ----------
 def training_loop():
     print("\n--- Starting Training ---\n")
+
     for epoch in range(num_epochs):
         print(f"Starting epoch {epoch+1}/{num_epochs}...")
         # Create a new game instance for each epoch.
