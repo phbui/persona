@@ -16,7 +16,6 @@ if __name__ == "__main__":
 
     personas_folder = os.path.join(os.path.dirname(__file__), "src", "game", "player", "personas")
     persona_files = [f for f in os.listdir(personas_folder) if f.endswith(".json")]
-    
     if not persona_files:
         print("No persona files found in", personas_folder)
         exit(1)
@@ -37,15 +36,17 @@ if __name__ == "__main__":
     selected_persona_path = os.path.join(personas_folder, persona_files[choice_idx])
     print("Selected persona file:", selected_persona_path)
     
+    # Ask the player for their name via input
+    player_name = input("Enter your name: ")
+
     game = Game()
     npc = NPC(persona_path=selected_persona_path)
-    pc = PC("Player")
-    
+    pc = PC(player_name)
+
     game.add_player(npc)
     game.add_player(pc)
     
-    # Run game loop in a separate thread.
-    game_thread = threading.Thread(target=game.play_game, args=(10,), daemon=True)
+    game_thread = threading.Thread(target=game.play_game, args=(100,), daemon=True)
     game_thread.start()
 
     record_keeper_window = tk.Toplevel(pc.root)

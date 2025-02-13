@@ -6,8 +6,8 @@ class Turn:
                  prev_mental_state,
                  mental_change, 
                  reward_mental_change, 
-                 focus,
-                 focus_reward,
+                 notes,
+                 notes_reward,
                  prompt, 
                  response, 
                  response_reward, 
@@ -20,8 +20,8 @@ class Turn:
         self.prev_mental_state = prev_mental_state
         self.mental_change = mental_change
         self.reward_mental_change = reward_mental_change
-        self.focus = focus
-        self.focus_reward = focus_reward
+        self.notes = notes
+        self.notes_reward = notes_reward
         self.prompt = prompt
         self.response = response
         self.response_reward = response_reward
@@ -38,8 +38,8 @@ class Turn:
             f"  prev_mental_state: {self.prev_mental_state}\n"
             f"  mental_change: {self.mental_change}\n"
             f"  reward_mental_change: {self.reward_mental_change}\n"
-            f"  focus: {self.focus}\n"
-            f"  focus_reward: {self.focus_reward}\n"
+            f"  notes: {self.notes}\n"
+            f"  notes_reward: {self.notes_reward}\n"
             f"  prompt: {self.prompt}\n"
             f"  response: {self.response}\n"
             f"  response_reward: {self.response_reward}\n"

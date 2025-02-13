@@ -47,7 +47,7 @@ class LLM:
         self.accelerator = Accelerator()
         self.model = self.accelerator.prepare(self.model)
             
-    def generate_response(self, prompt: str, max_new_tokens: int = 128) -> str:
+    def generate_response(self, prompt: str, max_new_tokens: int = 256, temperature = 1.0) -> str:
         with torch.no_grad():
             inputs = self.tokenizer(prompt, return_tensors="pt")
             # Move inputs to the correct device.
@@ -60,7 +60,8 @@ class LLM:
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 use_cache=True,
-                do_sample=False 
+                do_sample=False,
+                temperature=temperature
             )
             
             new_tokens = outputs[0][prompt_length:]

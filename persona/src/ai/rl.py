@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.distributions import Normal
 
 mental_change_weight = 0.6
-focus_weight = 0.8
+notes_weight = 0.8
 response_weight = 1.0
 response_emotion_weight = 1.5
 
@@ -144,11 +144,11 @@ class RL():
         
         return updated_mental_state
 
-    def update_policy(self, mental_change_reward, focus_reward, response_reward, response_emotion_reward):
+    def update_policy(self, mental_change_reward, notes_reward, response_reward, response_emotion_reward):
         # 1. Compute the weighted total reward (using a baseline offset of 75).
         total_reward = (
             mental_change_weight * (mental_change_reward - 75) +
-            focus_weight * (focus_reward - 75) +
+            notes_weight * (notes_reward - 75) +
             response_weight * (response_reward - 75) +
             response_emotion_weight * (response_emotion_reward - 75)
         )

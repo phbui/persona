@@ -81,13 +81,13 @@ class Persona():
             f"[Your Goals]\n{self.goals}\n\n"
             )
 
-    def generate_prompt(self, focus, message):
+    def generate_prompt(self, notes, message, history):
         return (
             f"{self.generate_background()}\n\n"
             f"[Your Mental State]\n{self.format_mental_state()}\n\n" 
-            f"[Your Focus]\n{focus}\n\n"
+            f"[Your Current Thoughts]\n{notes}\n\n"
             f"[Instructions]\n{self.generate_instructions()}\n\n"
-            f"[Last Message]\n{message['player_name']} said \"{message['message']}\"\n\n"
+            f"[Last Message]\n{history[-1]['player_name']} said \"{message}\"\n\n"
             "[How do you answer?]\n"
         )
     
@@ -107,23 +107,29 @@ class Persona():
              
         return emotions
 
-    def generate_focus(self, history):
+    def generate_notes(self, message, history):
         prompt_string = (
             f"{self.generate_background()}\n\n"
-            f"[Your Conversation So Far]\n{self.format_history(history)} \n\n"
-            f"[Your Mental State]\n{self.mental_state}"
-            f"[Instructions]\nBased on the above information, write in the second person as {self.name} describing what you are thinking right now. "
-            f"Keep it concise (under 256 tokens), reflective, and true to your character, what your character knows, and your mental state."
+            f"[Conversation History]\n{self.format_history(history[:-1])}\n\n"
+            f"[Current Mental State]\n{self.mental_state}\n\n"
+            f"[Last Message]\n{history[-1]['player_name']} said \"{message}\"\n\n"
+            "[Instructions]\n"
+            f"Based on the setting, your backstory, your goals, and your current mental state, write a detailed, easy-to-digest summary in the second person as {self.name}. "
+            "Your summary should be a bulleted list capturing all names, ideas, topics, and tasks mentioned in the Conversation History. "
+            "Do NOT include any new plans, actions, or suggestions—only summarize what is given. "
+            "Keep track of you who are talking to and what they said. "
+            "Connect the notes to the setting and background. \n\n"
+            "[Your Notes] \n"
         )
 
-        print("[DEBUG] Persona: Generating focus...")
-        return self.llm.generate_response(prompt_string, 256)
+        print("[DEBUG] Persona: Generating notes...")
+        return self.llm.generate_response(prompt_string, 256, 0.2)
 
     def reward_mental_change(self, prev_mental_state, mental_change, history):
         return self.validator.validate_mental_change(prev_mental_state, mental_change, history)
 
-    def reward_focus(self, focus, history):
-        return self.validator.validate_focus(focus, history)
+    def reward_notes(self, notes, history):
+        return self.validator.validate_notes(notes, history)
 
     def reward_response(self, response, history):
         return self.validator.validate_response(response, history)
@@ -135,7 +141,7 @@ class Persona():
                        history, 
                        prev_mental_state, 
                        mental_change, 
-                       focus, 
+                       notes, 
                        response, 
                        response_emotions):
         with ThreadPoolExecutor(max_workers=4) as executor:
@@ -145,9 +151,9 @@ class Persona():
                 mental_change, 
                 history
             )
-            future_focus_reward = executor.submit(
-                self.reward_focus, 
-                focus, 
+            future_notes_reward = executor.submit(
+                self.reward_notes, 
+                notes, 
                 history
             )
             future_response_reward = executor.submit(
@@ -162,12 +168,12 @@ class Persona():
             )
 
             mental_change_reward = future_mental_change_reward.result()
-            focus_reward = future_focus_reward.result()
+            notes_reward = future_notes_reward.result()
             response_reward = future_response_reward.result()
             response_emotion_reward = future_response_emotion_reward.result()
 
         return (mental_change_reward, 
-                focus_reward, 
+                notes_reward, 
                 response_reward, 
                 response_emotion_reward)
     
@@ -184,7 +190,6 @@ class Persona():
 
     def generate_response(self, history):
         message = history[-1]['message']
-        history = history[-10:]
 
         embeddings = self.extract_embeddings(message, history)
         emotions = self.extract_emotions(message)
@@ -193,8 +198,10 @@ class Persona():
         mental_change = self.rl.select_action(prev_mental_state, embeddings, emotions)
         self.update_mental_state(mental_change)
 
-        focus = self.generate_focus(history)
-        prompt = self.generate_prompt(focus, history[-1])
+        notes = self.generate_notes(message, history)
+        prompt = self.generate_prompt(notes, message, history)
+
+        print(notes)
 
         print("[DEBUG] Persona: Generating response...")
         response = self.llm.generate_response(prompt).replace("\n", "").replace("\"", "")
@@ -204,17 +211,17 @@ class Persona():
             print("[DEBUG] Persona: Updating policy...")
             response_emotions = self.extract_emotions(response)
 
-            mental_change_reward, focus_reward, response_reward, response_emotion_reward = self.manage_rewards(
+            mental_change_reward, notes_reward, response_reward, response_emotion_reward = self.manage_rewards(
                 history, 
                 prev_mental_state, 
                 mental_change, 
-                focus, 
+                notes, 
                 response, 
                 response_emotions)
             
             self.rl.update_policy(
                 mental_change_reward, 
-                focus_reward, 
+                notes_reward, 
                 response_reward, 
                 response_emotion_reward)
         
@@ -226,8 +233,8 @@ class Persona():
                     prev_mental_state,
                     mental_change, 
                     mental_change_reward, 
-                    focus,
-                    focus_reward,
+                    notes,
+                    notes_reward,
                     prompt, 
                     response, 
                     response_reward, 
