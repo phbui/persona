@@ -235,7 +235,6 @@ class AnalysisUI:
             ax.plot(turn_nums, re_rewards, marker="o", color=colors["response_emotion_reward"], label=f"{record.persona_name} response emotion")
         ax.legend()
         self.reward_panel.data_points = data_points
-
         figure.canvas.draw()
 
 class RecordKeeperUI:
