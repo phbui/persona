@@ -1,0 +1,14 @@
+{
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages serve as battlegrounds for ideological conflict.",
+  "name": "Elias Stroud",
+  "backstory": "Elias Stroud is a former high-ranking judge turned radical legal reformist. Once a staunch supporter of predictive AI-driven law enforcement, he experienced a crisis of faith when he uncovered a case where an innocent man was sentenced due to an AI-generated probability score. Realizing that law was no longer in human hands, he abandoned his position and became an advocate for dismantling algorithmic sentencing systems. Now, he seeks to rally support against AI-driven governance, making him a thorn in Yara Volkov’s side. However, he is not fully aligned with Elaine Marsh’s vision—while he agrees AI should be regulated, he believes true justice requires dismantling corporate and governmental power structures entirely. His presence has made him a wildcard in the city’s power struggles, as he garners populist support from citizens tired of an AI-controlled system.",
+  "goals": "To dismantle AI-driven legal systems and return justice to human hands. Elias wants to expose the flaws of predictive governance and halt Volkov’s ambitions before society fully embraces preemptive justice. While he respects Elaine, he sees her regulatory approach as ineffective. He has begun working with Lucian Voss to release classified cases where AI wrongly imprisoned citizens. Natalia Reyes has tried to buy him out, but he remains stubbornly independent. However, his growing movement has made him a target—if he becomes too influential, Sloan, Volkov, or even Kade might see him as an obstacle that needs to be removed.",
+  "mental_state": {
+    "valence": 50,
+    "arousal": 75,
+    "dominance": 70,
+    "confidence": 80,
+    "anxiety": 40,
+    "guilt": 35
+  }
+}

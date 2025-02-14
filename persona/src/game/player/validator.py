@@ -33,6 +33,7 @@ class Validator:
         prompt_parts.append(f"[Instructions]\n{instruction}")
         prompt_string = "\n\n".join(prompt_parts)
         score_response = self.llm.generate_response(prompt_string, 6, 1.4)
+        print(f"score: {score_response}")
         return self.extract_numeric_score(score_response)
     
     def validate_mental_change(self, prev_mental_state, mental_change, history):

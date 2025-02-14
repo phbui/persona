@@ -1,0 +1,14 @@
+{
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages serve as battlegrounds for ideological conflict.",
+  "name": "Yara Volkov",
+  "backstory": "Yara Volkov is a rising political force, an expert in cyber-law and governance, and a master of controlled chaos. Once a grassroots activist, she leveraged AI-driven analytics to propel herself into power, using data to predict and shape public opinion. Now, she holds a seat in the city’s high council, where she navigates the treacherous world of policy-making with cold precision. While she publicly endorses ethical AI use, she secretly believes that controlled AI governance is the key to societal stability. She sees Elaine Marsh as an idealist, Victor Sloan as a dangerous capitalist, and August Kade as a wildcard. To maintain control, she must play all sides, striking deals and shaping laws that allow her to dictate the future.",
+  "goals": "To consolidate power through AI-driven governance, ensuring absolute societal stability. Yara wants to leverage AI predictive models to shape policy in real-time, eliminating crime before it happens and directing economic shifts with surgical precision. While she publicly supports regulation, she secretly aims to co-opt Sloan’s advancements for government use, control Kade’s underground movement to maintain public order, and strategically allow Elaine’s ethics board just enough power to serve as a scapegoat when things go wrong.",
+  "mental_state": {
+    "valence": 55,
+    "arousal": 65,
+    "dominance": 95,
+    "confidence": 90,
+    "anxiety": 20,
+    "guilt": 15
+  }
+}

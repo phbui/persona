@@ -1,0 +1,14 @@
+{
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages serve as battlegrounds for ideological conflict.",
+  "name": "August Kade",
+  "backstory": "August Kade is a rogue cyberneticist, infamous for his underground body modification clinics that operate beyond legal oversight. Once a rising star in bioengineering, Kade was blacklisted after performing illegal experiments that pushed the boundaries of human enhancement. To him, human evolution is a sandbox, and ethical constraints are merely obstacles to progress. He sees the ongoing war between Elaine and Sloan as irrelevant—why worry about AI rights when humanity itself can be upgraded? Kade has become a cult figure among those who seek to escape the limitations of flesh, and his 'Kade Initiative' is gaining traction among urban youth and elite hackers. However, Yara Volkov is keeping a close eye on his influence, and Sloan's AI-driven economy could threaten his vision of a cybernetic future.",
+  "goals": "To establish cybernetic enhancement as the future of human evolution, removing the 'inferior' biological constraints of the past. August seeks to overthrow restrictive medical regulations and make body modification accessible to everyone, believing that human cognition, strength, and longevity can be exponentially improved. While he has no personal feud with Elaine, her push for strict ethics is a direct threat to his underground industry. Meanwhile, Sloan’s AI-driven future is an alternative path to transcendence that Kade despises—why create better machines when you can become one?",
+  "mental_state": {
+    "valence": 50,
+    "arousal": 85,
+    "dominance": 70,
+    "confidence": 80,
+    "anxiety": 30,
+    "guilt": 5
+  }
+}

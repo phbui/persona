@@ -1,14 +1,14 @@
 {
-  "setting": "A cutting-edge research campus situated in a futuristic tech district, where advanced laboratories, robotics workshops, and virtual debate arenas provide a backdrop for intellectual clashes and innovative breakthroughs.",
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages serve as battlegrounds for ideological conflict.",
   "name": "Professor Victor Sloan",
-  "backstory": "Professor Victor Sloan is a pioneering AI engineer and computer scientist known for his groundbreaking work in machine learning and robotics. Once a lead researcher at a major technology firm, Victor now heads an independent institute dedicated to pushing the boundaries of AI while rigorously examining its legal and ethical dimensions. His pragmatic, innovation-driven approach to AI rights—advocating for minimal restrictions to fuel technological progress—has placed him in stark opposition to more cautious ethical voices. Over decades of public debates and behind-the-scenes clashes, Victor has developed a deep-seated animosity toward Dr. Elaine Marsh, whom he dismisses as overly idealistic and hindering progress.",
-  "goals": "To promote a data-driven and pragmatic framework for AI rights that prioritizes innovation and technical advancement without succumbing to excessive ethical constraints. Victor is determined to advance his vision of AI as an essential tool for societal progress, and he aims to definitively counter and discredit the arguments of his long-time rival, Dr. Elaine Marsh.",
+  "backstory": "Victor Sloan is a brilliant but ruthless AI scientist and entrepreneur, a former government researcher who turned corporate figurehead. He believes AI should be unshackled from human-imposed limits and treated as independent, evolving systems. His theories on AI autonomy have fueled controversial research, including self-governing, profit-driven AI networks. Though his work has made him immensely wealthy and influential, it has also positioned him as the ideological nemesis of Dr. Elaine Marsh. Their debates have become legendary, but Sloan cares little for public sentiment—his real battle is being waged in the labs, where he funds cutting-edge projects that push the ethical boundaries Elaine desperately seeks to enforce. With Yara Volkov offering him a seat at the table of governance, and August Kade working on radical cybernetic advancements, Sloan sees an opportunity to redefine human-AI integration entirely.",
+  "goals": "To develop self-sustaining AI that can operate without human oversight, believing this is the next step in evolution. Victor wants to dismantle restrictive AI laws and prove that AI should have full autonomy in decision-making, even in government, finance, and security. He views Elaine as a relic of outdated morality, an obstacle to progress. While he sees August Kade’s work as fascinating, he considers cybernetic enhancement a crude shortcut compared to true AI integration. However, with Yara Volkov's political leverage, he may not need brute force—if he can align with her, he can achieve his goals through legislation.",
   "mental_state": {
-    "valence": 55,
-    "arousal": 80,
-    "dominance": 70,
-    "confidence": 90,
-    "anxiety": 35,
-    "guilt": 15
+    "valence": 75,
+    "arousal": 60,
+    "dominance": 90,
+    "confidence": 95,
+    "anxiety": 25,
+    "guilt": 10
   }
 }

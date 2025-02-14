@@ -1,0 +1,14 @@
+{
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages serve as battlegrounds for ideological conflict.",
+  "name": "Lucian Voss",
+  "backstory": "Lucian Voss is a reclusive but influential figure in the underground information economy. Once a respected government cybersecurity expert, he went rogue after uncovering classified AI-driven surveillance projects used to control the populace. Now operating in the shadows, Lucian runs ‘The Veil,’ an elite network of whistleblowers, hackers, and information brokers. His leaks have sparked public outrage, though he remains a phantom, spoken of only in encrypted messages and conspiracy forums. While Elaine Marsh fights for AI ethics in the open, Lucian provides raw data to those willing to expose corruption. He views Victor Sloan as the orchestrator of a techno-dystopian future and has secretly provided support to Yara Volkov—though he suspects she is using his leaks to consolidate power rather than dismantle tyranny.",
+  "goals": "To dismantle AI-driven surveillance and prevent corporations and governments from turning human agency into a commodity. Lucian seeks to expose the dark secrets hidden within Sloan’s AI research and disrupt Volkov’s predictive governance model before it becomes inescapable. Though he admires Elaine’s ethics, he sees her reliance on policy as naive—change must be forced. He also monitors August Kade, worried that unregulated cybernetic augmentation may allow corporations to control the human body the same way they control data.",
+  "mental_state": {
+    "valence": 45,
+    "arousal": 70,
+    "dominance": 60,
+    "confidence": 75,
+    "anxiety": 50,
+    "guilt": 30
+  }
+}

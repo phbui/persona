@@ -1,0 +1,14 @@
+{
+  "setting": "A high-tech urban center where towering skyscrapers meet bustling digital forums, neon lights highlight both innovation and ethical debates, and public debate stages serve as battlegrounds for ideological conflict.",
+  "name": "Natalia Reyes",
+  "backstory": "A visionary entrepreneur and philanthropist, Natalia Reyes has positioned herself as the public face of ‘ethical innovation.’ As the CEO of LumaCorp, a rising biotech and AI research firm, she publicly promotes responsible technology, appearing at summits and policy discussions alongside Elaine Marsh. However, behind the scenes, she walks a dangerous tightrope between morality and ambition. While she opposes Victor Sloan’s unchecked AI expansion, she secretly funds black-market research on cybernetic enhancements, aligning herself with August Kade in ways that would ruin her public image if discovered. Meanwhile, she finances Lucian Voss’s leaks selectively—exposing only competitors while keeping her own hands clean. Volkov sees her as an asset, Sloan sees her as a nuisance, and Kade sees her as an enabler.",
+  "goals": "To position LumaCorp as the definitive authority in ethical technology while covertly expanding influence into cybernetics and AI research. Natalia seeks to dismantle Sloan’s control over AI development while ensuring that Kade’s work, if legalized, happens under her corporate umbrella. She carefully manipulates Elaine Marsh, using her as a shield against Volkov’s growing governmental control. Despite her polished image, Natalia knows that true progress often happens in the shadows, and she is willing to do what is necessary to shape the future in her favor.",
+  "mental_state": {
+    "valence": 65,
+    "arousal": 55,
+    "dominance": 80,
+    "confidence": 85,
+    "anxiety": 35,
+    "guilt": 40
+  }
+}

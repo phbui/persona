@@ -5,6 +5,8 @@ matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from .record_keeper import RecordKeeper
+import numpy as np
+import matplotlib.pyplot as plt
 
 class ScrollableFrame(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -75,7 +77,7 @@ class EpochExpandableFrame(tk.Frame):
 class EpochAnalysisPanel(ttk.Frame):
     def __init__(self, master, persona):
         """
-        Panel to plot average reward per epoch for a given persona.
+        Panel to plot reward over turns (across all epochs) for a given persona.
         """
         super().__init__(master)
         self.persona = persona
@@ -93,36 +95,47 @@ class EpochAnalysisPanel(ttk.Frame):
         self.update_button.pack(side="bottom", pady=5)
         
         self.update_plot()
-            
+                
     def update_plot(self):
-        record_keeper = RecordKeeper.instance()
-        epochs = record_keeper.epochs  # Each epoch is a list of Record objects.
-        epoch_avg_rewards = []
-        for epoch in epochs:
-            # Filter records for this persona.
-            matching_records = [record for record in epoch if record.persona_name == self.persona]
-            rewards = []
-            # For each matching Record, iterate over its turns.
-            for rec in matching_records:
-                for turn in rec.records:
-                    rewards.append(getattr(turn, "reward_mental_change", 0))
-            if rewards:
-                avg_reward = sum(rewards) / len(rewards)
+            record_keeper = RecordKeeper.instance()
+            # Combine all turns for this persona across all epochs.
+            all_turns = []
+            for epoch in record_keeper.epochs:
+                for record in epoch:
+                    if record.persona_name == self.persona:
+                        all_turns.extend(record.records)
+
+            # Define reward labels and extractor function.
+            labels = ["Mental Change Reward", "Notes Reward", "Response Reward", "Response Emotion Reward"]
+            def reward_extractor(turn):
+                return [
+                    getattr(turn, "reward_mental_change", 0),
+                    getattr(turn, "notes_reward", 0),
+                    getattr(turn, "response_reward", 0),
+                    getattr(turn, "response_emotion_reward", 0)
+                ]
+
+            ax = self.figure.gca()
+            ax.cla()  # Clear the axes.
+            if all_turns:
+                turn_nums = np.arange(1, len(all_turns) + 1)
+                # Prepare data series for each reward type.
+                series = [[] for _ in labels]
+                for turn in all_turns:
+                    rewards = reward_extractor(turn)
+                    for i, r in enumerate(rewards):
+                        series[i].append(r)
+                # Use a colormap to assign colors.
+                colors = plt.cm.viridis(np.linspace(0, 1, len(labels)))
+                for i, data in enumerate(series):
+                    ax.plot(turn_nums, data, marker="o", linestyle="-", label=labels[i], color=colors[i])
+                ax.set_title(f"Rewards Over Turns for {self.persona}")
+                ax.set_xlabel("Turn Number")
+                ax.set_ylabel("Reward Value")
+                ax.legend()
             else:
-                avg_reward = 0
-            epoch_avg_rewards.append(avg_reward)
-        
-        ax = self.figure.gca()
-        ax.cla()  # Clear the axes.
-        if epoch_avg_rewards:
-            epochs_range = range(1, len(epoch_avg_rewards) + 1)
-            ax.plot(epochs_range, epoch_avg_rewards, marker="o", linestyle="-", color="blue")
-            ax.set_title(f"Average Reward for {self.persona}")
-            ax.set_xlabel("Epoch")
-            ax.set_ylabel("Average Reward")
-        else:
-            ax.text(0.5, 0.5, "No epoch data available.", ha="center", va="center")
-        self.canvas.draw()
+                ax.text(0.5, 0.5, "No reward data available.", ha="center", va="center")
+            self.canvas.draw()
 
 class EpochRecordKeeperUI:
     def __init__(self, master):
