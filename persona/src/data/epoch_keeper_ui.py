@@ -4,14 +4,8 @@ import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import os
-import datetime
-import json
 from .record_keeper import RecordKeeper
 
-#---------------------------
-# Helper UI widget: a scrollable frame
-#---------------------------
 class ScrollableFrame(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -27,14 +21,11 @@ class ScrollableFrame(ttk.Frame):
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-#---------------------------
-# EpochExpandableFrame: a collapsible frame for one epoch.
-#---------------------------
 class EpochExpandableFrame(tk.Frame):
     def __init__(self, parent, epoch_index, epoch_data, *args, **kwargs):
         """
         epoch_index: The epoch number.
-        epoch_data: A list of turn records (each is a dict) for this epoch.
+        epoch_data: A list of Record objects for this epoch.
         """
         super().__init__(parent, *args, **kwargs)
         self.epoch_index = epoch_index
@@ -52,9 +43,8 @@ class EpochExpandableFrame(tk.Frame):
         )
         self.header_button.pack(fill="x", padx=5, pady=5)
 
-        # Frame to hold the detailed log
+        # Frame to hold the detailed log; initially, content is hidden.
         self.content_frame = tk.Frame(self)
-        # Initially, content is hidden.
 
     def toggle(self):
         if self.expanded:
@@ -74,14 +64,14 @@ class EpochExpandableFrame(tk.Frame):
         # Create a Text widget to show the epoch's log.
         text_widget = tk.Text(self.content_frame, wrap="word", font=("Helvetica", 12), height=10)
         text_widget.pack(fill="both", expand=True)
-        for turn in self.epoch_data:
-            line = f"[{turn.get('player_name', 'Unknown')}]: {turn.get('message', '')}\n"
-            text_widget.insert("end", line)
+        # For each record in this epoch, iterate over its turns.
+        for record in self.epoch_data:
+            for turn in record.records:
+                # Use the record's persona_name and the turn's input_message for display.
+                line = f"[{record.persona_name}]: {turn.input_message}\n"
+                text_widget.insert("end", line)
         text_widget.config(state="disabled")
 
-#---------------------------
-# EpochAnalysisPanel: displays a single graph for one persona.
-#---------------------------
 class EpochAnalysisPanel(ttk.Frame):
     def __init__(self, master, persona):
         """
@@ -115,7 +105,7 @@ class EpochAnalysisPanel(ttk.Frame):
             # For each matching Record, iterate over its turns.
             for rec in matching_records:
                 for turn in rec.records:
-                    rewards.append(getattr(turn, "reward", 0))
+                    rewards.append(getattr(turn, "reward_mental_change", 0))
             if rewards:
                 avg_reward = sum(rewards) / len(rewards)
             else:
@@ -134,10 +124,6 @@ class EpochAnalysisPanel(ttk.Frame):
             ax.text(0.5, 0.5, "No epoch data available.", ha="center", va="center")
         self.canvas.draw()
 
-#---------------------------
-# EpochRecordKeeperUI: main UI for epoch-level records.
-# Contains two main tabs: Log and Analysis.
-#---------------------------
 class EpochRecordKeeperUI:
     def __init__(self, master):
         self.master = master
@@ -173,7 +159,7 @@ class EpochRecordKeeperUI:
         unique_personas = set()
         for epoch in record_keeper.epochs:
             for record in epoch:
-                persona = record.get("persona_name")
+                persona = record.persona_name
                 if persona:
                     unique_personas.add(persona)
         if not unique_personas:
