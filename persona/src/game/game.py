@@ -33,7 +33,7 @@ class Game:
         turn_counter = 0
         player_names = "".join(f" {p['player'].name}" for p in self.players)
         message = f"{player_names} all run into each other."
-        self.chat.add_turn("[Story So Far]", message)
+        self.chat.add_turn("Story So Far", message)
 
         while turn_counter < num_turns:
             self.play_turn()
