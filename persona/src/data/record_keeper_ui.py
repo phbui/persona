@@ -77,7 +77,7 @@ class TurnFrame(tk.Frame):
         else:
             self.details_frame.pack(fill="x", padx=10, pady=5)
             self.expanded = True
-
+            
 class RecordKeeperUI:
     def __init__(self, master):
         self.master = master
@@ -86,39 +86,74 @@ class RecordKeeperUI:
         self.master.geometry("800x1000")
         self.main_notebook = ttk.Notebook(master)
         self.main_notebook.pack(fill="both", expand=True)
+        
+        # Log tab
         self.log_frame = ttk.Frame(self.main_notebook)
-        self.analyze_frame = ttk.Frame(self.main_notebook)
         self.main_notebook.add(self.log_frame, text="Log")
-        self.main_notebook.add(self.analyze_frame, text="Analyze")
-        self.main_notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
         self.log_notebook = ttk.Notebook(self.log_frame)
         self.log_notebook.pack(fill="both", expand=True)
         self.tabs = {}
         self.update_log_tabs()
-        self.update_log_button = tk.Button(self.log_frame, text="Update Records", command=self.refresh_log, 
-                                           bg="#4CAF50", fg="white", font=("Helvetica", 12, "bold"))
+        self.update_log_button = tk.Button(
+            self.log_frame, 
+            text="Update Records", 
+            command=self.refresh_log, 
+            bg="#4CAF50", fg="white", 
+            font=("Helvetica", 12, "bold")
+        )
         self.update_log_button.pack(side="bottom", pady=10)
-
-        # Create a Notebook inside the Analyze tab to separate analysis per persona.
+        
+        # Analyze tab
+        self.analyze_frame = ttk.Frame(self.main_notebook)
+        self.main_notebook.add(self.analyze_frame, text="Analyze")
+        self.main_notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
+        
+        # Notebook for persona analysis tabs
         self.analysis_notebook = ttk.Notebook(self.analyze_frame)
         self.analysis_notebook.pack(fill="both", expand=True)
-        # For each unique persona in the records, create a sub-tab.
+        self.analysis_ui_instances = {}
+        self._create_analysis_tabs()  # Initialize analysis tabs
+
+        # Button to update analysis tabs (in case new personas have been added)
+        self.update_analysis_button = tk.Button(
+            self.analyze_frame,
+            text="Refresh Analysis Tabs",
+            command=self.update_analysis_tabs,
+            bg="#2196F3", fg="white",
+            font=("Helvetica", 12, "bold")
+        )
+        self.update_analysis_button.pack(side="bottom", pady=10)
+        
+        # Bind the window close event so we can save the plots.
+        self.master.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.master.bind("<Destroy>", self.on_destroy)
+
+    def _create_analysis_tabs(self):
+        """
+        Create analysis tabs for each unique persona found in the record history.
+        """
         record_keeper = RecordKeeper.instance()
         unique_personas = sorted({record.persona_name for record in record_keeper.records if record.persona_name})
-        # If there are no personas, create one default tab.
         if not unique_personas:
             unique_personas = ["Default"]
-        self.analysis_ui_instances = {}
+        # Create a new tab only for new personas
         for persona in unique_personas:
-            frame = ttk.Frame(self.analysis_notebook)
-            self.analysis_notebook.add(frame, text=persona)
-            analysis_ui = AnalysisUI(frame, persona=persona)
-            self.analysis_ui_instances[persona] = analysis_ui
+            if persona not in self.analysis_ui_instances:
+                frame = ttk.Frame(self.analysis_notebook)
+                self.analysis_notebook.add(frame, text=persona)
+                analysis_ui = AnalysisUI(frame, persona=persona)
+                self.analysis_ui_instances[persona] = analysis_ui
 
-        # Bind the window close event so we can save the plots.
-        self.master.protocol("WM_DELETE_WINDOW", self.on_close)        
-        self.master.bind("<Destroy>", self.on_destroy)
-      
+    def update_analysis_tabs(self):
+        """
+        Recheck the record history for new unique personas and update the analysis tabs.
+        """
+        print("[DEBUG] Updating analysis tabs with new personas, if any.")
+        self._create_analysis_tabs()
+        # Optionally, you could also trigger a refresh of the analysis UI in each tab.
+        for analysis_ui in self.analysis_ui_instances.values():
+            analysis_ui.update_all()
+
     def update_log_tabs(self):
         record_keeper = RecordKeeper.instance()
         for record in record_keeper.records:
@@ -144,7 +179,7 @@ class RecordKeeperUI:
     def on_tab_changed(self, event):
         selected = event.widget.tab(event.widget.index("current"), "text")
         if selected != "Analyze":
-            # Collapse any expanded graphs in all analysis UI instances
+            # Collapse any expanded graphs in all analysis UI instances.
             for analysis_ui in self.analysis_ui_instances.values():
                 for panel in analysis_ui.graph_panels:
                     if panel.expanded:
@@ -162,7 +197,6 @@ class RecordKeeperUI:
         # Force update for all graph panels in all AnalysisUI instances.
         for analysis_ui in self.analysis_ui_instances.values():
             for panel in analysis_ui.graph_panels:
-                # Determine a valid container: try panel.graph_container first, then self.master.
                 container = None
                 try:
                     if panel.graph_container and panel.graph_container.winfo_exists():
@@ -173,16 +207,13 @@ class RecordKeeperUI:
                     container = None
 
                 if panel.figure is None:
-                    # Create a new figure.
                     panel.figure = Figure(figsize=(5, 5), dpi=100)
-                    # Use TkAgg if we have a valid container, otherwise use Agg.
                     if container is not None:
                         panel.canvas = FigureCanvasTkAgg(panel.figure, master=container)
                         panel.canvas.mpl_connect("button_press_event", panel.on_click)
                     else:
                         panel.canvas = FigureCanvasAgg(panel.figure)
                 else:
-                    # If figure exists but no canvas, create one using a valid container if possible.
                     if not hasattr(panel, 'canvas') or panel.canvas is None:
                         if container is not None:
                             panel.canvas = FigureCanvasTkAgg(panel.figure, master=container)
@@ -190,21 +221,17 @@ class RecordKeeperUI:
                         else:
                             panel.canvas = FigureCanvasAgg(panel.figure)
 
-                # Update and draw the figure.
                 panel.update_callback(panel.figure)
                 panel.canvas.draw()
 
         try:
             if self.master and self.master.winfo_exists():
-                self.master.update_idletasks()  # Process any pending UI updates
+                self.master.update_idletasks()
         except Exception:
-            pass  # If master doesn't exist, ignore.
+            pass
 
-        # Timestamped session folder
         date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         chat_folder_name = f"chat - {date_str}"
-
-        # Base directory where all saves will go
         current_dir = os.path.dirname(os.path.abspath(__file__))
         saved_dir = os.path.join(current_dir, "saved")
         chat_folder_path = os.path.join(saved_dir, chat_folder_name)
@@ -212,21 +239,18 @@ class RecordKeeperUI:
 
         for record in record_keeper.records:
             persona_name = record.persona_name or "Unknown"
-            # Persona-specific folder inside the chat folder
             persona_folder_path = os.path.join(chat_folder_path, f"{persona_name} - {date_str}")
             os.makedirs(persona_folder_path, exist_ok=True)
 
-            # Save each graph panel's figure in this persona's folder for every AnalysisUI instance.
             for analysis_ui in self.analysis_ui_instances.values():
                 for panel in analysis_ui.graph_panels:
                     if panel.figure:
-                        panel.canvas.draw()  # Ensure the figure is drawn before saving
+                        panel.canvas.draw()
                         file_name = f"{panel.panel_title}.png"
                         file_path = os.path.join(persona_folder_path, file_name)
                         panel.figure.savefig(file_path)
                         print(f"[INFO] Saved plot: {file_path}")
 
-            # Save the record as a JSON file
             json_file_path = os.path.join(persona_folder_path, f"{persona_name}.json")
             with open(json_file_path, "w", encoding="utf-8") as json_file:
                 json.dump(record.to_dict(), json_file, indent=4, ensure_ascii=False)
@@ -236,6 +260,5 @@ class RecordKeeperUI:
         self.master.destroy()
 
     def on_destroy(self, event):
-        # If the main window is being destroyed (via any means) and cleanup hasn't run, call on_close.
         if event.widget == self.master and not self._closing:
             self.on_close()
