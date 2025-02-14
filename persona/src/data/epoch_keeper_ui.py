@@ -155,22 +155,20 @@ class EpochRecordKeeperUI:
         self.main_notebook.add(self.analysis_frame, text="Analysis")
         self.analysis_notebook = ttk.Notebook(self.analysis_frame)
         self.analysis_notebook.pack(fill="both", expand=True)
-        record_keeper = RecordKeeper.instance()
-        unique_personas = set()
-        for epoch in record_keeper.epochs:
-            for record in epoch:
-                persona = record.persona_name
-                if persona:
-                    unique_personas.add(persona)
-        if not unique_personas:
-            unique_personas = {"Default"}
+        
+        # Create the initial persona tabs.
         self.analysis_panels = {}
-        for persona in sorted(unique_personas):
-            frame = ttk.Frame(self.analysis_notebook)
-            self.analysis_notebook.add(frame, text=persona)
-            panel = EpochAnalysisPanel(frame, persona)
-            panel.pack(fill="both", expand=True)
-            self.analysis_panels[persona] = panel
+        self.update_analysis_tabs()
+        
+        # Add a button to refresh the persona tabs.
+        self.refresh_persona_button = tk.Button(
+            self.analysis_frame,
+            text="Refresh Persona Tabs",
+            command=self.update_analysis_tabs,
+            bg="#2196F3", fg="white",
+            font=("Helvetica", 12, "bold")
+        )
+        self.refresh_persona_button.pack(side="bottom", pady=10)
         
         self.main_notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
         self.master.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -187,6 +185,32 @@ class EpochRecordKeeperUI:
         for epoch_idx, epoch in enumerate(record_keeper.epochs, start=1):
             epoch_frame = EpochExpandableFrame(self.log_scrollable.scrollable_frame, epoch_idx, epoch)
             epoch_frame.pack(fill="x", pady=5)
+    
+    def update_analysis_tabs(self):
+        """
+        Recheck the epochs for unique personas and add new persona tabs if needed.
+        """
+        record_keeper = RecordKeeper.instance()
+        unique_personas = set()
+        for epoch in record_keeper.epochs:
+            for record in epoch:
+                persona = record.persona_name
+                if persona:
+                    unique_personas.add(persona)
+        if not unique_personas:
+            unique_personas = {"Default"}
+        
+        # Create new tabs for any new personas.
+        for persona in sorted(unique_personas):
+            if persona not in self.analysis_panels:
+                frame = ttk.Frame(self.analysis_notebook)
+                self.analysis_notebook.add(frame, text=persona)
+                panel = EpochAnalysisPanel(frame, persona)
+                panel.pack(fill="both", expand=True)
+                self.analysis_panels[persona] = panel
+            else:
+                # Optionally, refresh the existing panel.
+                self.analysis_panels[persona].update_plot()
     
     def on_tab_changed(self, event):
         # Optional: collapse expanded sections when switching tabs.
