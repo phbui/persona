@@ -1,7 +1,0 @@
-{
-  "id": "string",
-  "backstory": "string",
-  "triggers": [{ "trigger": "string", "reaction": "string" }],
-  "mental_state": [{ "attribute": "string", "value": 0 }],
-  "policy": {}
-}

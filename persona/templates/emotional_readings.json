@@ -1,9 +1,0 @@
-[
-  { "label": "anger", "score": 0.004419783595949411 },
-  { "label": "disgust", "score": 0.0016119900392368436 },
-  { "label": "fear", "score": 0.0004138521908316761 },
-  { "label": "joy", "score": 0.9771687984466553 },
-  { "label": "neutral", "score": 0.005764586851000786 },
-  { "label": "sadness", "score": 0.002092392183840275 },
-  { "label": "surprise", "score": 0.008528684265911579 }
-]

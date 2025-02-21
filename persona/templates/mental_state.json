@@ -1,8 +1,0 @@
-[
-  { "attribute": "valence", "value": 50 },
-  { "attribute": "arousal", "value": 50 },
-  { "attribute": "dominance", "value": 50 },
-  { "attribute": "confidence", "value": 50 },
-  { "attribute": "anxiety", "value": 50 },
-  { "attribute": "guilt", "value": 50 }
-]
