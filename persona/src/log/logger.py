@@ -20,7 +20,7 @@ class Logger(metaclass=Meta_Singleton):
         self.logs = []
         self.lock = Lock()
 
-    def add_log(self, log: Log):
+    def add_log_obj(self, log: Log):
         """
         Adds a Log object entry if it meets the required log level.
         """
@@ -32,6 +32,13 @@ class Logger(metaclass=Meta_Singleton):
 
         # Print the log using its __str__ representation
         print(str(log))
+
+    def add_log(self, log_type: str, data_type: str, cls_name: str, func_name: str, details: str):
+        """
+        Creates a Log object from individual components and adds it using add_log().
+        """
+        new_log = Log(log_type, data_type, cls_name, func_name, details)
+        self.add_log_obj(new_log)
 
     def get_logs(self):
         """Returns all logs."""

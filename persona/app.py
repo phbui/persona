@@ -15,7 +15,7 @@ def main():
     ui.show()
 
     # (Optional) Start on a particular tab, e.g., Logger
-    ui.switch_tab(1)
+    ui.switch_tab(0)
 
     # This blocks until the main window is closed or sys.exit is called
     sys.exit(app.exec())
