@@ -1,7 +1,7 @@
 import json
 import os
-from ..meta.meta_singleton import Meta_Singleton
-from ..log.logger import Logger
+from meta.meta_singleton import Meta_Singleton
+from log.logger import Logger
 
 
 class Manager_File(metaclass=Meta_Singleton):

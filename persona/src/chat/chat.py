@@ -1,5 +1,5 @@
-from ..log.log import Log
-from ..log.logger import Logger
+from log.log import Log
+from log.logger import Logger
 from .round import Round 
 
 class Chat:

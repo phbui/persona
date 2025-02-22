@@ -2,9 +2,9 @@ import os
 import json
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from ..meta.meta_singleton import Meta_Singleton
-from ..log.logger import Logger, Log
-from ..manager.manager_file import Manager_File
+from meta.meta_singleton import Meta_Singleton
+from log.logger import Logger, Log
+from manager.manager_file import Manager_File
 
 load_dotenv()
 neo4js_uri = os.getenv('NEO4J_URI')

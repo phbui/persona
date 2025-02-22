@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt
 from .interface_trainer import Interface_Trainer
 from .interface_logger import Interface_Logger
 from .interface_tester import Interface_Tester
-from ..log.logger import Logger
+from log.logger import Logger
 
 class Manager_Tab(QMainWindow):
     def __init__(self):
@@ -30,7 +30,7 @@ class Manager_Tab(QMainWindow):
         self.tab_widget.setTabPosition(QTabWidget.TabPosition.North)
 
         self.setCentralWidget(self.tab_widget)
-        Logger().add_log("INFO", "ui", "Manager_Tab", "_setup_ui", "Setting up ui")
+        Logger().add_log("INFO", "ui", self.__class__.__name__, "_setup_ui", "Setting up ui")
 
     def switch_tab(self, index: int):
         """
@@ -39,7 +39,7 @@ class Manager_Tab(QMainWindow):
         """
         if 0 <= index < self.tab_widget.count():
             self.tab_widget.setCurrentIndex(index)
-            Logger().add_log("INFO", "ui", "Manager_Tab", "switch_tab", f"Switching to tab {index}")
+            Logger().add_log("INFO", "ui", self.__class__.__name__, "switch_tab", f"Switching to tab {index}")
 
     def closeEvent(self, event):
         """
@@ -47,5 +47,5 @@ class Manager_Tab(QMainWindow):
         """
         print("Manager_Tab close event triggered. Shutting down.")
         super().closeEvent(event)
-        Logger().add_log("INFO", "ui", "Manager_Tab", "closeEvent", f"Shutting down")
+        Logger().add_log("INFO", "ui", self.__class__.__name__, "closeEvent", f"Shutting down")
         sys.exit(0)  # Force full shutdown

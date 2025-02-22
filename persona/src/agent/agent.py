@@ -1,5 +1,5 @@
-from ..log.log import Log
-from ..log.logger import Logger
+from log.log import Log
+from log.logger import Logger
 
 class Agent:
     def __init__(self, name):

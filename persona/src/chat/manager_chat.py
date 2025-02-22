@@ -1,5 +1,5 @@
-from ..log.log import Log
-from ..log.logger import Logger
+from log.log import Log
+from log.logger import Logger
 from .chat import Chat
 from .epoch import Epoch  
 
@@ -9,7 +9,7 @@ class Manager_Chat:
         self.agent_b = agent_b
         self.num_epochs = num_epochs
         self.rounds_per_epoch = rounds_per_epoch
-        self.epochs = []  # List to store completed epochs
+        self.epochs = [] 
         self.logger = Logger()
         log = Log("INFO", "manager_chat", self.__class__.__name__, "__init__", 
                   f"Manager_Chat initialized with agents '{agent_a.name}', '{agent_b.name}', "

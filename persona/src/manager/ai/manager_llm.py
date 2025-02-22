@@ -3,8 +3,8 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from dotenv import load_dotenv
 from accelerate import Accelerator
-from ...meta.meta_singleton import Meta_Singleton
-from ...log.logger import Logger
+from .meta.meta_singleton import Meta_Singleton
+from .log.logger import Logger
 
 load_dotenv()
 secret_key = os.getenv('hf_key')

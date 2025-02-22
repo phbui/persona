@@ -1,6 +1,6 @@
 import datetime
 from threading import Lock
-from ..meta.meta_singleton import Meta_Singleton
+from meta.meta_singleton import Meta_Singleton
 from .log import Log
 
 class Logger(metaclass=Meta_Singleton):
