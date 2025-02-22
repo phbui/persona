@@ -15,7 +15,7 @@ class Logger(metaclass=Meta_Singleton):
         "CRITICAL": 5
     }
 
-    def __init__(self, log_level="INFO"):
+    def __init__(self, log_level="WARNING"):
         self.log_level = self.LOG_LEVELS.get(log_level.upper(), 2)
         self.logs = []
         self.lock = Lock()

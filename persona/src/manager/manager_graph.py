@@ -51,9 +51,9 @@ class Manager_Graph(metaclass=Meta_Singleton):
         for node in nodes:
             label = node.get('label')
             properties = node.get('properties', {})
-            query = f"CREATE (n:{label} $properties)"
-            self.run_query(query, {"properties": properties})
-        log = Log("INFO", "graph", self.__class__.__name__, "add_nodes", f"Added {len(nodes)} nodes to the graph.")
+            query = f"MERGE (n:{label} {{name: $name}})"
+            self.run_query(query, {"name": properties.get("name")})
+        log = Log("INFO", "graph", self.__class__.__name__, "add_nodes", f"Added nodes to the graph.")
         self.logger.add_log_obj(log)
 
     def add_subgraph(self, subgraph):
@@ -66,11 +66,16 @@ class Manager_Graph(metaclass=Meta_Singleton):
             end = rel.get('end')
             rel_type = rel.get('type')
             properties = rel.get('properties', {})
-            start_label = start.get('label')
-            start_props = start.get('match_properties')
-            end_label = end.get('label')
-            end_props = end.get('match_properties')
-            query = f"MATCH (a:{start_label} $start_props), (b:{end_label} $end_props) CREATE (a)-[r:{rel_type} $properties]->(b)"
+            start_props = start.get('match_properties', {})
+            end_props = end.get('match_properties', {})
+            # Use a WHERE ALL clause with literal maps for matching
+            query = (
+                "MATCH (a:TreeNode) "
+                "WHERE ALL(key IN keys($start_props) WHERE a[key] = $start_props[key]) "
+                "MATCH (b:TreeNode) "
+                "WHERE ALL(key IN keys($end_props) WHERE b[key] = $end_props[key]) "
+                "CREATE (a)-[r:" + rel_type + " $properties]->(b)"
+            )
             self.run_query(query, {"start_props": start_props, "end_props": end_props, "properties": properties})
         log = Log("INFO", "graph", self.__class__.__name__, "add_subgraph", f"Added subgraph with {len(nodes)} nodes and {len(relationships)} relationships.")
         self.logger.add_log_obj(log)
@@ -82,9 +87,9 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.logger.add_log_obj(log)
 
     def download_entire_graph(self, dir_path, filename="graph_download.json"):
-        nodes_query = "MATCH (n) RETURN n"
+        nodes_query = "MATCH (n) RETURN labels(n) AS labels, properties(n) AS props"
         nodes_result = self.run_query(nodes_query)
-        rel_query = "MATCH ()-[r]->() RETURN r"
+        rel_query = "MATCH ()-[r]->() RETURN type(r) AS type, id(startNode(r)) AS id_a, id(endNode(r)) AS id_b, properties(r) AS props"
         rel_result = self.run_query(rel_query)
         graph_data = {"nodes": nodes_result if nodes_result is not None else [], "relationships": rel_result if rel_result is not None else []}
         file_manager = Manager_File()
@@ -97,15 +102,19 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def convert_json_to_cypher(graph_data):
         queries = []
         for node in graph_data.get('nodes', []):
-            node_props = node.get('n')
-            if node_props:
-                query = "CREATE (n:Node $props)"
-                queries.append((query, {"props": node_props}))
+            labels = node.get('labels', [])
+            props = node.get('props', {})
+            label = labels[0] if labels else "Node"
+            query = f"CREATE (n:{label} $props)"
+            queries.append((query, {"props": props}))
         for rel in graph_data.get('relationships', []):
-            rel_props = rel.get('r')
-            if rel_props:
-                query = "MATCH (a:Node), (b:Node) WHERE id(a) = $id_a AND id(b) = $id_b CREATE (a)-[r:REL $props]->(b)"
-                queries.append((query, {"id_a": rel_props.get('id_a'), "id_b": rel_props.get('id_b'), "props": rel_props}))
+            rel_type = rel.get('type')
+            id_a = rel.get('id_a')
+            id_b = rel.get('id_b')
+            props = rel.get('props', {})
+            if rel_type is not None and id_a is not None and id_b is not None:
+                query = "MATCH (a), (b) WHERE id(a) = $id_a AND id(b) = $id_b CREATE (a)-[r:" + rel_type + " $props]->(b)"
+                queries.append((query, {"id_a": id_a, "id_b": id_b, "props": props}))
         return queries
 
     def upload_graph_from_json(self, file_path):
