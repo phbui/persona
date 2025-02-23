@@ -6,15 +6,22 @@ from manager.ai.manager_llm import Manager_LLM
 
 class Manager_Extraction(metaclass=Meta_Singleton):
     def __init__(self):
-        self.manager_llm = Manager_LLM()
+        self.manager_llm = Manager_LLM("google/flan-t5-base")
         self.logger = Logger()
-        
+
     def _log(self, level, method, message):
         log = Log(level, "extraction", self.__class__.__name__, method, message)
         self.logger.add_log_obj(log)
 
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
-        prompt = "Extract entities from the following text. Return a JSON list of objects with keys 'content' and 'embedding'. Text: " + text
+        prompt = (
+            "Extract the named entities from the following text. "
+            "Return ONLY a JSON array where each object has two keys: 'content' and 'embedding'. "
+            "Set the 'embedding' value to null (it will be populated later). "
+            "For example, if the text is: 'Alice visited Paris.' then the correct output would be: "
+            "[{\"content\": \"Alice\", \"embedding\": null}, {\"content\": \"Paris\", \"embedding\": null}]. "
+            "Text: " + text
+        )
         self._log("INFO", "extract_entities", f"Sending prompt: {prompt}")
         response = self.manager_llm.generate_response(prompt, max_new_tokens=256, temperature=0.2)
         self._log("INFO", "extract_entities", f"Received response: {response}")
@@ -30,7 +37,14 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             return []
         
     def extract_facts(self, text: str) -> List[Dict[str, Any]]:
-        prompt = "Extract facts from the following text. Return a JSON list of objects with keys 'fact' and 'embedding'. Text: " + text
+        prompt = (
+            "Extract the factual statements from the following text. "
+            "Return ONLY a JSON array where each object has two keys: 'fact' and 'embedding'. "
+            "Set the 'embedding' value to null (it will be populated later). "
+            "For example, if the text is: 'Alice visited Paris and Bob is a teacher.' then the correct output would be: "
+            "[{\"fact\": \"Alice visited Paris\", \"embedding\": null}, {\"fact\": \"Bob is a teacher\", \"embedding\": null}]. "
+            "Text: " + text
+        )
         self._log("INFO", "extract_facts", f"Sending prompt: {prompt}")
         response = self.manager_llm.generate_response(prompt, max_new_tokens=256, temperature=0.2)
         self._log("INFO", "extract_facts", f"Received response: {response}")
