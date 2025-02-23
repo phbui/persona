@@ -235,7 +235,11 @@ class Manager_Graph(metaclass=Meta_Singleton):
             extracted_entities = []
         resolved_entities = []
         for entity in extracted_entities:
-            resolved_entity = self.manager_extraction.resolve_entity(entity)
+            candidates = self.run_query(
+                "MATCH (e:Entity) WHERE toLower(e.content) CONTAINS toLower($content) RETURN e.content AS content, e.embedding AS embedding",
+                {"content": entity["content"]}
+            )
+            resolved_entity = self.manager_extraction.resolve_entity(entity, candidates)
             resolved_entities.append(resolved_entity)
             self._add_entity(resolved_entity)
             self._link_episode_to_entity(episode_content, resolved_entity["content"])

@@ -17,62 +17,58 @@ class Manager_Extraction(metaclass=Meta_Singleton):
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         prompt = (
             "Extract the named entities from the following text. "
-            "Return ONLY a JSON array where each object has a key 'content'. "
-            "For example, if the text is: 'Alice visited Paris.' then the correct output would be: "
-            "[{\"content\": \"Alice\"}, {\"content\": \"Paris\"}]. "
+            "Return them as a comma-separated list. "
+            "For example, if the text is: 'Alice visited Paris.' "
+            "the correct output would be: 'Alice, Paris'. "
             "Text: " + text
-        )
+                )
         self._log("INFO", "extract_entities", f"Sending prompt: {prompt}")
         response = self.manager_llm.generate_response(prompt, max_new_tokens=256, temperature=0.2)
         self._log("INFO", "extract_entities", f"Received response: {response}")
         try:
-            entities = json.loads(response)
-            if isinstance(entities, list):
-                self._log("INFO", "extract_entities", f"Extracted {len(entities)} entities.")
-                for entity in entities:
-                    content = entity.get("content")
-                    embedding = self.manager_llm.generate_embedding(content)
-                    entity["embedding"] = embedding
-                    self._log("INFO", "extract_entities", f"Generated embedding for entity '{content}': {embedding}")
-                return entities
-            self._log("WARNING", "extract_entities", "Response is not a list.")
-            return []
+            cleaned = response.strip()
+            items = [item.strip() for item in cleaned.split(",")]
+            entities = []
+            for item in items:
+                if item:
+                    embedding = self.manager_llm.generate_embedding(item)
+                    entity_obj = {"content": item, "embedding": embedding}
+                    self._log("INFO", "extract_entities", f"Generated embedding for entity '{item}': {embedding}")
+                    entities.append(entity_obj)
+            self._log("INFO", "extract_entities", f"Extracted {len(entities)} entities.")
+            return entities
         except Exception as e:
-            self._log("ERROR", "extract_entities", f"Failed to parse JSON: {e}")
+            self._log("ERROR", "extract_entities", f"Failed to process response: {e}")
             return []
         
     def extract_facts(self, text: str) -> List[Dict[str, Any]]:
         prompt = (
             "Extract the factual statements from the following text. "
-            "Return ONLY a JSON array where each object has a key 'fact'. "
-            "For example, if the text is: 'Alice visited Paris and Bob is a teacher.' then the correct output would be: "
-            "[{\"fact\": \"Alice visited Paris\"}, {\"fact\": \"Bob is a teacher\"}]. "
+            "Return them as a comma-separated list. "
+            "For example, if the text is: 'Alice visited Paris and Bob is a teacher.' "
+            "the correct output would be: 'Alice visited Paris, Bob is a teacher'. "
             "Text: " + text
         )
         self._log("INFO", "extract_facts", f"Sending prompt: {prompt}")
         response = self.manager_llm.generate_response(prompt, max_new_tokens=256, temperature=0.2)
         self._log("INFO", "extract_facts", f"Received response: {response}")
         try:
-            facts = json.loads(response)
-            if isinstance(facts, list):
-                self._log("INFO", "extract_facts", f"Extracted {len(facts)} facts.")
-                for fact in facts:
-                    fact_text = fact.get("fact")
-                    embedding = self.manager_llm.generate_embedding(fact_text)
-                    fact["embedding"] = embedding
-                    self._log("INFO", "extract_facts", f"Generated embedding for fact '{fact_text}': {embedding}")
-                return facts
-            self._log("WARNING", "extract_facts", "Response is not a list.")
-            return []
+            cleaned = response.strip()
+            items = [item.strip() for item in cleaned.split(",")]
+            facts = []
+            for item in items:
+                if item:
+                    embedding = self.manager_llm.generate_embedding(item)
+                    fact_obj = {"fact": item, "embedding": embedding}
+                    self._log("INFO", "extract_facts", f"Generated embedding for fact '{item}': {embedding}")
+                    facts.append(fact_obj)
+            self._log("INFO", "extract_facts", f"Extracted {len(facts)} facts.")
+            return facts
         except Exception as e:
-            self._log("ERROR", "extract_facts", f"Failed to parse JSON: {e}")
+            self._log("ERROR", "extract_facts", f"Failed to process response: {e}")
             return []
 
-    def resolve_entity(self, entity):
-        candidates = self.run_query(
-            "MATCH (e:Entity) WHERE toLower(e.content) CONTAINS toLower($content) RETURN e.content AS content, e.embedding AS embedding",
-            {"content": entity["content"]}
-        )
+    def resolve_entity(self, entity, candidates):
         if not candidates:
             return entity
         best_candidate = None
