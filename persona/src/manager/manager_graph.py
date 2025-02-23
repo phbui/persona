@@ -1,4 +1,5 @@
-import os, time
+import os
+import time
 import numpy as np
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
@@ -27,9 +28,9 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self._log("ERROR", "__init__", f"Failed to connect to Neo4j at {self.uri}: {e}")
             raise
 
-    def _log(self, level, method, message):
-        log = Log(level, "graph", self.__class__.__name__, method, message)
-        self.logger.add_log_obj(log)
+    def _log(self, level, method_name, message):
+        log_entry = Log(level, "graph", self.__class__.__name__, method_name, message)
+        self.logger.add_log_obj(log_entry)
 
     def close(self):
         self.driver.close()
@@ -41,34 +42,34 @@ class Manager_Graph(metaclass=Meta_Singleton):
             with self.driver.session() as session:
                 result = session.run(query, parameters)
                 data = [record.data() for record in result]
-            self._log("INFO", "run_query", f"Executed query: {query} with params: {parameters}")
+            self._log("INFO", "run_query", f"Executed query: {query} with parameters: {parameters}")
             return data
         except Exception as e:
             self._log("ERROR", "run_query", f"Query failed: {query} with error: {e}")
             return None
 
-    def add_node(self, node_data, node_type):
+    def add_node(self, data_dict, node_label):
         query = (
-            f"MERGE (n:{node_type} {{ content: $content }}) "
+            f"MERGE (n:{node_label} {{ content: $content }}) "
             "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding"
         )
         params = {
-            "content": node_data.get("content"),
-            "timestamp": node_data.get("timestamp", time.time()),
-            "embedding": node_data.get("embedding")
+            "content": data_dict.get("content"),
+            "timestamp": data_dict.get("timestamp", time.time()),
+            "embedding": data_dict.get("embedding")
         }
         self.run_query(query, params)
-        self._log("INFO", "add_node", f"Added {node_type} node with content: {node_data.get('content')}")
+        self._log("INFO", "add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
 
     def add_episode(self, episode_data):
-        self.add_node(episode_data, node_type="Episode")
+        self.add_node(episode_data, node_label="Episode")
 
     def add_entity(self, entity_data):
-        self.add_node(entity_data, node_type="Entity")
+        self.add_node(entity_data, node_label="Entity")
         self.update_community_for_entity(entity_data["content"])
 
     def add_community(self, community_data):
-        self.add_node(community_data, node_type="Community")
+        self.add_node(community_data, node_label="Community")
 
     def update_community_for_entity(self, entity_content):
         query = (
@@ -79,31 +80,31 @@ class Manager_Graph(metaclass=Meta_Singleton):
         )
         result = self.run_query(query, {"content": entity_content})
         if result and len(result) > 0:
-            cid = result[0]["cid"]
-            self._log("INFO", "update_community_for_entity", f"Found existing community {cid} for entity {entity_content}")
+            community_id = result[0]["cid"]
+            self._log("INFO", "update_community_for_entity", f"Found existing community {community_id} for entity {entity_content}")
         else:
-            cid = f"community_{int(time.time())}"
-            self.add_community({"content": cid, "timestamp": time.time(), "embedding": None})
-            self._log("INFO", "update_community_for_entity", f"Created new community {cid} for entity {entity_content}")
+            community_id = f"community_{int(time.time())}"
+            self.add_community({"content": community_id, "timestamp": time.time(), "embedding": None})
+            self._log("INFO", "update_community_for_entity", f"Created new community {community_id} for entity {entity_content}")
         update_query = (
             "MATCH (e:Entity {content: $content}) "
-            "SET e.community_id = $cid"
+            "SET e.community_id = $community_id"
         )
-        self.run_query(update_query, {"content": entity_content, "cid": cid})
-        self._log("INFO", "update_community_for_entity", f"Assigned community {cid} to entity {entity_content}")
+        self.run_query(update_query, {"content": entity_content, "community_id": community_id})
+        self._log("INFO", "update_community_for_entity", f"Assigned community {community_id} to entity {entity_content}")
 
-    def add_memory_relationship(self, content1, content2, rel_type="RELATED", llm_edge=False,
-                                  weight=1.0, from_type="Memory", to_type="Memory"):
+    def add_memory_relationship(self, source_content, target_content, relationship_type="RELATED",
+                                  llm_edge=False, relationship_weight=1.0, source_label="Memory", target_label="Memory"):
         query = (
-            f"MATCH (m1:{from_type} {{content: $content1}}), (m2:{to_type} {{content: $content2}}) "
-            f"MERGE (m1)-[r:{rel_type}]->(m2) "
-            "ON CREATE SET r.llm_edge = $llm_edge, r.weight = $weight"
+            f"MATCH (m1:{source_label} {{content: $source_content}}), (m2:{target_label} {{content: $target_content}}) "
+            f"MERGE (m1)-[r:{relationship_type}]->(m2) "
+            "ON CREATE SET r.llm_edge = $llm_edge, r.weight = $relationship_weight"
         )
         params = {
-            "content1": content1,
-            "content2": content2,
+            "source_content": source_content,
+            "target_content": target_content,
             "llm_edge": llm_edge,
-            "weight": weight
+            "relationship_weight": relationship_weight
         }
         self.run_query(query, params)
 
@@ -125,13 +126,13 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.run_query("MATCH (n) DETACH DELETE n")
         self._log("INFO", "delete_entire_graph", "Deleted the entire graph.")
 
-    def download_entire_graph(self, dir_path, filename="graph_download.json"):
+    def download_entire_graph(self, directory_path, file_name="graph_download.json"):
         nodes = self.run_query("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props") or []
-        rels = self.run_query(
-            "MATCH ()-[r]->() RETURN type(r) AS type, id(startNode(r)) AS id_a, id(endNode(r)) AS id_b, properties(r) AS props"
+        relationships = self.run_query(
+            "MATCH ()-[r]->() RETURN type(r) AS type, id(startNode(r)) AS start_id, id(endNode(r)) AS end_id, properties(r) AS props"
         ) or []
-        graph_data = {"nodes": nodes, "relationships": rels}
-        success = Manager_File().download_file(graph_data, dir_path, filename)
+        graph_data = {"nodes": nodes, "relationships": relationships}
+        success = Manager_File().download_file(graph_data, directory_path, file_name)
         return success
 
     def _convert_json(self, graph_data):
@@ -140,10 +141,10 @@ class Manager_Graph(metaclass=Meta_Singleton):
             label = node.get("labels", ["Memory"])[0]
             queries.append((f"CREATE (n:{label} $props)", {"props": node.get("props", {})}))
         for rel in graph_data.get("relationships", []):
-            if None not in (rel.get("type"), rel.get("id_a"), rel.get("id_b")):
-                q = ("MATCH (a), (b) WHERE id(a) = $id_a AND id(b) = $id_b "
+            if None not in (rel.get("type"), rel.get("start_id"), rel.get("end_id")):
+                q = ("MATCH (a), (b) WHERE id(a) = $start_id AND id(b) = $end_id "
                      f"CREATE (a)-[r:{rel.get('type')} $props]->(b)")
-                queries.append((q, {"id_a": rel["id_a"], "id_b": rel["id_b"], "props": rel.get("props", {})}))
+                queries.append((q, {"start_id": rel["start_id"], "end_id": rel["end_id"], "props": rel.get("props", {})}))
         return queries
 
     def upload_entire_graph(self, file_path):
@@ -155,17 +156,17 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self.run_query(query, params)
         return True
 
-    def propagate_labels(self, entities, max_iter=10):
-        n = len(entities)
-        labels = list(range(n))
-        for _ in range(max_iter):
+    def propagate_labels(self, entities, max_iterations=10):
+        num_entities = len(entities)
+        labels = list(range(num_entities))
+        for _ in range(max_iterations):
             new_labels = labels.copy()
-            for i in range(n):
+            for i in range(num_entities):
                 neighbor_labels = []
-                for j in range(n):
+                for j in range(num_entities):
                     if i != j:
-                        sim = self.manager_extraction.cosine_similarity(entities[i]["embedding"], entities[j]["embedding"])
-                        if sim >= 0.7:
+                        similarity = self.manager_extraction.cosine_similarity(entities[i]["embedding"], entities[j]["embedding"])
+                        if similarity >= 0.7:
                             neighbor_labels.append(labels[j])
                 if neighbor_labels:
                     new_labels[i] = max(set(neighbor_labels), key=neighbor_labels.count)
@@ -174,8 +175,8 @@ class Manager_Graph(metaclass=Meta_Singleton):
             labels = new_labels
         return labels
 
-    def summarize_community(self, community_entities):
-        aggregated_text = " ".join(community_entities)
+    def summarize_community(self, community_entity_contents):
+        aggregated_text = " ".join(community_entity_contents)
         prompt = "Summarize the following entities to capture their high-level context:\n" + aggregated_text
         summary = self.manager_extraction.manager_llm.generate_response(prompt, max_new_tokens=150, temperature=0.3)
         return summary.strip()
@@ -185,44 +186,46 @@ class Manager_Graph(metaclass=Meta_Singleton):
         if not entities_data:
             self._log("INFO", "dynamic_community_update", "No entities found for community update.")
             return
-        entity_list = [{"content": n["content"], "embedding": n["embedding"]} for n in entities_data]
-        labels = self.propagate_labels(entity_list, max_iter=10)
+        entity_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
+        labels = self.propagate_labels(entity_list, max_iterations=10)
         clusters = {}
         for idx, label in enumerate(labels):
             clusters.setdefault(label, []).append(entity_list[idx]["content"])
         for cluster_id, contents in clusters.items():
-            cid = f"community_{cluster_id}"
+            community_id = f"community_{cluster_id}"
             summary = self.summarize_community(contents)
-            self.add_community({"content": cid, "timestamp": time.time(), "embedding": None, "summary": summary})
-            self.run_query("MATCH (c:Community {content: $cid}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"cid": cid, "contents": contents})
+            self.add_community({"content": community_id, "timestamp": time.time(), "embedding": None, "summary": summary})
+            self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
         self._log("INFO", "dynamic_community_update", "Community update completed with iterative summarization.")
 
     def build_community_subgraph(self, num_clusters=5):
         nodes = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not nodes:
             return
-        entities = [{"content": n["content"], "embedding": n["embedding"]} for n in nodes]
-        clusters = self.cluster_memory_nodes(entities, num_clusters)
+        entities = [{"content": record["content"], "embedding": record["embedding"]} for record in nodes]
+        clusters = self.cluster_memory_nodes(entities, threshold=0.7, num_iterations=10)
         for cluster_id, contents in clusters.items():
-            cid = f"community_{cluster_id}"
-            self.add_community({"content": cid, "timestamp": time.time(), "embedding": None})
+            community_id = f"community_{cluster_id}"
+            self.add_community({"content": community_id, "timestamp": time.time(), "embedding": None})
             for content in contents:
-                self.run_query("MATCH (c:Community {content: $cid}), (en:Entity {content: $content}) MERGE (en)-[:BELONGS_TO]->(c)", {"cid": cid, "content": content})
+                self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity {content: $entity_content}) MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "entity_content": content})
 
-    def build_semantic_subgraph(self, entity_list: list, threshold=0.7):
-        for i in range(len(entity_list)):
-            self.add_entity(entity_list[i])
-            for j in range(i + 1, len(entity_list)):
-                sim = self.manager_extraction.cosine_similarity(entity_list[i]["embedding"], entity_list[j]["embedding"])
-                if sim >= threshold:
-                    self.add_memory_relationship(content1=entity_list[i]["content"],
-                                                 content2=entity_list[j]["content"],
-                                                 rel_type="SEMANTICALLY_RELATED",
-                                                 llm_edge=True,
-                                                 weight=sim,
-                                                 from_type="Entity",
-                                                 to_type="Entity")
-                    
+    def build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.7):
+        for i in range(len(entities_list)):
+            self.add_entity(entities_list[i])
+            for j in range(i + 1, len(entities_list)):
+                similarity = self.manager_extraction.cosine_similarity(entities_list[i]["embedding"], entities_list[j]["embedding"])
+                if similarity >= similarity_threshold:
+                    self.add_memory_relationship(
+                        source_content=entities_list[i]["content"],
+                        target_content=entities_list[j]["content"],
+                        relationship_type="SEMANTICALLY_RELATED",
+                        llm_edge=True,
+                        relationship_weight=similarity,
+                        source_label="Entity",
+                        target_label="Entity"
+                    )
+
     def link_episode_to_entity(self, episode_content, entity_content):
         query = "MATCH (e:Episode {content: $episode_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)"
         self.run_query(query, {"episode_content": episode_content, "entity_content": entity_content})
@@ -232,17 +235,20 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.add_episode(episode_data)
         episode_content = episode_data.get("content")
         self._log("INFO", "process_new_memory", f"Processing new memory: {episode_content}")
-        previous_episodes = self.run_query("MATCH (e:Episode) WHERE e.timestamp < $current ORDER BY e.timestamp DESC LIMIT $limit", {"current": time.time(), "limit": context_window})
+        previous_episodes = self.run_query(
+            "MATCH (e:Episode) WHERE e.timestamp < $current_timestamp ORDER BY e.timestamp DESC LIMIT $limit",
+            {"current_timestamp": time.time(), "limit": context_window}
+        )
         context_text = episode_content
         if previous_episodes:
-            context_text += " " + " ".join([e["n"]["content"] for e in previous_episodes if "n" in e])
+            context_text += " " + " ".join([record["n"]["content"] for record in previous_episodes if "n" in record])
         try:
-            entities = self.manager_extraction.extract_entities(context_text)
+            extracted_entities = self.manager_extraction.extract_entities(context_text)
         except Exception as e:
             self._log("ERROR", "process_new_memory", f"Entity extraction failed: {e}")
-            entities = []
+            extracted_entities = []
         resolved_entities = []
-        for entity in entities:
+        for entity in extracted_entities:
             resolved_entity = self.manager_extraction.resolve_entity(entity)
             resolved_entities.append(resolved_entity)
             self.add_entity(resolved_entity)
@@ -254,8 +260,8 @@ class Manager_Graph(metaclass=Meta_Singleton):
         entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not entities_data:
             return
-        entity_list = [{"content": n["content"], "embedding": n["embedding"]} for n in entities_data]
-        self.build_semantic_subgraph(entity_list, threshold=0.7)
+        entities_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
+        self.build_semantic_subgraph(entities_list, similarity_threshold=0.7)
         self._log("INFO", "update_semantic_subgraph", "Semantic subgraph updated.")
 
     def update_entire_graph(self):
@@ -264,44 +270,51 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "update_entire_graph", "Updated entire graph with new connections.")
 
     def build_episode_subgraph(self, conversation_rounds: list):
-        eid = f"episode_{int(time.time())}"
-        self.run_query("MERGE (e:Episode {episode_id: $eid})", {"eid": eid})
-        prev = None
+        episode_id = f"episode_{int(time.time())}"
+        self.run_query("MERGE (e:Episode {episode_id: $episode_id})", {"episode_id": episode_id})
+        previous_content = None
         for round_data in conversation_rounds:
             self.add_episode(round_data)
-            self.run_query("MATCH (e:Episode {episode_id: $eid}), (ep:Episode {content: $content}) MERGE (ep)-[:PART_OF]->(e)", {"eid": eid, "content": round_data["content"]})
-            if prev:
-                self.add_memory_relationship(content1=prev,
-                                             content2=round_data["content"],
-                                             rel_type="NEXT",
-                                             llm_edge=False,
-                                             weight=1.0,
-                                             from_type="Episode",
-                                             to_type="Episode")
-            prev = round_data["content"]
+            self.run_query(
+                "MATCH (e:Episode {episode_id: $episode_id}), (ep:Episode {content: $content}) MERGE (ep)-[:PART_OF]->(e)",
+                {"episode_id": episode_id, "content": round_data["content"]}
+            )
+            if previous_content:
+                self.add_memory_relationship(
+                    source_content=previous_content,
+                    target_content=round_data["content"],
+                    relationship_type="NEXT",
+                    llm_edge=False,
+                    relationship_weight=1.0,
+                    source_label="Episode",
+                    target_label="Episode"
+                )
+            previous_content = round_data["content"]
 
-    def _search_index(self, index_name, query_text, n=5):
-        q = f"CALL db.index.fulltext.queryNodes('{index_name}', $query_text) YIELD node, score RETURN node, score LIMIT $n"
-        results = self.run_query(q, {"query_text": query_text, "n": n})
+    def _search_index(self, index_name, query_text, result_limit=5):
+        query = f"CALL db.index.fulltext.queryNodes('{index_name}', $query_text) YIELD node, score RETURN node, score LIMIT $result_limit"
+        results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})
         candidates = {}
         for r in results or []:
             content = r["node"]["content"]
             candidates[content] = {"content": content, f"{index_name}_score": r["score"]}
         return candidates
 
-    def semantic_search(self, query_text, n=5):
-        return self._search_index("semanticIndex", query_text, n)
+    def semantic_search(self, query_text, result_limit=5):
+        return self._search_index("semanticIndex", query_text, result_limit)
 
-    def bm25_search(self, query_text, n=5):
-        return self._search_index("bm25Index", query_text, n)
+    def bm25_search(self, query_text, result_limit=5):
+        return self._search_index("bm25Index", query_text, result_limit)
 
-    def bfs_search(self, seed_content, n=5, depth=2):
-        id_res = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
-        if id_res and (nid := id_res[0].get("id")):
-            q = ("MATCH (start) WHERE id(start) = $nid "
+    def bfs_search(self, seed_content, result_limit=5, depth=2):
+        id_result = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
+        if id_result and (node_id := id_result[0].get("id")):
+            query = (
+                "MATCH (start) WHERE id(start) = $node_id "
                 "CALL apoc.path.subgraphNodes(start, {maxLevel: $depth}) YIELD node "
-                "RETURN node LIMIT $n")
-            results = self.run_query(q, {"nid": nid, "depth": depth, "n": n})
+                "RETURN node LIMIT $result_limit"
+            )
+            results = self.run_query(query, {"node_id": node_id, "depth": depth, "result_limit": result_limit})
             candidates = {}
             for r in results or []:
                 content = r["node"]["content"]
@@ -309,43 +322,47 @@ class Manager_Graph(metaclass=Meta_Singleton):
             return candidates
         return {}
 
-    def retrieve_candidates(self, query_text, n=5):
-        semantic_candidates = self.semantic_search(query_text, n)
-        bm25_candidates = self.bm25_search(query_text, n)
+    def retrieve_candidates(self, query_text, result_limit=5):
+        semantic_candidates = self.semantic_search(query_text, result_limit)
+        bm25_candidates = self.bm25_search(query_text, result_limit)
         bfs_candidates = {}
         if semantic_candidates:
             seed_content = next(iter(semantic_candidates.values()))["content"]
-            bfs_candidates = self.bfs_search(seed_content, n, depth=2)
+            bfs_candidates = self.bfs_search(seed_content, result_limit, depth=2)
         all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
-        all_candidates = {key: {
-            "content": key,
-            "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
-            "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
-            "graph_score": bfs_candidates.get(key, {}).get("graph_score", 0)
-        } for key in all_keys}
+        all_candidates = {
+            key: {
+                "content": key,
+                "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
+                "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
+                "graph_score": bfs_candidates.get(key, {}).get("graph_score", 0)
+            } for key in all_keys
+        }
         for candidate in all_candidates.values():
             if candidate["semantic_score"] == 0:
-                sem = self._search_index("semanticIndex", candidate["content"], n=1)
+                sem = self._search_index("semanticIndex", candidate["content"], result_limit=1)
                 candidate["semantic_score"] = next(iter(sem.values()), {}).get("semanticIndex_score", 0)
             if candidate["bm25_score"] == 0:
-                bm25 = self._search_index("bm25Index", candidate["content"], n=1)
+                bm25 = self._search_index("bm25Index", candidate["content"], result_limit=1)
                 candidate["bm25_score"] = next(iter(bm25.values()), {}).get("bm25Index_score", 0)
             if candidate["graph_score"] == 0:
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
         return list(all_candidates.values())
 
-    def cluster_memory_nodes(self, memory_nodes, threshold=0.7, num_iterations=10):
-        n = len(memory_nodes)
-        labels = list(range(n))
-        for _ in range(num_iterations):
+    def cluster_memory_nodes(self, memory_nodes, similarity_threshold=0.7, max_iterations=10):
+        num_nodes = len(memory_nodes)
+        labels = list(range(num_nodes))
+        for _ in range(max_iterations):
             new_labels = labels.copy()
-            for i in range(n):
+            for i in range(num_nodes):
                 neighbor_counts = {}
-                for j in range(n):
+                for j in range(num_nodes):
                     if i == j:
                         continue
-                    sim = self.manager_extraction.cosine_similarity(memory_nodes[i]["embedding"], memory_nodes[j]["embedding"])
-                    if sim >= threshold:
+                    similarity = self.manager_extraction.cosine_similarity(
+                        memory_nodes[i]["embedding"], memory_nodes[j]["embedding"]
+                    )
+                    if similarity >= similarity_threshold:
                         neighbor_counts[labels[j]] = neighbor_counts.get(labels[j], 0) + 1
                 if neighbor_counts:
                     new_labels[i] = max(neighbor_counts, key=neighbor_counts.get)
