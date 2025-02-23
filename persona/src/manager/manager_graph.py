@@ -1,6 +1,5 @@
-import os, json, time
+import os, time
 import numpy as np
-from sklearn.cluster import KMeans
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
 from meta.meta_singleton import Meta_Singleton
@@ -27,6 +26,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.logger = Logger()
         self.manager_llm = Manager_LLM()
         self.manager_extraction = Manager_Extraction()
+
         try:
             self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
             self.driver.verify_connectivity()
@@ -163,11 +163,26 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self.run_query(query, params)
         return True
 
-    def cluster_memory_nodes(self, memory_nodes, num_clusters=5):
-        embeddings = [node["embedding"] for node in memory_nodes]
-        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(embeddings)
+    def cluster_memory_nodes(self, memory_nodes, threshold=0.7, num_iterations=10):
+        n = len(memory_nodes)
+        labels = list(range(n))
+        for _ in range(num_iterations):
+            new_labels = labels.copy()
+            for i in range(n):
+                neighbor_counts = {}
+                for j in range(n):
+                    if i == j:
+                        continue
+                    sim = cosine_similarity(memory_nodes[i]["embedding"], memory_nodes[j]["embedding"])
+                    if sim >= threshold:
+                        neighbor_counts[labels[j]] = neighbor_counts.get(labels[j], 0) + 1
+                if neighbor_counts:
+                    new_labels[i] = max(neighbor_counts, key=neighbor_counts.get)
+            if new_labels == labels:
+                break
+            labels = new_labels
         clusters = {}
-        for idx, label in enumerate(kmeans.labels_):
+        for idx, label in enumerate(labels):
             clusters.setdefault(label, []).append(memory_nodes[idx]["content"])
         return clusters
 
@@ -286,7 +301,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             gs = self.graph_search(nid, depth)
             return len(gs[0].get("nodes", [])) if gs and gs[0].get("nodes") else 0
         return 0
-    
+        
     def retrieve_candidates(self, query_text, n=5):
         ft = self._search_index("memoryIndex", query_text, n)
         sem = self._search_index("semanticIndex", query_text, n)
@@ -300,9 +315,13 @@ class Manager_Graph(metaclass=Meta_Singleton):
             cand.setdefault("memoryIndex_score", 0)
             cand.setdefault("semanticIndex_score", 0)
             cand["graph_score"] = self._graph_search_score(content, depth=1)
-            ts_res = self.run_query("MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN m.timestamp AS ts LIMIT 1", {"content": content})
+            ts_res = self.run_query(
+                "MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN m.timestamp AS ts LIMIT 1",
+                {"content": content}
+            )
             recency = np.exp(-(time.time() - ts_res[0]["ts"]) / 3600) if ts_res and ts_res[0].get("ts") else 0
-            cand["combined_score"] = (cand["memoryIndex_score"] + cand["semanticIndex_score"] + 0.1 * cand["graph_score"] + recency)
-        final_list = sorted(all_candidates.values(), key=lambda x: x["combined_score"], reverse=True)[:n]
+            cand["recency_score"] = recency
+        final_list = sorted(all_candidates.values(), key=lambda x: x["memoryIndex_score"], reverse=True)[:n]
         self._log("INFO", "retrieve_candidates", f"Retrieved {len(final_list)} candidates")
         return final_list
+
