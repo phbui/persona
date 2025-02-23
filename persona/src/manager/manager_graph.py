@@ -36,16 +36,16 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.driver.close()
         self._log("INFO", "close", "Connection closed.")
 
-    def _run_query(self, query, parameters=None):
+    def run_query(self, query, parameters=None):
         parameters = parameters or {}
         try:
             with self.driver.session() as session:
                 result = session.run(query, parameters)
                 data = [record.data() for record in result]
-            self._log("INFO", "_run_query", f"Executed query: {query} with parameters: {parameters}")
+            self._log("INFO", "run_query", f"Executed query: {query} with parameters: {parameters}")
             return data
         except Exception as e:
-            self._log("ERROR", "_run_query", f"Query failed: {query} with error: {e}")
+            self._log("ERROR", "run_query", f"Query failed: {query} with error: {e}")
             return None
 
     def _add_node(self, data_dict, node_label):
@@ -58,7 +58,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "timestamp": data_dict.get("timestamp", time.time()),
             "embedding": data_dict.get("embedding")
         }
-        self._run_query(query, params)
+        self.run_query(query, params)
         self._log("INFO", "_add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
 
     def _add_episode(self, episode_data):
@@ -78,7 +78,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "RETURN n.community_id AS cid, count(*) AS freq "
             "ORDER BY freq DESC LIMIT 1"
         )
-        result = self._run_query(query, {"content": entity_content})
+        result = self.run_query(query, {"content": entity_content})
         if result and len(result) > 0:
             community_id = result[0]["cid"]
             self._log("INFO", "_update_community_for_entity", f"Found existing community {community_id} for entity {entity_content}")
@@ -90,7 +90,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "MATCH (e:Entity {content: $content}) "
             "SET e.community_id = $community_id"
         )
-        self._run_query(update_query, {"content": entity_content, "community_id": community_id})
+        self.run_query(update_query, {"content": entity_content, "community_id": community_id})
         self._log("INFO", "_update_community_for_entity", f"Assigned community {community_id} to entity {entity_content}")
 
     def _add_memory_relationship(self, source_content, target_content, relationship_type="RELATED",
@@ -106,15 +106,15 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "llm_edge": llm_edge,
             "relationship_weight": relationship_weight
         }
-        self._run_query(query, params)
+        self.run_query(query, params)
 
     def delete_entire_graph(self):
-        self._run_query("MATCH (n) DETACH DELETE n")
+        self.run_query("MATCH (n) DETACH DELETE n")
         self._log("INFO", "delete_entire_graph", "Deleted the entire graph.")
 
     def download_entire_graph(self, directory_path, file_name="graph_download.json"):
-        nodes = self._run_query("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props") or []
-        relationships = self._run_query(
+        nodes = self.run_query("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props") or []
+        relationships = self.run_query(
             "MATCH ()-[r]->() RETURN type(r) AS type, id(startNode(r)) AS start_id, id(endNode(r)) AS end_id, properties(r) AS props"
         ) or []
         graph_data = {"nodes": nodes, "relationships": relationships}
@@ -139,7 +139,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             return False
         self.delete_entire_graph()
         for query, params in self._convert_json(graph_data):
-            self._run_query(query, params)
+            self.run_query(query, params)
         return True
 
     def _propagate_labels(self, entities, max_iterations=10):
@@ -168,7 +168,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return summary.strip()
 
     def _dynamic_community_update(self):
-        entities_data = self._run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not entities_data:
             self._log("INFO", "_dynamic_community_update", "No entities found for community update.")
             return
@@ -181,11 +181,11 @@ class Manager_Graph(metaclass=Meta_Singleton):
             community_id = f"community_{cluster_id}"
             summary = self._summarize_community(contents)
             self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None, "summary": summary})
-            self._run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
+            self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
         self._log("INFO", "_dynamic_community_update", "Community update completed with iterative summarization.")
 
     def _build_community_subgraph(self):
-        nodes = self._run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        nodes = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not nodes:
             return
         entities = [{"content": record["content"], "embedding": record["embedding"]} for record in nodes]
@@ -194,7 +194,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             community_id = f"community_{cluster_id}"
             self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None})
             for content in contents:
-                self._run_query("MATCH (c:Community {content: $community_id}), (en:Entity {content: $entity_content}) MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "entity_content": content})
+                self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity {content: $entity_content}) MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "entity_content": content})
 
     def _build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.7):
         for i in range(len(entities_list)):
@@ -214,14 +214,14 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
     def _link_episode_to_entity(self, episode_content, entity_content):
         query = "MATCH (e:Episode {content: $episode_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)"
-        self._run_query(query, {"episode_content": episode_content, "entity_content": entity_content})
+        self.run_query(query, {"episode_content": episode_content, "entity_content": entity_content})
         self._log("INFO", "_link_episode_to_entity", f"Linked Episode '{episode_content}' to Entity '{entity_content}'")
 
     def process_new_memory(self, episode_data, context_window=4):
         self._add_episode(episode_data)
         episode_content = episode_data.get("content")
         self._log("INFO", "process_new_memory", f"Processing new memory: {episode_content}")
-        previous_episodes = self._run_query(
+        previous_episodes = self.run_query(
             "MATCH (e:Episode) WHERE e.timestamp < $current_timestamp ORDER BY e.timestamp DESC LIMIT $limit",
             {"current_timestamp": time.time(), "limit": context_window}
         )
@@ -243,7 +243,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._update_entire_graph()
 
     def _update_semantic_subgraph(self):
-        entities_data = self._run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not entities_data:
             return
         entities_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
@@ -257,11 +257,11 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
     def _build_episode_subgraph(self, conversation_rounds: list):
         episode_id = f"episode_{int(time.time())}"
-        self._run_query("MERGE (e:Episode {episode_id: $episode_id})", {"episode_id": episode_id})
+        self.run_query("MERGE (e:Episode {episode_id: $episode_id})", {"episode_id": episode_id})
         previous_content = None
         for round_data in conversation_rounds:
             self._add_episode(round_data)
-            self._run_query(
+            self.run_query(
                 "MATCH (e:Episode {episode_id: $episode_id}), (ep:Episode {content: $content}) MERGE (ep)-[:PART_OF]->(e)",
                 {"episode_id": episode_id, "content": round_data["content"]}
             )
@@ -279,7 +279,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
     def _search_index(self, index_name, query_text, result_limit=5):
         query = f"CALL db.index.fulltext.queryNodes('{index_name}', $query_text) YIELD node, score RETURN node, score LIMIT $result_limit"
-        results = self._run_query(query, {"query_text": query_text, "result_limit": result_limit})
+        results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})
         candidates = {}
         for r in results or []:
             content = r["node"]["content"]
@@ -293,14 +293,14 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return self._search_index("bm25Index", query_text, result_limit)
 
     def _bfs_search(self, seed_content, result_limit=5, depth=2):
-        id_result = self._run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
+        id_result = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
         if id_result and (node_id := id_result[0].get("id")):
             query = (
                 "MATCH (start) WHERE id(start) = $node_id "
                 "CALL apoc.path.subgraphNodes(start, {maxLevel: $depth}) YIELD node "
                 "RETURN node LIMIT $result_limit"
             )
-            results = self._run_query(query, {"node_id": node_id, "depth": depth, "result_limit": result_limit})
+            results = self.run_query(query, {"node_id": node_id, "depth": depth, "result_limit": result_limit})
             candidates = {}
             for r in results or []:
                 content = r["node"]["content"]

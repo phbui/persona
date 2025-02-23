@@ -17,10 +17,9 @@ class Manager_Extraction(metaclass=Meta_Singleton):
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         prompt = (
             "Extract the named entities from the following text. "
-            "Return ONLY a JSON array where each object has two keys: 'content' and 'embedding'. "
-            "Set the 'embedding' value to null (it will be populated later). "
+            "Return ONLY a JSON array where each object has a key 'content'. "
             "For example, if the text is: 'Alice visited Paris.' then the correct output would be: "
-            "[{\"content\": \"Alice\", \"embedding\": null}, {\"content\": \"Paris\", \"embedding\": null}]. "
+            "[{\"content\": \"Alice\"}, {\"content\": \"Paris\"}]. "
             "Text: " + text
         )
         self._log("INFO", "extract_entities", f"Sending prompt: {prompt}")
@@ -30,6 +29,11 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             entities = json.loads(response)
             if isinstance(entities, list):
                 self._log("INFO", "extract_entities", f"Extracted {len(entities)} entities.")
+                for entity in entities:
+                    content = entity.get("content")
+                    embedding = self.manager_llm.generate_embedding(content)
+                    entity["embedding"] = embedding
+                    self._log("INFO", "extract_entities", f"Generated embedding for entity '{content}': {embedding}")
                 return entities
             self._log("WARNING", "extract_entities", "Response is not a list.")
             return []
@@ -40,10 +44,9 @@ class Manager_Extraction(metaclass=Meta_Singleton):
     def extract_facts(self, text: str) -> List[Dict[str, Any]]:
         prompt = (
             "Extract the factual statements from the following text. "
-            "Return ONLY a JSON array where each object has two keys: 'fact' and 'embedding'. "
-            "Set the 'embedding' value to null (it will be populated later). "
+            "Return ONLY a JSON array where each object has a key 'fact'. "
             "For example, if the text is: 'Alice visited Paris and Bob is a teacher.' then the correct output would be: "
-            "[{\"fact\": \"Alice visited Paris\", \"embedding\": null}, {\"fact\": \"Bob is a teacher\", \"embedding\": null}]. "
+            "[{\"fact\": \"Alice visited Paris\"}, {\"fact\": \"Bob is a teacher\"}]. "
             "Text: " + text
         )
         self._log("INFO", "extract_facts", f"Sending prompt: {prompt}")
@@ -53,6 +56,11 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             facts = json.loads(response)
             if isinstance(facts, list):
                 self._log("INFO", "extract_facts", f"Extracted {len(facts)} facts.")
+                for fact in facts:
+                    fact_text = fact.get("fact")
+                    embedding = self.manager_llm.generate_embedding(fact_text)
+                    fact["embedding"] = embedding
+                    self._log("INFO", "extract_facts", f"Generated embedding for fact '{fact_text}': {embedding}")
                 return facts
             self._log("WARNING", "extract_facts", "Response is not a list.")
             return []
@@ -85,4 +93,3 @@ class Manager_Extraction(metaclass=Meta_Singleton):
         vec1, vec2 = np.array(vec1), np.array(vec2)
         norm1, norm2 = np.linalg.norm(vec1), np.linalg.norm(vec2)
         return float(np.dot(vec1, vec2) / (norm1 * norm2)) if norm1 and norm2 else 0.0
-

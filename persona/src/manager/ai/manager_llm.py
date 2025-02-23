@@ -1,10 +1,16 @@
 import os
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import (
+    AutoTokenizer,
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
+    BitsAndBytesConfig
+)
 from dotenv import load_dotenv
 from accelerate import Accelerator
-from .meta.meta_singleton import Meta_Singleton
-from .log.logger import Logger
+from meta.meta_singleton import Meta_Singleton
+from log.logger import Logger
 
 load_dotenv()
 secret_key = os.getenv('hf_key')
@@ -12,6 +18,8 @@ secret_key = os.getenv('hf_key')
 class Manager_LLM(metaclass=Meta_Singleton):
     """
     Singleton class for managing the LLM model.
+    Supports both causal models and encoder-decoder (seq2seq) models.
+    Provides methods for generating responses as well as text embeddings.
     """
     
     def __init__(self, model_name="mistralai/Mistral-7B-Instruct-v0.3"):
@@ -34,6 +42,9 @@ class Manager_LLM(metaclass=Meta_Singleton):
                 token=secret_key
             )
             
+            # Load the model configuration.
+            config = AutoConfig.from_pretrained(model_name, token=secret_key)
+            
             # Set up bitsandbytes quantization configuration for 4-bit (Q4) mode.
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=True,
@@ -42,13 +53,28 @@ class Manager_LLM(metaclass=Meta_Singleton):
                 bnb_4bit_compute_dtype=torch.float16
             )
             
-            # Load the model with quantization.
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                device_map="auto",
-                quantization_config=quantization_config,
-                token=secret_key
-            )
+            # Choose the correct model class based on whether the model is encoder-decoder.
+            if config.is_encoder_decoder:
+                self.logger.add_log("INFO", "llm", "Manager_LLM", "__init__", "Model is encoder-decoder. Using AutoModelForSeq2SeqLM.")
+                from transformers import AutoModelForSeq2SeqLM
+                self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                    model_name,
+                    device_map="auto",
+                    quantization_config=quantization_config,
+                    token=secret_key
+                )
+            else:
+                self.logger.add_log("INFO", "llm", "Manager_LLM", "__init__", "Model is causal. Using AutoModelForCausalLM.")
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    device_map="auto",
+                    quantization_config=quantization_config,
+                    token=secret_key
+                )
+            
+            # Ensure hidden states are returned for embedding generation.
+            if not self.model.config.output_hidden_states:
+                self.model.config.output_hidden_states = True
             
             # Use torch.compile to optimize the model (PyTorch 2.0+).
             if hasattr(torch, "compile"):
@@ -90,3 +116,27 @@ class Manager_LLM(metaclass=Meta_Singleton):
         except Exception as e:
             self.logger.add_log("ERROR", "response", "Manager_LLM", "generate_response", f"Error generating response: {str(e)}")
             return ""
+    
+    def generate_embedding(self, text: str) -> list:
+        try:
+            with torch.inference_mode():
+                inputs = self.tokenizer(text, return_tensors="pt")
+                device = next(self.model.parameters()).device
+                inputs = {k: v.to(device) for k, v in inputs.items()}
+
+                # Forward pass with hidden states enabled.
+                outputs = self.model(**inputs, output_hidden_states=True)
+                # Get the last hidden state.
+                hidden_states = outputs.hidden_states if hasattr(outputs, "hidden_states") else None
+                if hidden_states is None:
+                    self.logger.add_log("WARNING", "embedding", "Manager_LLM", "generate_embedding", "No hidden states returned.")
+                    return []
+                last_hidden = hidden_states[-1]  # shape: (batch_size, seq_len, hidden_dim)
+                # Mean pooling over sequence length (dim=1).
+                pooled = torch.mean(last_hidden, dim=1)
+                embedding_vector = pooled.squeeze(0).tolist()
+                self.logger.add_log("INFO", "embedding", "Manager_LLM", "generate_embedding", "Generated embedding successfully.")
+                return embedding_vector
+        except Exception as e:
+            self.logger.add_log("ERROR", "embedding", "Manager_LLM", "generate_embedding", f"Error generating embedding: {str(e)}")
+            return []

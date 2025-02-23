@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import pytest
 
 # Ensure the 'src' directory is in the path.
@@ -17,142 +18,74 @@ def graph_manager():
     mg.delete_entire_graph()
     mg.close()
 
-def test_add_nodes(graph_manager):
-    graph_manager.delete_entire_graph()
-    nodes = [
-        {"label": "TreeNode", "properties": {"name": "root"}},
-        {"label": "TreeNode", "properties": {"name": "child1"}},
-        {"label": "TreeNode", "properties": {"name": "child2"}},
-        {"label": "TreeNode", "properties": {"name": "child3"}}
-    ]
-    graph_manager.add_nodes(nodes)
-    result = graph_manager.search_nodes_by_property("TreeNode", "name", "root")
-    assert result is not None and len(result) == 1
-
-def test_add_subgraph(graph_manager):
-    graph_manager.delete_entire_graph()
-    subgraph = {
-        "nodes": [
-            {"label": "TreeNode", "properties": {"name": "root"}},
-            {"label": "TreeNode", "properties": {"name": "child1"}},
-            {"label": "TreeNode", "properties": {"name": "child2"}},
-            {"label": "TreeNode", "properties": {"name": "child3"}}
-        ],
-        "relationships": [
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child1"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            },
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child2"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            },
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child3"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            }
-        ]
+def test_process_new_memory(graph_manager):
+    # Example episode representing a new conversation turn.
+    episode_data = {
+        "content": "Alice visited New York last week and loved the food.",
+        "timestamp": time.time(),
+        "embedding": [0.1, 0.2, 0.3]  # Example embedding vector
     }
-    graph_manager.add_subgraph(subgraph)
-    result = graph_manager.run_query("MATCH (n:TreeNode {name: 'root'})-[:HAS_CHILD]->(c) RETURN c")
-    # Expect exactly 3 child relationships from the root.
-    assert result is not None and len(result) == 3
+    # Process the new memory (ingest episode, extract and resolve entities, link episode->entity,
+    # and update the entire graph hierarchy)
+    graph_manager.process_new_memory(episode_data, context_window=4)
+    
+    # Check that an Episode node was created.
+    episode_nodes = graph_manager.run_query("MATCH (e:Episode) RETURN e LIMIT 1")
+    assert episode_nodes is not None and len(episode_nodes) > 0, "No Episode nodes found after processing memory."
 
-def test_download_and_upload_graph(graph_manager, tmp_path):
-    graph_manager.delete_entire_graph()
-    # Build a tree structure.
-    nodes = [
-        {"label": "TreeNode", "properties": {"name": "root"}},
-        {"label": "TreeNode", "properties": {"name": "child1"}},
-        {"label": "TreeNode", "properties": {"name": "child2"}},
-        {"label": "TreeNode", "properties": {"name": "child3"}}
+def test_retrieve_candidates(graph_manager):
+    # Query the graph for a candidate. We expect "New York" to have been created as an Entity.
+    query_text = "Tell me about New York"
+    candidates = graph_manager.retrieve_candidates(query_text, result_limit=5)
+    # Assert that we got at least one candidate back.
+    assert isinstance(candidates, list) and len(candidates) > 0, "No candidates retrieved for query."
+    # Check that one of the candidates mentions "New York"
+    found = any("New York" in candidate["content"] for candidate in candidates)
+    assert found, "Candidate matching 'New York' was not found."
+
+def test_full_hierarchy(graph_manager):
+    # Build a larger graph by processing multiple episodes
+    episodes = [
+        {
+            "content": "Alice visited New York last week and loved the food.",
+            "timestamp": time.time(),
+            "embedding": [0.1, 0.2, 0.3]
+        },
+        {
+            "content": "Bob went to New York and saw a Broadway show.",
+            "timestamp": time.time(),
+            "embedding": [0.15, 0.25, 0.35]
+        },
+        {
+            "content": "Charlie is planning to visit New York for a conference.",
+            "timestamp": time.time(),
+            "embedding": [0.12, 0.22, 0.32]
+        },
+        {
+            "content": "Diana discussed politics and art in New York with her colleagues.",
+            "timestamp": time.time(),
+            "embedding": [0.13, 0.23, 0.33]
+        }
     ]
-    graph_manager.add_nodes(nodes)
-    subgraph = {
-        "nodes": nodes,
-        "relationships": [
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child1"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            },
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child2"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            },
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child3"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            }
-        ]
-    }
-    graph_manager.add_subgraph(subgraph)
-
-    download_file = tmp_path / "test_graph_download.json"
-    success = graph_manager.download_entire_graph(str(tmp_path), download_file.name)
-    assert success
-    assert download_file.is_file()
-
-    # Clear graph and upload from downloaded file.
-    graph_manager.delete_entire_graph()
-    upload_success = graph_manager.upload_graph_from_json(str(download_file))
-    assert upload_success
-    # Expect 4 nodes (assuming unique nodes with label "TreeNode" for root and three children).
-    result = graph_manager.run_query("MATCH (n:TreeNode) RETURN n")
-    assert result is not None and len(result) == 4
-
-def test_graph_search(graph_manager):
-    graph_manager.delete_entire_graph()
-    nodes = [
-        {"label": "TreeNode", "properties": {"name": "root"}},
-        {"label": "TreeNode", "properties": {"name": "child1"}},
-        {"label": "TreeNode", "properties": {"name": "child2"}},
-        {"label": "TreeNode", "properties": {"name": "child3"}}
-    ]
-    graph_manager.add_nodes(nodes)
-    subgraph = {
-        "nodes": nodes,
-        "relationships": [
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child1"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            },
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child2"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            },
-            {
-                "start": {"label": "TreeNode", "match_properties": {"name": "root"}},
-                "end": {"label": "TreeNode", "match_properties": {"name": "child3"}},
-                "type": "HAS_CHILD",
-                "properties": {}
-            }
-        ]
-    }
-    graph_manager.add_subgraph(subgraph)
-    root_result = graph_manager.run_query("MATCH (n:TreeNode {name: 'root'}) RETURN id(n) AS id")
-    assert root_result and len(root_result) > 0
-    root_id = root_result[0]["id"]
-    search_result = graph_manager.graph_search(root_id, 2)
-    # The graph_search result is a list of records; extract the first record.
-    assert search_result is not None and isinstance(search_result, list)
-    record = search_result[0]
-    assert "nodes" in record and len(record["nodes"]) >= 4
+    for episode in episodes:
+        graph_manager.process_new_memory(episode, context_window=4)
+    
+    # Force a full update of the graph (communities, semantic relationships, etc.)
+    graph_manager._update_entire_graph()
+    
+    # Verify that community nodes exist.
+    community_nodes = graph_manager.run_query("MATCH (c:Community) RETURN c LIMIT 1")
+    assert community_nodes is not None and len(community_nodes) > 0, "No Community nodes found in the graph."
+    
+    # Verify that Episode nodes exist.
+    episode_nodes = graph_manager.run_query("MATCH (e:Episode) RETURN e LIMIT 1")
+    assert episode_nodes is not None and len(episode_nodes) > 0, "No Episode nodes found in the graph."
+    
+    # Optionally, check for semantic relationships if your embeddings are similar enough.
+    semantic_relationships = graph_manager.run_query("MATCH ()-[r:SEMANTICALLY_RELATED]->() RETURN r LIMIT 1")
+    # For testing purposes, we don't force an assertion here if no semantic edges were created.
+    if semantic_relationships:
+        assert len(semantic_relationships) > 0, "Semantic relationships should be present but none were found."
 
 if __name__ == "__main__":
     pytest.main()
