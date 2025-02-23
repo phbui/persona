@@ -19,7 +19,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.password = NEO4J_PASSWORD
         self.logger = Logger()
         self.manager_extraction = Manager_Extraction()
-
         try:
             self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
             self.driver.verify_connectivity()
@@ -156,28 +155,47 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self.run_query(query, params)
         return True
 
-    def cluster_memory_nodes(self, memory_nodes, threshold=0.7, num_iterations=10):
-        n = len(memory_nodes)
+    def propagate_labels(self, entities, max_iter=10):
+        n = len(entities)
         labels = list(range(n))
-        for _ in range(num_iterations):
+        for _ in range(max_iter):
             new_labels = labels.copy()
             for i in range(n):
-                neighbor_counts = {}
+                neighbor_labels = []
                 for j in range(n):
-                    if i == j:
-                        continue
-                    sim = self.manager_extraction.cosine_similarity(memory_nodes[i]["embedding"], memory_nodes[j]["embedding"])
-                    if sim >= threshold:
-                        neighbor_counts[labels[j]] = neighbor_counts.get(labels[j], 0) + 1
-                if neighbor_counts:
-                    new_labels[i] = max(neighbor_counts, key=neighbor_counts.get)
+                    if i != j:
+                        sim = self.manager_extraction.cosine_similarity(entities[i]["embedding"], entities[j]["embedding"])
+                        if sim >= 0.7:
+                            neighbor_labels.append(labels[j])
+                if neighbor_labels:
+                    new_labels[i] = max(set(neighbor_labels), key=neighbor_labels.count)
             if new_labels == labels:
                 break
             labels = new_labels
+        return labels
+
+    def summarize_community(self, community_entities):
+        aggregated_text = " ".join(community_entities)
+        prompt = "Summarize the following entities to capture their high-level context:\n" + aggregated_text
+        summary = self.manager_extraction.manager_llm.generate_response(prompt, max_new_tokens=150, temperature=0.3)
+        return summary.strip()
+
+    def dynamic_community_update(self):
+        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        if not entities_data:
+            self._log("INFO", "dynamic_community_update", "No entities found for community update.")
+            return
+        entity_list = [{"content": n["content"], "embedding": n["embedding"]} for n in entities_data]
+        labels = self.propagate_labels(entity_list, max_iter=10)
         clusters = {}
         for idx, label in enumerate(labels):
-            clusters.setdefault(label, []).append(memory_nodes[idx]["content"])
-        return clusters
+            clusters.setdefault(label, []).append(entity_list[idx]["content"])
+        for cluster_id, contents in clusters.items():
+            cid = f"community_{cluster_id}"
+            summary = self.summarize_community(contents)
+            self.add_community({"content": cid, "timestamp": time.time(), "embedding": None, "summary": summary})
+            self.run_query("MATCH (c:Community {content: $cid}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"cid": cid, "contents": contents})
+        self._log("INFO", "dynamic_community_update", "Community update completed with iterative summarization.")
 
     def build_community_subgraph(self, num_clusters=5):
         nodes = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
@@ -206,7 +224,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                                                  to_type="Entity")
                     
     def link_episode_to_entity(self, episode_content, entity_content):
-        query = ("MATCH (e:Episode {content: $episode_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)")
+        query = "MATCH (e:Episode {content: $episode_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)"
         self.run_query(query, {"episode_content": episode_content, "entity_content": entity_content})
         self._log("INFO", "link_episode_to_entity", f"Linked Episode '{episode_content}' to Entity '{entity_content}'")
 
@@ -245,20 +263,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.update_semantic_subgraph()
         self._log("INFO", "update_entire_graph", "Updated entire graph with new connections.")
 
-    def dynamic_community_update(self):
-        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
-        if not entities_data:
-            self._log("INFO", "dynamic_community_update", "No entities found for community update.")
-            return
-        entity_list = [{"content": n["content"], "embedding": n["embedding"]} for n in entities_data]
-        clusters = self.cluster_memory_nodes(entity_list, num_clusters=5)
-        for cluster_id, contents in clusters.items():
-            cid = f"community_{cluster_id}"
-            self.add_community({"content": cid, "timestamp": time.time(), "embedding": None})
-            for content in contents:
-                self.run_query("MATCH (c:Community {content: $cid}), (en:Entity {content: $content}) MERGE (en)-[:BELONGS_TO]->(c)", {"cid": cid, "content": content})
-        self._log("INFO", "dynamic_community_update", "Community update completed.")
-
     def build_episode_subgraph(self, conversation_rounds: list):
         eid = f"episode_{int(time.time())}"
         self.run_query("MERGE (e:Episode {episode_id: $eid})", {"eid": eid})
@@ -284,33 +288,71 @@ class Manager_Graph(metaclass=Meta_Singleton):
             content = r["node"]["content"]
             candidates[content] = {"content": content, f"{index_name}_score": r["score"]}
         return candidates
-    
-    def _graph_search_score(self, content, depth=1):
-        id_res = self.run_query("MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN id(m) AS id LIMIT 1", {"content": content})
+
+    def semantic_search(self, query_text, n=5):
+        return self._search_index("semanticIndex", query_text, n)
+
+    def bm25_search(self, query_text, n=5):
+        return self._search_index("bm25Index", query_text, n)
+
+    def bfs_search(self, seed_content, n=5, depth=2):
+        id_res = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
         if id_res and (nid := id_res[0].get("id")):
-            gs = self.graph_search(nid, depth)
-            return len(gs[0].get("nodes", [])) if gs and gs[0].get("nodes") else 0
-        return 0
-        
+            q = ("MATCH (start) WHERE id(start) = $nid "
+                "CALL apoc.path.subgraphNodes(start, {maxLevel: $depth}) YIELD node "
+                "RETURN node LIMIT $n")
+            results = self.run_query(q, {"nid": nid, "depth": depth, "n": n})
+            candidates = {}
+            for r in results or []:
+                content = r["node"]["content"]
+                candidates[content] = {"content": content, "graph_score": self._graph_search_score(content, depth=1)}
+            return candidates
+        return {}
+
     def retrieve_candidates(self, query_text, n=5):
-        ft = self._search_index("memoryIndex", query_text, n)
-        sem = self._search_index("semanticIndex", query_text, n)
-        all_candidates = {**ft}
-        for content, cand in sem.items():
-            if content in all_candidates:
-                all_candidates[content]["semanticIndex_score"] = cand["semanticIndex_score"]
-            else:
-                all_candidates[content] = cand
-        for content, cand in all_candidates.items():
-            cand.setdefault("memoryIndex_score", 0)
-            cand.setdefault("semanticIndex_score", 0)
-            cand["graph_score"] = self._graph_search_score(content, depth=1)
-            ts_res = self.run_query(
-                "MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN m.timestamp AS ts LIMIT 1",
-                {"content": content}
-            )
-            recency = np.exp(-(time.time() - ts_res[0]["ts"]) / 3600) if ts_res and ts_res[0].get("ts") else 0
-            cand["recency_score"] = recency
-        final_list = sorted(all_candidates.values(), key=lambda x: x["memoryIndex_score"], reverse=True)[:n]
-        self._log("INFO", "retrieve_candidates", f"Retrieved {len(final_list)} candidates")
-        return final_list
+        semantic_candidates = self.semantic_search(query_text, n)
+        bm25_candidates = self.bm25_search(query_text, n)
+        bfs_candidates = {}
+        if semantic_candidates:
+            seed_content = next(iter(semantic_candidates.values()))["content"]
+            bfs_candidates = self.bfs_search(seed_content, n, depth=2)
+        all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
+        all_candidates = {key: {
+            "content": key,
+            "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
+            "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
+            "graph_score": bfs_candidates.get(key, {}).get("graph_score", 0)
+        } for key in all_keys}
+        for candidate in all_candidates.values():
+            if candidate["semantic_score"] == 0:
+                sem = self._search_index("semanticIndex", candidate["content"], n=1)
+                candidate["semantic_score"] = next(iter(sem.values()), {}).get("semanticIndex_score", 0)
+            if candidate["bm25_score"] == 0:
+                bm25 = self._search_index("bm25Index", candidate["content"], n=1)
+                candidate["bm25_score"] = next(iter(bm25.values()), {}).get("bm25Index_score", 0)
+            if candidate["graph_score"] == 0:
+                candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
+        return list(all_candidates.values())
+
+    def cluster_memory_nodes(self, memory_nodes, threshold=0.7, num_iterations=10):
+        n = len(memory_nodes)
+        labels = list(range(n))
+        for _ in range(num_iterations):
+            new_labels = labels.copy()
+            for i in range(n):
+                neighbor_counts = {}
+                for j in range(n):
+                    if i == j:
+                        continue
+                    sim = self.manager_extraction.cosine_similarity(memory_nodes[i]["embedding"], memory_nodes[j]["embedding"])
+                    if sim >= threshold:
+                        neighbor_counts[labels[j]] = neighbor_counts.get(labels[j], 0) + 1
+                if neighbor_counts:
+                    new_labels[i] = max(neighbor_counts, key=neighbor_counts.get)
+            if new_labels == labels:
+                break
+            labels = new_labels
+        clusters = {}
+        for idx, label in enumerate(labels):
+            clusters.setdefault(label, []).append(memory_nodes[idx]["content"])
+        return clusters
