@@ -6,17 +6,11 @@ from meta.meta_singleton import Meta_Singleton
 from log.logger import Logger, Log
 from manager.manager_file import Manager_File
 from manager.manager_extraction import Manager_Extraction
-from manager.ai.manager_llm import Manager_LLM
 
 load_dotenv()
 NEO4J_URI = os.getenv('NEO4J_URI')
 NEO4J_USER = os.getenv('NEO4J_USERNAME')
 NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
-
-def cosine_similarity(vec1, vec2):
-    vec1, vec2 = np.array(vec1), np.array(vec2)
-    norm1, norm2 = np.linalg.norm(vec1), np.linalg.norm(vec2)
-    return float(np.dot(vec1, vec2) / (norm1 * norm2)) if norm1 and norm2 else 0.0
 
 class Manager_Graph(metaclass=Meta_Singleton):
     def __init__(self):
@@ -24,7 +18,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.user = NEO4J_USER
         self.password = NEO4J_PASSWORD
         self.logger = Logger()
-        self.manager_llm = Manager_LLM()
         self.manager_extraction = Manager_Extraction()
 
         try:
@@ -173,7 +166,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 for j in range(n):
                     if i == j:
                         continue
-                    sim = cosine_similarity(memory_nodes[i]["embedding"], memory_nodes[j]["embedding"])
+                    sim = self.manager_extraction.cosine_similarity(memory_nodes[i]["embedding"], memory_nodes[j]["embedding"])
                     if sim >= threshold:
                         neighbor_counts[labels[j]] = neighbor_counts.get(labels[j], 0) + 1
                 if neighbor_counts:
@@ -202,7 +195,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         for i in range(len(entity_list)):
             self.add_entity(entity_list[i])
             for j in range(i + 1, len(entity_list)):
-                sim = cosine_similarity(entity_list[i]["embedding"], entity_list[j]["embedding"])
+                sim = self.manager_extraction.cosine_similarity(entity_list[i]["embedding"], entity_list[j]["embedding"])
                 if sim >= threshold:
                     self.add_memory_relationship(content1=entity_list[i]["content"],
                                                  content2=entity_list[j]["content"],
@@ -232,16 +225,13 @@ class Manager_Graph(metaclass=Meta_Singleton):
             entities = []
         resolved_entities = []
         for entity in entities:
-            resolved_entity = self.resolve_entity(entity)
+            resolved_entity = self.manager_extraction.resolve_entity(entity)
             resolved_entities.append(resolved_entity)
             self.add_entity(resolved_entity)
             self.link_episode_to_entity(episode_content, resolved_entity["content"])
         self._log("INFO", "process_new_memory", f"Extracted and linked {len(resolved_entities)} entities.")
         self.update_entire_graph()
 
-    def resolve_entity(self, entity):
-        return entity
-    
     def update_semantic_subgraph(self):
         entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not entities_data:
@@ -324,4 +314,3 @@ class Manager_Graph(metaclass=Meta_Singleton):
         final_list = sorted(all_candidates.values(), key=lambda x: x["memoryIndex_score"], reverse=True)[:n]
         self._log("INFO", "retrieve_candidates", f"Retrieved {len(final_list)} candidates")
         return final_list
-
