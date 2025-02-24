@@ -1,6 +1,5 @@
 import os
 import time
-import numpy as np
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
 from meta.meta_singleton import Meta_Singleton
@@ -12,6 +11,19 @@ load_dotenv()
 NEO4J_URI = os.getenv('NEO4J_URI')
 NEO4J_USER = os.getenv('NEO4J_USERNAME')
 NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
+
+def log_function(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        self._log("DEBUG", func.__name__, f"ENTER: args={args[1:]}, kwargs={kwargs}")
+        try:
+            result = func(*args, **kwargs)
+            self._log("DEBUG", func.__name__, f"EXIT: returned {result}")
+            return result
+        except Exception as e:
+            self._log("ERROR", func.__name__, f"Exception: {e}")
+            raise
+    return wrapper
 
 class Manager_Graph(metaclass=Meta_Singleton):
     def __init__(self):
@@ -30,6 +42,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self._log("ERROR", "__init__", f"Failed to connect to Neo4j at {self.uri}: {e}")
             raise
 
+    @log_function
     def _create_fulltext_index(self):
         query = (
             "CREATE FULLTEXT INDEX bm25Index IF NOT EXISTS "
@@ -41,10 +54,12 @@ class Manager_Graph(metaclass=Meta_Singleton):
         log_entry = Log(level, "graph", self.__class__.__name__, method_name, message)
         self.logger.add_log_obj(log_entry)
 
+    @log_function
     def close(self):
         self.driver.close()
         self._log("INFO", "close", "Connection closed.")
 
+    @log_function
     def run_query(self, query, parameters=None):
         parameters = parameters or {}
         try:
@@ -57,6 +72,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self._log("ERROR", "run_query", f"Query failed: {query} with error: {e}")
             return None
 
+    @log_function
     def _add_node(self, data_dict, node_label):
         query = (
             f"MERGE (n:{node_label} {{ content: $content }}) "
@@ -70,16 +86,20 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.run_query(query, params)
         self._log("INFO", "_add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
 
+    @log_function
     def _add_episode(self, episode_data):
         self._add_node(episode_data, node_label="Episode")
 
+    @log_function
     def _add_entity(self, entity_data):
         self._add_node(entity_data, node_label="Entity")
         self._update_community_for_entity(entity_data["content"])
 
+    @log_function
     def _add_community(self, community_data):
         self._add_node(community_data, node_label="Community")
 
+    @log_function
     def _update_community_for_entity(self, entity_content):
         query = (
             "MATCH (e:Entity {content: $content})-->(n) "
@@ -102,8 +122,9 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.run_query(update_query, {"content": entity_content, "community_id": community_id})
         self._log("INFO", "_update_community_for_entity", f"Assigned community {community_id} to entity {entity_content}")
 
+    @log_function
     def _add_memory_relationship(self, source_content, target_content, relationship_type="RELATED",
-                                  llm_edge=False, relationship_weight=1.0, source_label="Memory", target_label="Memory"):
+                                   llm_edge=False, relationship_weight=1.0, source_label="Memory", target_label="Memory"):
         query = (
             f"MATCH (m1:{source_label} {{content: $source_content}}), (m2:{target_label} {{content: $target_content}}) "
             f"MERGE (m1)-[r:{relationship_type}]->(m2) "
@@ -117,10 +138,12 @@ class Manager_Graph(metaclass=Meta_Singleton):
         }
         self.run_query(query, params)
 
+    @log_function
     def delete_entire_graph(self):
         self.run_query("MATCH (n) DETACH DELETE n")
         self._log("INFO", "delete_entire_graph", "Deleted the entire graph.")
 
+    @log_function
     def download_entire_graph(self, directory_path, file_name="graph_download.json"):
         nodes = self.run_query("MATCH (n) RETURN labels(n) AS labels, properties(n) AS props") or []
         relationships = self.run_query(
@@ -130,6 +153,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         success = Manager_File().download_file(graph_data, directory_path, file_name)
         return success
 
+    @log_function
     def _convert_json(self, graph_data):
         queries = []
         for node in graph_data.get("nodes", []):
@@ -142,6 +166,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 queries.append((q, {"start_id": rel["start_id"], "end_id": rel["end_id"], "props": rel.get("props", {})}))
         return queries
 
+    @log_function
     def upload_entire_graph(self, file_path):
         graph_data = Manager_File().upload_file(file_path)
         if graph_data is None:
@@ -151,6 +176,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self.run_query(query, params)
         return True
 
+    @log_function
     def _propagate_labels(self, entities, max_iterations=10):
         num_entities = len(entities)
         labels = list(range(num_entities))
@@ -170,12 +196,14 @@ class Manager_Graph(metaclass=Meta_Singleton):
             labels = new_labels
         return labels
 
+    @log_function
     def _summarize_community(self, community_entity_contents):
         aggregated_text = " ".join(community_entity_contents)
         prompt = "Summarize the following entities to capture their high-level context:\n" + aggregated_text
         summary = self.manager_extraction.manager_llm.generate_response(prompt, max_new_tokens=150, temperature=0.3)
         return summary.strip()
 
+    @log_function
     def _dynamic_community_update(self):
         entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not entities_data:
@@ -193,18 +221,20 @@ class Manager_Graph(metaclass=Meta_Singleton):
             self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
         self._log("INFO", "_dynamic_community_update", "Community update completed with iterative summarization.")
 
+    @log_function
     def _build_community_subgraph(self):
         nodes = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not nodes:
             return
         entities = [{"content": record["content"], "embedding": record["embedding"]} for record in nodes]
-        clusters = self._cluster_memory_nodes(entities, threshold=0.7, num_iterations=10)
+        clusters = self._cluster_memory_nodes(entities, threshold=0.7, max_iterations=10)
         for cluster_id, contents in clusters.items():
             community_id = f"community_{cluster_id}"
             self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None})
             for content in contents:
                 self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity {content: $entity_content}) MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "entity_content": content})
 
+    @log_function
     def _build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.7):
         for i in range(len(entities_list)):
             self._add_entity(entities_list[i])
@@ -221,11 +251,13 @@ class Manager_Graph(metaclass=Meta_Singleton):
                         target_label="Entity"
                     )
 
+    @log_function
     def _link_episode_to_entity(self, episode_content, entity_content):
         query = "MATCH (e:Episode {content: $episode_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)"
         self.run_query(query, {"episode_content": episode_content, "entity_content": entity_content})
         self._log("INFO", "_link_episode_to_entity", f"Linked Episode '{episode_content}' to Entity '{entity_content}'")
 
+    @log_function
     def process_new_memory(self, episode_data, context_window=4):
         self._add_episode(episode_data)
         episode_content = episode_data.get("content")
@@ -255,6 +287,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "process_new_memory", f"Extracted and linked {len(resolved_entities)} entities.")
         self._update_entire_graph()
 
+    @log_function
     def _update_semantic_subgraph(self):
         entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
         if not entities_data:
@@ -263,11 +296,13 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._build_semantic_subgraph(entities_list, similarity_threshold=0.7)
         self._log("INFO", "_update_semantic_subgraph", "Semantic subgraph updated.")
 
+    @log_function
     def _update_entire_graph(self):
         self._dynamic_community_update()
         self._update_semantic_subgraph()
         self._log("INFO", "_update_entire_graph", "Updated entire graph with new connections.")
 
+    @log_function
     def _build_episode_subgraph(self, conversation_rounds: list):
         episode_id = f"episode_{int(time.time())}"
         self.run_query("MERGE (e:Episode {episode_id: $episode_id})", {"episode_id": episode_id})
@@ -290,6 +325,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 )
             previous_content = round_data["content"]
 
+    @log_function
     def _search_index(self, index_name, query_text, result_limit=5):
         query = f"CALL db.index.fulltext.queryNodes('{index_name}', $query_text) YIELD node, score RETURN node, score LIMIT $result_limit"
         results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})
@@ -299,19 +335,22 @@ class Manager_Graph(metaclass=Meta_Singleton):
             candidates[content] = {"content": content, f"{index_name}_score": r["score"]}
         return candidates
 
+    @log_function
     def _semantic_search(self, query_text, result_limit=5):
         return self._search_index("semanticIndex", query_text, result_limit)
 
+    @log_function
     def _bm25_search(self, query_text, result_limit=5):
         return self._search_index("bm25Index", query_text, result_limit)
     
+    @log_function
     def _graph_search(self, start_node_id, depth):
         query = ("MATCH (n) WHERE id(n) = $start_node_id "
                  "WITH n CALL apoc.path.subgraphAll(n, {maxLevel: $depth}) YIELD nodes, relationships "
                  "RETURN nodes, relationships")
         return self.run_query(query, {"start_node_id": start_node_id, "depth": depth})
 
-    
+    @log_function
     def _graph_search_score(self, content, depth=1):
         id_res = self.run_query("MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN id(m) AS id LIMIT 1", {"content": content})
         if id_res and (nid := id_res[0].get("id")):
@@ -319,6 +358,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             return len(gs[0].get("nodes", [])) if gs and gs[0].get("nodes") else 0
         return 0
 
+    @log_function
     def _bfs_search(self, seed_content, result_limit=5, depth=2):
         id_result = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
         if id_result and (node_id := id_result[0].get("id")):
@@ -335,6 +375,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             return candidates
         return {}
 
+    @log_function
     def retrieve_candidates(self, query_text, result_limit=5):
         semantic_candidates = self._semantic_search(query_text, result_limit)
         bm25_candidates = self._bm25_search(query_text, result_limit)
@@ -345,6 +386,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
         all_candidates = {
             key: {
+                #TODO ADD EMBEDING
                 "content": key,
                 "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
                 "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
@@ -362,6 +404,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
         return list(all_candidates.values())
 
+    @log_function
     def _cluster_memory_nodes(self, memory_nodes, similarity_threshold=0.7, max_iterations=10):
         num_nodes = len(memory_nodes)
         labels = list(range(num_nodes))
