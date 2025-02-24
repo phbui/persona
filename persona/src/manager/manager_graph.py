@@ -20,13 +20,22 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.password = NEO4J_PASSWORD
         self.logger = Logger()
         self.manager_extraction = Manager_Extraction()
+
         try:
             self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
             self.driver.verify_connectivity()
             self._log("INFO", "__init__", f"Connected to Neo4j at {self.uri}")
+            self._create_fulltext_index()
         except Exception as e:
             self._log("ERROR", "__init__", f"Failed to connect to Neo4j at {self.uri}: {e}")
             raise
+
+    def _create_fulltext_index(self):
+        query = (
+            "CREATE FULLTEXT INDEX bm25Index IF NOT EXISTS "
+            "FOR (n:Episode) ON EACH [n.content]; "
+        )
+        self.run_query(query)
 
     def _log(self, level, method_name, message):
         log_entry = Log(level, "graph", self.__class__.__name__, method_name, message)
@@ -42,7 +51,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
             with self.driver.session() as session:
                 result = session.run(query, parameters)
                 data = [record.data() for record in result]
-            self._log("INFO", "run_query", f"Executed query: {query} with parameters: {parameters}")
+            self._log("INFO", "run_query", f"Executed query: {query} with parameters: {parameters} with result {data}")
             return data
         except Exception as e:
             self._log("ERROR", "run_query", f"Query failed: {query} with error: {e}")
@@ -295,6 +304,20 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
     def _bm25_search(self, query_text, result_limit=5):
         return self._search_index("bm25Index", query_text, result_limit)
+    
+    def _graph_search(self, start_node_id, depth):
+        query = ("MATCH (n) WHERE id(n) = $start_node_id "
+                 "WITH n CALL apoc.path.subgraphAll(n, {maxLevel: $depth}) YIELD nodes, relationships "
+                 "RETURN nodes, relationships")
+        return self.run_query(query, {"start_node_id": start_node_id, "depth": depth})
+
+    
+    def _graph_search_score(self, content, depth=1):
+        id_res = self.run_query("MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN id(m) AS id LIMIT 1", {"content": content})
+        if id_res and (nid := id_res[0].get("id")):
+            gs = self._graph_search(nid, depth)
+            return len(gs[0].get("nodes", [])) if gs and gs[0].get("nodes") else 0
+        return 0
 
     def _bfs_search(self, seed_content, result_limit=5, depth=2):
         id_result = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
