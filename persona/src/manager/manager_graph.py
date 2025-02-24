@@ -76,12 +76,13 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _add_node(self, data_dict, node_label):
         query = (
             f"MERGE (n:{node_label} {{ content: $content }}) "
-            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding"
+            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding, n.summary = $summary"
         )
         params = {
             "content": data_dict.get("content"),
             "timestamp": data_dict.get("timestamp", time.time()),
-            "embedding": data_dict.get("embedding")
+            "embedding": data_dict.get("embedding"),
+            "summary": data_dict.get("summary", None)
         }
         self.run_query(query, params)
         self._log("INFO", "_add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
@@ -93,34 +94,10 @@ class Manager_Graph(metaclass=Meta_Singleton):
     @log_function
     def _add_entity(self, entity_data):
         self._add_node(entity_data, node_label="Entity")
-        self._update_community_for_entity(entity_data["content"])
 
     @log_function
     def _add_community(self, community_data):
         self._add_node(community_data, node_label="Community")
-
-    @log_function
-    def _update_community_for_entity(self, entity_content):
-        query = (
-            "MATCH (e:Entity {content: $content})-->(n) "
-            "WHERE exists(n.community_id) "
-            "RETURN n.community_id AS cid, count(*) AS freq "
-            "ORDER BY freq DESC LIMIT 1"
-        )
-        result = self.run_query(query, {"content": entity_content})
-        if result and len(result) > 0:
-            community_id = result[0]["cid"]
-            self._log("INFO", "_update_community_for_entity", f"Found existing community {community_id} for entity {entity_content}")
-        else:
-            community_id = f"community_{int(time.time())}"
-            self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None})
-            self._log("INFO", "_update_community_for_entity", f"Created new community {community_id} for entity {entity_content}")
-        update_query = (
-            "MATCH (e:Entity {content: $content}) "
-            "SET e.community_id = $community_id"
-        )
-        self.run_query(update_query, {"content": entity_content, "community_id": community_id})
-        self._log("INFO", "_update_community_for_entity", f"Assigned community {community_id} to entity {entity_content}")
 
     @log_function
     def _add_memory_relationship(self, source_content, target_content, relationship_type="RELATED",
@@ -204,37 +181,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return summary.strip()
 
     @log_function
-    def _dynamic_community_update(self):
-        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
-        if not entities_data:
-            self._log("INFO", "_dynamic_community_update", "No entities found for community update.")
-            return
-        entity_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
-        labels = self._propagate_labels(entity_list, max_iterations=10)
-        clusters = {}
-        for idx, label in enumerate(labels):
-            clusters.setdefault(label, []).append(entity_list[idx]["content"])
-        for cluster_id, contents in clusters.items():
-            community_id = f"community_{cluster_id}"
-            summary = self._summarize_community(contents)
-            self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None, "summary": summary})
-            self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
-        self._log("INFO", "_dynamic_community_update", "Community update completed with iterative summarization.")
-
-    @log_function
-    def _build_community_subgraph(self):
-        nodes = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
-        if not nodes:
-            return
-        entities = [{"content": record["content"], "embedding": record["embedding"]} for record in nodes]
-        clusters = self._cluster_memory_nodes(entities, threshold=0.7, max_iterations=10)
-        for cluster_id, contents in clusters.items():
-            community_id = f"community_{cluster_id}"
-            self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None})
-            for content in contents:
-                self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity {content: $entity_content}) MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "entity_content": content})
-
-    @log_function
     def _build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.7):
         for i in range(len(entities_list)):
             self._add_entity(entities_list[i])
@@ -258,7 +204,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "_link_episode_to_entity", f"Linked Episode '{episode_content}' to Entity '{entity_content}'")
 
     @log_function
-    def process_new_memory(self, episode_data, context_window=4):
+    def process_new_memory(self, episode_data, context_window=5):
         self._add_episode(episode_data)
         episode_content = episode_data.get("content")
         self._log("INFO", "process_new_memory", f"Processing new memory: {episode_content}")
@@ -297,8 +243,26 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "_update_semantic_subgraph", "Semantic subgraph updated.")
 
     @log_function
+    def _update_community_subgraph(self):
+        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        if not entities_data:
+            self._log("INFO", "_update_community_subgraph", "No entities found for community update.")
+            return
+        entity_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
+        labels = self._propagate_labels(entity_list, max_iterations=10)
+        clusters = {}
+        for idx, label in enumerate(labels):
+            clusters.setdefault(label, []).append(entity_list[idx]["content"])
+        for cluster_id, contents in clusters.items():
+            community_id = f"community_{cluster_id}"
+            summary = self._summarize_community(contents)
+            self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None, "summary": summary})
+            self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
+        self._log("INFO", "_update_community_subgraph", "Community update completed with iterative summarization.")
+
+    @log_function
     def _update_entire_graph(self):
-        self._dynamic_community_update()
+        self._update_community_subgraph()
         self._update_semantic_subgraph()
         self._log("INFO", "_update_entire_graph", "Updated entire graph with new connections.")
 
@@ -332,7 +296,8 @@ class Manager_Graph(metaclass=Meta_Singleton):
         candidates = {}
         for r in results or []:
             content = r["node"]["content"]
-            candidates[content] = {"content": content, f"{index_name}_score": r["score"]}
+            timestamp = r["node"]["timestamp"]
+            candidates[content] = {"content": content, "timestamp": timestamp, f"{index_name}_score": r["score"]}
         return candidates
 
     @log_function
@@ -386,8 +351,8 @@ class Manager_Graph(metaclass=Meta_Singleton):
         all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
         all_candidates = {
             key: {
-                #TODO ADD EMBEDING
                 "content": key,
+                "timestamp": semantic_candidates.get(key, {}).get("timestamp", 0),
                 "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
                 "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
                 "graph_score": bfs_candidates.get(key, {}).get("graph_score", 0)
@@ -403,29 +368,3 @@ class Manager_Graph(metaclass=Meta_Singleton):
             if candidate["graph_score"] == 0:
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
         return list(all_candidates.values())
-
-    @log_function
-    def _cluster_memory_nodes(self, memory_nodes, similarity_threshold=0.7, max_iterations=10):
-        num_nodes = len(memory_nodes)
-        labels = list(range(num_nodes))
-        for _ in range(max_iterations):
-            new_labels = labels.copy()
-            for i in range(num_nodes):
-                neighbor_counts = {}
-                for j in range(num_nodes):
-                    if i == j:
-                        continue
-                    similarity = self.manager_extraction.cosine_similarity(
-                        memory_nodes[i]["embedding"], memory_nodes[j]["embedding"]
-                    )
-                    if similarity >= similarity_threshold:
-                        neighbor_counts[labels[j]] = neighbor_counts.get(labels[j], 0) + 1
-                if neighbor_counts:
-                    new_labels[i] = max(neighbor_counts, key=neighbor_counts.get)
-            if new_labels == labels:
-                break
-            labels = new_labels
-        clusters = {}
-        for idx, label in enumerate(labels):
-            clusters.setdefault(label, []).append(memory_nodes[idx]["content"])
-        return clusters

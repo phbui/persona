@@ -12,44 +12,33 @@ def graph_manager():
     mg = Manager_Graph()
     mg.delete_entire_graph()
     yield mg
-    mg.delete_entire_graph()
     mg.close()
 
-def test_process_new_memory(graph_manager):
-    episode_data = {
-        "content": "Alice visited New York last week and loved the food.",
-        "timestamp": time.time(),
-        "embedding": [0.1, 0.2, 0.3]
-    }
-    graph_manager.process_new_memory(episode_data, context_window=4)
-    episode_nodes = graph_manager.run_query("MATCH (e:Episode) RETURN e LIMIT 1")
-    assert episode_nodes is not None and len(episode_nodes) > 0, "No Episode nodes found after processing memory."
-    
 def test_full_hierarchy_and_retrieval(graph_manager):
     episodes = [
         {
             "content": "Alice visited New York last week and loved the food.",
             "timestamp": time.time(),
-            "embedding": [0.1, 0.2, 0.3]
         },
         {
             "content": "Bob went to New York and saw a Broadway show.",
             "timestamp": time.time(),
-            "embedding": [0.15, 0.25, 0.35]
         },
         {
             "content": "Charlie is planning to visit New York for a conference.",
             "timestamp": time.time(),
-            "embedding": [0.12, 0.22, 0.32]
         },
         {
             "content": "Diana discussed politics and art in New York with her colleagues.",
             "timestamp": time.time(),
-            "embedding": [0.13, 0.23, 0.33]
+        },
+        {
+            "content": "Tinguan is Japanese but lives in China.",
+            "timestamp": time.time(),
         }
     ]
     for episode in episodes:
-        graph_manager.process_new_memory(episode, context_window=4)
+        graph_manager.process_new_memory(episode, context_window=5)
     graph_manager._update_entire_graph()
     community_nodes = graph_manager.run_query("MATCH (c:Community) RETURN c LIMIT 1")
     assert community_nodes is not None and len(community_nodes) > 0, "No Community nodes found in the graph."
