@@ -1,5 +1,4 @@
-from log.log import Log
-from log.logger import Logger
+from log.logger import Logger, Log
 from .chat import Chat
 from .epoch import Epoch  
 

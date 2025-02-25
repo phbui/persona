@@ -1,5 +1,4 @@
-from log.log import Log
-from log.logger import Logger
+from log.logger import Logger, Log
 
 class Epoch:
     def __init__(self):

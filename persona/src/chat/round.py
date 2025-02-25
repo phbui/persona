@@ -1,5 +1,4 @@
-from log.log import Log
-from log.logger import Logger
+from log.logger import Logger, Log
 
 class Round:
     def __init__(self, speaker_a, message_a, speaker_b, message_b):

@@ -1,5 +1,4 @@
-from log.log import Log
-from log.logger import Logger
+from log.logger import Logger, Log
 
 class Agent:
     def __init__(self, name):
@@ -15,14 +14,14 @@ class Agent:
         log = Log("INFO", "agent", self.__class__.__name__, "set_chat", f"Agent '{self.name}' set current chat")
         self.logger.add_log_obj(log)
     
-    def generate_message(self):
+    def generate_message(self, rounds, last_message):
         """Wait for the agent to input a message (synchronously)."""
         log = Log("INFO", "agent", self.__class__.__name__, "generate_message", f"Agent '{self.name}' queried for message")
         self.logger.add_log_obj(log)
-        return input(f"{self.name}, enter your message: ")
+        return ""
     
-    def query_agent_for_message(self, last_message):
+    def query_agent_for_message(self, rounds, last_message):
         """Generate a message. (Can be overridden in descendant classes.)"""
         log = Log("INFO", "agent", self.__class__.__name__, "query_agent_for_message", f"Agent '{self.name}' generating message")
         self.logger.add_log_obj(log)
-        return self.generate_message()
+        return self.generate_message(rounds, last_message)

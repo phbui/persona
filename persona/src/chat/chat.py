@@ -1,5 +1,4 @@
-from log.log import Log
-from log.logger import Logger
+from log.logger import Logger, Log
 from .round import Round 
 
 class Chat:
@@ -26,8 +25,8 @@ class Chat:
             self.logger.add_log_obj(log)
             
             # Agent A generates and sends a message.
-            message_a = self.agent_a.query_agent_for_message(last_message)
-            message_b = self.agent_b.query_agent_for_message(message_a)
+            message_a = self.agent_a.query_agent_for_message(self.rounds, last_message)
+            message_b = self.agent_b.query_agent_for_message(self.rounds, message_a)
             last_message = message_b
 
             # Create and store the round.
