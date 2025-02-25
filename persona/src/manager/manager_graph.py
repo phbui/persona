@@ -413,6 +413,5 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
 
             candidate["similarity"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
-            del candidate["embedding"]
 
         return list(all_candidates.values())
