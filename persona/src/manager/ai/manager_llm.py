@@ -16,8 +16,11 @@ load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class Manager_LLM(metaclass=Meta_Singleton):
+
+    # Extraction: "google/flan-t5-base"
+    # Generation & Preference: "meta-llama/Llama-2-7b-chat-hf"
    
-    def __init__(self, model_name="mistralai/Mistral-7B-Instruct-v0.3"):
+    def __init__(self, model_name="meta-llama/Llama-2-7b-chat-hf"):
         if getattr(self, "_initialized", False):
             return
         self._initialized = True
@@ -62,7 +65,6 @@ class Manager_LLM(metaclass=Meta_Singleton):
     def _load_model(self, model_name: str, config, quant_config):
         if config.is_encoder_decoder:
             self.logger.add_log("INFO", "llm", "Manager_LLM", "_load_model", "Model is encoder-decoder. Using AutoModelForSeq2SeqLM.")
-            from transformers import AutoModelForSeq2SeqLM
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_name,
                 device_map="auto",
