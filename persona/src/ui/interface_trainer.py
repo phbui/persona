@@ -1,5 +1,5 @@
 import json
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QLineEdit, QGroupBox, QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QLineEdit, QGroupBox, QFileDialog, QMessageBox, QDoubleValidator
 from training.trainer import Trainer
 
 class Interface_Trainer(QWidget):
@@ -40,9 +40,6 @@ class Interface_Trainer(QWidget):
         self.main_layout.addWidget(hyper_group)
         policy_group = QGroupBox("Policy")
         policy_layout = QHBoxLayout()
-        self.save_policy_button = QPushButton("Save Policy")
-        self.save_policy_button.clicked.connect(self.save_policy)
-        policy_layout.addWidget(self.save_policy_button)
         self.download_policy_button = QPushButton("Download Policy (to JSON)")
         self.download_policy_button.clicked.connect(self.download_policy)
         policy_layout.addWidget(self.download_policy_button)
@@ -72,22 +69,23 @@ class Interface_Trainer(QWidget):
         self.main_layout.addWidget(self.start_training_button)
         self.setLayout(self.main_layout)
 
-    def save_policy(self):
-        QMessageBox.information(self, "Policy", "Policy saved (dummy function).")
+        self.epochs_entry.setValidator(QDoubleValidator())
+        self.rounds_entry.setValidator(QDoubleValidator())
+        self.clip_range_entry.setValidator(QDoubleValidator())
+        self.learning_rate_entry.setValidator(QDoubleValidator())
+        self.discount_factor_entry.setValidator(QDoubleValidator())
+        self.gae_entry.setValidator(QDoubleValidator())
 
     def download_policy(self):
-        dummy_policy = {"policy": "dummy"}
         file_path, file_name = QFileDialog.getSaveFileName(self, "Save Policy as JSON", "", "JSON Files (*.json)")
         if file_path:
-            with open(file_path, "w") as f:
-                json.dump(dummy_policy, f)
+            self.trainer.download_policy(file_path, file_name)
             QMessageBox.information(self, "Policy", f"Policy downloaded to {file_path} (dummy file).")
 
     def load_policy(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Load Policy from JSON", "", "JSON Files (*.json)")
         if file_path:
-            with open(file_path, "r") as f:
-                policy_data = json.load(f)
+            self.trainer.load_policy(file_path)
             QMessageBox.information(self, "Policy", f"Policy loaded from {file_path} (dummy load).")
 
     def create_mem_graph(self):
@@ -105,8 +103,7 @@ class Interface_Trainer(QWidget):
     def download_mem_graph(self):
         file_path, file_name = QFileDialog.getSaveFileName(self, "Save Memory Graph as JSON", "", "JSON Files (*.json)")
         if file_path:
-            with open(file_path, "w") as f:
-                self.trainer.download_graph(file_path, file_name)
+            self.trainer.download_graph(file_path, file_name)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph downloaded to {file_path} (dummy file).")
 
     def delete_mem_graph(self):
@@ -114,10 +111,25 @@ class Interface_Trainer(QWidget):
         self.trainer.delete_graph()
 
     def start_training(self):
-        epochs = self.epochs_entry.text()
-        rounds = self.rounds_entry.text()
-        clip_range = self.clip_range_entry.text()
-        learning_rate = self.learning_rate_entry.text()
-        discount_factor = self.discount_factor_entry.text()
-        gae_param = self.gae_entry.text()
-        QMessageBox.information(self, "Training", "Training started (dummy function).")
+        try:
+            epochs = int(self.epochs_entry.text())
+            rounds = int(self.rounds_entry.text())
+            clip_range = float(self.clip_range_entry.text())
+            learning_rate = float(self.learning_rate_entry.text())
+            discount_factor = float(self.discount_factor_entry.text())
+            gae_param = float(self.gae_entry.text())
+
+            if not (0 < clip_range <= 1):
+                raise ValueError("Clip range must be between 0 and 1.")
+            if not (0 < learning_rate <= 1):
+                raise ValueError("Learning rate must be between 0 and 1.")
+            if not (0 < discount_factor <= 1):
+                raise ValueError("Discount factor must be between 0 and 1.")
+            if not (0 < gae_param <= 1):
+                raise ValueError("GAE parameter must be between 0 and 1.")
+
+            self.trainer.train(epochs, rounds, clip_range, learning_rate, discount_factor, gae_param)
+            QMessageBox.information(self, "Training", "Training started successfully.")
+
+        except ValueError as e:
+            QMessageBox.warning(self, "Input Error", f"Invalid input: {e}")
