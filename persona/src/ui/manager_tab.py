@@ -1,11 +1,8 @@
 import sys
 from PyQt6.QtWidgets import (
-    QApplication,
     QMainWindow,
     QTabWidget,
 )
-from PyQt6.QtGui import QPalette, QColor
-from PyQt6.QtCore import Qt
 from .interface_trainer import Interface_Trainer
 from .interface_logger import Interface_Logger
 from .interface_tester import Interface_Tester
