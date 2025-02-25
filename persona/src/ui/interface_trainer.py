@@ -77,7 +77,7 @@ class Interface_Trainer(QWidget):
 
     def download_policy(self):
         dummy_policy = {"policy": "dummy"}
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Policy as JSON", "", "JSON Files (*.json)")
+        file_path, file_name = QFileDialog.getSaveFileName(self, "Save Policy as JSON", "", "JSON Files (*.json)")
         if file_path:
             with open(file_path, "w") as f:
                 json.dump(dummy_policy, f)
@@ -91,22 +91,22 @@ class Interface_Trainer(QWidget):
             QMessageBox.information(self, "Policy", f"Policy loaded from {file_path} (dummy load).")
 
     def create_mem_graph(self):
-        file_path, file = QFileDialog.getOpenFileName(self, "Select .txt file for Memory Graph", "", "Text Files (*.txt)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select .txt file for Memory Graph", "", "Text Files (*.txt)")
         if file_path:
-            self.trainer.create_graph(file)
+            self.trainer.create_graph(file_path)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph created from {file_path} (dummy function).")
 
     def upload_mem_graph(self):
-        file_path, file = QFileDialog.getOpenFileName(self, "Select JSON file for Memory Graph", "", "JSON Files (*.json)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select JSON file for Memory Graph", "", "JSON Files (*.json)")
         if file_path:
-            self.trainer.upload_graph(file)
+            self.trainer.upload_graph(file_path)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph uploaded from {file_path} (dummy function).")
 
     def download_mem_graph(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Memory Graph as JSON", "", "JSON Files (*.json)")
+        file_path, file_name = QFileDialog.getSaveFileName(self, "Save Memory Graph as JSON", "", "JSON Files (*.json)")
         if file_path:
             with open(file_path, "w") as f:
-                self.trainer.download_graph(file_path)
+                self.trainer.download_graph(file_path, file_name)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph downloaded to {file_path} (dummy file).")
 
     def delete_mem_graph(self):

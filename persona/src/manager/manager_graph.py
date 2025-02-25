@@ -129,8 +129,9 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
 
     @log_function
-    def create_entire_graph(self, txt):
-        sentences = self.break_string(txt)
+    def create_entire_graph(self, file_path):
+        graph_data = Manager_File().upload_file(file_path)
+        sentences = self.break_string(graph_data)
         for sentence in sentences:
             input_memory = {
                 "content": sentence, 

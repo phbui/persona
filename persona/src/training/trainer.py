@@ -15,11 +15,11 @@ class Trainer(metaclass=Meta_Singleton):
     def create_graph(self, txt):
         self.manager_graph.create_entire_graph(txt)
 
-    def upload_graph(self, dir):
-        self.manager_graph.upload_entire_graph(dir)
+    def upload_graph(self, file_path):
+        self.manager_graph.upload_entire_graph(file_path)
 
     def delete_graph(self):
         self.manager_graph.delete_entire_graph()
 
-    def download_graph(self, dir):
-        self.manager_graph.download_entire_graph(dir)
+    def download_graph(self, file_path, file_name):
+        self.manager_graph.download_entire_graph(file_path, file_name)
