@@ -76,13 +76,12 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _add_node(self, data_dict, node_label):
         query = (
             f"MERGE (n:{node_label} {{ content: $content }}) "
-            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding, n.summary = $summary"
+            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding"
         )
         params = {
             "content": data_dict.get("content"),
             "timestamp": data_dict.get("timestamp", time.time()),
             "embedding": data_dict.get("embedding"),
-            "summary": data_dict.get("summary", None)
         }
         self.run_query(query, params)
         self._log("INFO", "_add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
@@ -164,7 +163,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 for j in range(num_entities):
                     if i != j:
                         similarity = self.manager_extraction.cosine_similarity(entities[i]["embedding"], entities[j]["embedding"])
-                        if similarity >= 0.7:
+                        if similarity >= 0.5:
                             neighbor_labels.append(labels[j])
                 if neighbor_labels:
                     new_labels[i] = max(set(neighbor_labels), key=neighbor_labels.count)
@@ -172,13 +171,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 break
             labels = new_labels
         return labels
-
-    @log_function
-    def _summarize_community(self, community_entity_contents):
-        aggregated_text = " ".join(community_entity_contents)
-        prompt = "Summarize the following entities to capture their high-level context:\n" + aggregated_text
-        summary = self.manager_extraction.manager_llm.generate_response(prompt, max_new_tokens=150, temperature=0.3)
-        return summary.strip()
 
     @log_function
     def _build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.7):
@@ -250,15 +242,42 @@ class Manager_Graph(metaclass=Meta_Singleton):
             return
         entity_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
         labels = self._propagate_labels(entity_list, max_iterations=10)
+        new_assignments = {}  # entity content -> community id
         clusters = {}
         for idx, label in enumerate(labels):
-            clusters.setdefault(label, []).append(entity_list[idx]["content"])
-        for cluster_id, contents in clusters.items():
-            community_id = f"community_{cluster_id}"
-            summary = self._summarize_community(contents)
-            self._add_community({"content": community_id, "timestamp": time.time(), "embedding": None, "summary": summary})
-            self.run_query("MATCH (c:Community {content: $community_id}), (en:Entity) WHERE en.content IN $contents MERGE (en)-[:BELONGS_TO]->(c)", {"community_id": community_id, "contents": contents})
-        self._log("INFO", "_update_community_subgraph", "Community update completed with iterative summarization.")
+            community_id = f"community_{label}"
+            new_assignments[entity_list[idx]["content"]] = community_id
+            clusters.setdefault(community_id, []).append(entity_list[idx]["content"])
+
+        current_results = self.run_query(
+            "MATCH (en:Entity)-[r:BELONGS_TO]->(c:Community) RETURN en.content AS content, c.content AS community"
+        )
+        current_assignments = {record["content"]: record["community"] for record in current_results} if current_results else {}
+
+        for entity, new_comm in new_assignments.items():
+            current_comm = current_assignments.get(entity)
+            if current_comm != new_comm:
+                if current_comm:
+                    self.run_query(
+                        "MATCH (en:Entity {content: $entity})-[r:BELONGS_TO]->(c:Community {content: $current_comm}) DELETE r",
+                        {"entity": entity, "current_comm": current_comm}
+                    )
+                contents = clusters[new_comm]
+                self._add_community({"content": new_comm, "timestamp": time.time(), "embedding": None})
+                self.run_query(
+                    "MATCH (en:Entity {content: $entity}), (c:Community {content: $new_comm}) MERGE (en)-[:BELONGS_TO]->(c)",
+                    {"entity": entity, "new_comm": new_comm}
+                )
+
+        for entity in current_assignments.keys():
+            if entity not in new_assignments:
+                self.run_query(
+                    "MATCH (en:Entity {content: $entity})-[r:BELONGS_TO]->(c:Community) DELETE r",
+                    {"entity": entity}
+                )
+
+        self.run_query("MATCH (c:Community) WHERE NOT (c)<-[:BELONGS_TO]-(:Entity) DETACH DELETE c")
+        self._log("INFO", "_update_community_subgraph", "Incremental community update completed.")
 
     @log_function
     def _update_entire_graph(self):
@@ -339,32 +358,47 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 candidates[content] = {"content": content, "graph_score": self._graph_search_score(content, depth=1)}
             return candidates
         return {}
-
+        
     @log_function
     def retrieve_candidates(self, query_text, result_limit=5):
+        # Step 1: Run initial searches for semantic, BM25, and BFS.
         semantic_candidates = self._semantic_search(query_text, result_limit)
         bm25_candidates = self._bm25_search(query_text, result_limit)
         bfs_candidates = {}
         if semantic_candidates:
             seed_content = next(iter(semantic_candidates.values()))["content"]
             bfs_candidates = self._bfs_search(seed_content, result_limit, depth=2)
+
+        # Step 2: Build the union of all candidate keys, filtering out community nodes.
         all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
-        all_candidates = {
-            key: {
+        all_keys = {key for key in all_keys if not key.startswith("community_")}
+
+        # Step 3: Assemble candidate data, using semantic data for timestamp.
+        all_candidates = {}
+        for key in all_keys:
+            candidate = {
                 "content": key,
                 "timestamp": semantic_candidates.get(key, {}).get("timestamp", 0),
                 "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
                 "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
                 "graph_score": bfs_candidates.get(key, {}).get("graph_score", 0)
-            } for key in all_keys
-        }
+            }
+            all_candidates[key] = candidate
+
+        # Step 4: For each candidate, if any score (or timestamp) is missing, perform a fallback query.
         for candidate in all_candidates.values():
-            if candidate["semantic_score"] == 0:
+            # Fallback for semantic score and timestamp.
+            if candidate["semantic_score"] == 0 or candidate["timestamp"] == 0:
                 sem = self._search_index("semanticIndex", candidate["content"], result_limit=1)
-                candidate["semantic_score"] = next(iter(sem.values()), {}).get("semanticIndex_score", 0)
+                sem_data = next(iter(sem.values()), {})
+                candidate["semantic_score"] = sem_data.get("semanticIndex_score", candidate["semantic_score"])
+                candidate["timestamp"] = sem_data.get("timestamp", candidate["timestamp"])
+            # Fallback for BM25 score.
             if candidate["bm25_score"] == 0:
                 bm25 = self._search_index("bm25Index", candidate["content"], result_limit=1)
                 candidate["bm25_score"] = next(iter(bm25.values()), {}).get("bm25Index_score", 0)
+            # Fallback for graph score.
             if candidate["graph_score"] == 0:
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
+
         return list(all_candidates.values())
