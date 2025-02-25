@@ -1,6 +1,5 @@
 import os
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QFileDialog
-from PyQt6.QtCore import Qt
 from manager.manager_file import Manager_File
 from log.logger import Logger, Log
 
