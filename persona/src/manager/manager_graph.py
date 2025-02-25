@@ -1,5 +1,6 @@
 import os
 import time
+import numpy as np
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
 from meta.meta_singleton import Meta_Singleton
@@ -153,7 +154,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return True
 
     @log_function
-    def _propagate_labels(self, entities, max_iterations=10):
+    def _propagate_labels(self, entities, max_iterations=10, similarity_threshold=0.5):
         num_entities = len(entities)
         labels = list(range(num_entities))
         for _ in range(max_iterations):
@@ -163,7 +164,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 for j in range(num_entities):
                     if i != j:
                         similarity = self.manager_extraction.cosine_similarity(entities[i]["embedding"], entities[j]["embedding"])
-                        if similarity >= 0.5:
+                        if similarity >= similarity_threshold:
                             neighbor_labels.append(labels[j])
                 if neighbor_labels:
                     new_labels[i] = max(set(neighbor_labels), key=neighbor_labels.count)
@@ -173,7 +174,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return labels
 
     @log_function
-    def _build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.7):
+    def _build_semantic_subgraph(self, entities_list: list, similarity_threshold=0.5):
         for i in range(len(entities_list)):
             self._add_entity(entities_list[i])
             for j in range(i + 1, len(entities_list)):
@@ -197,8 +198,11 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
     @log_function
     def process_new_memory(self, episode_data, context_window=5):
-        self._add_episode(episode_data)
         episode_content = episode_data.get("content")
+        episode_embedding = self.manager_extraction.extract_embedding(episode_content)
+        episode_data["embedding"] = episode_embedding
+        self._add_episode(episode_data)
+
         self._log("INFO", "process_new_memory", f"Processing new memory: {episode_content}")
         previous_episodes = self.run_query(
             "MATCH (e:Episode) WHERE e.timestamp < $current_timestamp ORDER BY e.timestamp DESC LIMIT $limit",
@@ -262,7 +266,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
                         "MATCH (en:Entity {content: $entity})-[r:BELONGS_TO]->(c:Community {content: $current_comm}) DELETE r",
                         {"entity": entity, "current_comm": current_comm}
                     )
-                contents = clusters[new_comm]
                 self._add_community({"content": new_comm, "timestamp": time.time(), "embedding": None})
                 self.run_query(
                     "MATCH (en:Entity {content: $entity}), (c:Community {content: $new_comm}) MERGE (en)-[:BELONGS_TO]->(c)",
@@ -286,29 +289,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "_update_entire_graph", "Updated entire graph with new connections.")
 
     @log_function
-    def _build_episode_subgraph(self, conversation_rounds: list):
-        episode_id = f"episode_{int(time.time())}"
-        self.run_query("MERGE (e:Episode {episode_id: $episode_id})", {"episode_id": episode_id})
-        previous_content = None
-        for round_data in conversation_rounds:
-            self._add_episode(round_data)
-            self.run_query(
-                "MATCH (e:Episode {episode_id: $episode_id}), (ep:Episode {content: $content}) MERGE (ep)-[:PART_OF]->(e)",
-                {"episode_id": episode_id, "content": round_data["content"]}
-            )
-            if previous_content:
-                self._add_memory_relationship(
-                    source_content=previous_content,
-                    target_content=round_data["content"],
-                    relationship_type="NEXT",
-                    llm_edge=False,
-                    relationship_weight=1.0,
-                    source_label="Episode",
-                    target_label="Episode"
-                )
-            previous_content = round_data["content"]
-
-    @log_function
     def _search_index(self, index_name, query_text, result_limit=5):
         query = f"CALL db.index.fulltext.queryNodes('{index_name}', $query_text) YIELD node, score RETURN node, score LIMIT $result_limit"
         results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})
@@ -316,7 +296,8 @@ class Manager_Graph(metaclass=Meta_Singleton):
         for r in results or []:
             content = r["node"]["content"]
             timestamp = r["node"]["timestamp"]
-            candidates[content] = {"content": content, "timestamp": timestamp, f"{index_name}_score": r["score"]}
+            embedding = r["node"]["embedding"]
+            candidates[content] = {"content": content, "timestamp": timestamp, "embedding": embedding, f"{index_name}_score": r["score"]}
         return candidates
 
     @log_function
@@ -360,45 +341,78 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return {}
         
     @log_function
+    def merge_candidate(self, key, semantic_candidates, bm25_candidates, bfs_candidates):
+        sem = semantic_candidates.get(key, {})
+        bm25 = bm25_candidates.get(key, {})
+        bfs = bfs_candidates.get(key, {})
+        ts_sem = sem.get("timestamp", None)
+        ts_bm25 = bm25.get("timestamp", None)
+
+        if ts_sem is not None and ts_bm25 is not None:
+            merged_ts = (ts_sem + ts_bm25) / 2
+        elif ts_sem is not None:
+            merged_ts = ts_sem
+        elif ts_bm25 is not None:
+            merged_ts = ts_bm25
+        else:
+            merged_ts = 0
+        timestamp = time.time() - merged_ts
+        emb_sem = sem.get("embedding", None)
+        emb_bm25 = bm25.get("embedding", None)
+
+        if emb_sem is not None and emb_bm25 is not None:
+            emb_sem = np.array(emb_sem)
+            emb_bm25 = np.array(emb_bm25)
+            merged_embedding = ((emb_sem + emb_bm25) / 2).tolist()
+        elif emb_sem is not None:
+            merged_embedding = emb_sem
+        elif emb_bm25 is not None:
+            merged_embedding = emb_bm25
+        else:
+            merged_embedding = [0]
+
+        semantic_score = sem.get("semanticIndex_score", 0)
+        bm25_score = bm25.get("bm25Index_score", 0)
+        graph_score = bfs.get("graph_score", 0)
+        candidate = {
+            "content": key,
+            "timestamp": timestamp,
+            "embedding": merged_embedding,
+            "semantic_score": semantic_score,
+            "bm25_score": bm25_score,
+            "graph_score": graph_score,
+        }
+        return candidate
+    
+    @log_function
     def retrieve_candidates(self, query_text, result_limit=5):
-        # Step 1: Run initial searches for semantic, BM25, and BFS.
+        query_embedding = self.manager_extraction.extract_embedding(query_text)
         semantic_candidates = self._semantic_search(query_text, result_limit)
         bm25_candidates = self._bm25_search(query_text, result_limit)
         bfs_candidates = {}
+
         if semantic_candidates:
             seed_content = next(iter(semantic_candidates.values()))["content"]
             bfs_candidates = self._bfs_search(seed_content, result_limit, depth=2)
-
-        # Step 2: Build the union of all candidate keys, filtering out community nodes.
         all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
         all_keys = {key for key in all_keys if not key.startswith("community_")}
-
-        # Step 3: Assemble candidate data, using semantic data for timestamp.
         all_candidates = {}
+
         for key in all_keys:
-            candidate = {
-                "content": key,
-                "timestamp": semantic_candidates.get(key, {}).get("timestamp", 0),
-                "semantic_score": semantic_candidates.get(key, {}).get("semanticIndex_score", 0),
-                "bm25_score": bm25_candidates.get(key, {}).get("bm25Index_score", 0),
-                "graph_score": bfs_candidates.get(key, {}).get("graph_score", 0)
-            }
+            candidate = self.merge_candidate(key, semantic_candidates, bm25_candidates, bfs_candidates)
             all_candidates[key] = candidate
 
-        # Step 4: For each candidate, if any score (or timestamp) is missing, perform a fallback query.
         for candidate in all_candidates.values():
-            # Fallback for semantic score and timestamp.
             if candidate["semantic_score"] == 0 or candidate["timestamp"] == 0:
                 sem = self._search_index("semanticIndex", candidate["content"], result_limit=1)
-                sem_data = next(iter(sem.values()), {})
-                candidate["semantic_score"] = sem_data.get("semanticIndex_score", candidate["semantic_score"])
-                candidate["timestamp"] = sem_data.get("timestamp", candidate["timestamp"])
-            # Fallback for BM25 score.
+                candidate["semantic_score"] = next(iter(sem.values()), {}).get("semanticIndex_score", candidate["semantic_score"])
             if candidate["bm25_score"] == 0:
                 bm25 = self._search_index("bm25Index", candidate["content"], result_limit=1)
                 candidate["bm25_score"] = next(iter(bm25.values()), {}).get("bm25Index_score", 0)
-            # Fallback for graph score.
             if candidate["graph_score"] == 0:
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
+
+            candidate["similarity"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
+            del candidate["embedding"]
 
         return list(all_candidates.values())

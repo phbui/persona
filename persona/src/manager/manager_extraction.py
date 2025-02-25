@@ -14,6 +14,9 @@ class Manager_Extraction(metaclass=Meta_Singleton):
         log = Log(level, "extraction", self.__class__.__name__, method, message)
         self.logger.add_log_obj(log)
 
+    def extract_embedding(self, text):
+        return self.manager_llm.generate_embedding(text)
+
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         prompt = (
             "Extract the named entities from the following text. "
@@ -31,7 +34,7 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             entities = []
             for item in items:
                 if item:
-                    embedding = self.manager_llm.generate_embedding(item)
+                    embedding = self.extract_embedding(item)
                     entity_obj = {"content": item, "embedding": embedding}
                     self._log("INFO", "extract_entities", f"Generated embedding for entity '{item}': {embedding}")
                     entities.append(entity_obj)
@@ -58,7 +61,7 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             facts = []
             for item in items:
                 if item:
-                    embedding = self.manager_llm.generate_embedding(item)
+                    embedding = self.extract_embedding(item)
                     fact_obj = {"fact": item, "embedding": embedding}
                     self._log("INFO", "extract_facts", f"Generated embedding for fact '{item}': {embedding}")
                     facts.append(fact_obj)
