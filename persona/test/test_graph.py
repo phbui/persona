@@ -40,7 +40,6 @@ def test_full_hierarchy_and_retrieval(graph_manager):
 
     for episode in episodes:
         graph_manager.process_new_memory(episode, context_window=5)
-    graph_manager._update_entire_graph()
 
     community_nodes = graph_manager.run_query("MATCH (c:Community) RETURN c LIMIT 1")
     assert community_nodes is not None and len(community_nodes) > 0, "No Community nodes found in the graph."

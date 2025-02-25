@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import numpy as np
 from neo4j import GraphDatabase
@@ -114,6 +115,30 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "relationship_weight": relationship_weight
         }
         self.run_query(query, params)
+
+    @log_function
+    def break_string(self, str):
+        sentence_endings = re.compile(
+            r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.{3}|[.!?])\s'
+        )
+        
+        sentences = sentence_endings.split(str)
+        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
+        
+        return sentences
+
+
+    @log_function
+    def create_entire_graph(self, txt):
+        sentences = self.break_string(txt)
+        for sentence in sentences:
+            input_memory = {
+                "content": sentence, 
+                "timestamp": time.time()
+                }
+
+            self.process_new_memory(input_memory)
+
 
     @log_function
     def delete_entire_graph(self):

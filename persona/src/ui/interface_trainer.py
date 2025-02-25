@@ -73,69 +73,51 @@ class Interface_Trainer(QWidget):
         self.setLayout(self.main_layout)
 
     def save_policy(self):
-        print("Save Policy clicked.")
         QMessageBox.information(self, "Policy", "Policy saved (dummy function).")
 
     def download_policy(self):
-        print("Download Policy clicked.")
         dummy_policy = {"policy": "dummy"}
         file_path, _ = QFileDialog.getSaveFileName(self, "Save Policy as JSON", "", "JSON Files (*.json)")
         if file_path:
             with open(file_path, "w") as f:
                 json.dump(dummy_policy, f)
-            print(f"Policy downloaded to {file_path}.")
             QMessageBox.information(self, "Policy", f"Policy downloaded to {file_path} (dummy file).")
 
     def load_policy(self):
-        print("Load Policy clicked.")
         file_path, _ = QFileDialog.getOpenFileName(self, "Load Policy from JSON", "", "JSON Files (*.json)")
         if file_path:
             with open(file_path, "r") as f:
                 policy_data = json.load(f)
-            print("Loaded policy:", policy_data)
             QMessageBox.information(self, "Policy", f"Policy loaded from {file_path} (dummy load).")
 
     def create_mem_graph(self):
-        print("Create Memory Graph clicked.")
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select .txt file for Memory Graph", "", "Text Files (*.txt)")
+        file_path, file = QFileDialog.getOpenFileName(self, "Select .txt file for Memory Graph", "", "Text Files (*.txt)")
         if file_path:
-            print(f"Selected .txt file: {file_path}")
+            self.trainer.create_graph(file)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph created from {file_path} (dummy function).")
 
     def upload_mem_graph(self):
-        print("Upload Memory Graph clicked.")
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select JSON file for Memory Graph", "", "JSON Files (*.json)")
+        file_path, file = QFileDialog.getOpenFileName(self, "Select JSON file for Memory Graph", "", "JSON Files (*.json)")
         if file_path:
-            print(f"Selected JSON file: {file_path}")
+            self.trainer.upload_graph(file)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph uploaded from {file_path} (dummy function).")
 
     def download_mem_graph(self):
-        print("Download Memory Graph clicked.")
-        dummy_mem_graph = {"memory_graph": "dummy"}
         file_path, _ = QFileDialog.getSaveFileName(self, "Save Memory Graph as JSON", "", "JSON Files (*.json)")
         if file_path:
             with open(file_path, "w") as f:
-                json.dump(dummy_mem_graph, f)
-            print(f"Memory Graph downloaded to {file_path}.")
+                self.trainer.download_graph(file_path)
             QMessageBox.information(self, "Memory Graph", f"Memory Graph downloaded to {file_path} (dummy file).")
 
     def delete_mem_graph(self):
-        print("Delete Memory Graph clicked.")
-        QMessageBox.information(self, "Memory Graph", "Memory Graph deleted (dummy function).")
+        QMessageBox.information(self, "Memory Graph", "Memory Graph deleted.")
+        self.trainer.delete_graph()
 
     def start_training(self):
-        print("Start Training clicked.")
         epochs = self.epochs_entry.text()
         rounds = self.rounds_entry.text()
         clip_range = self.clip_range_entry.text()
         learning_rate = self.learning_rate_entry.text()
         discount_factor = self.discount_factor_entry.text()
         gae_param = self.gae_entry.text()
-        print("Starting training with parameters:")
-        print(f"Epochs: {epochs}")
-        print(f"Rounds: {rounds}")
-        print(f"Clip Range: {clip_range}")
-        print(f"Learning Rate: {learning_rate}")
-        print(f"Discount Factor: {discount_factor}")
-        print(f"GAE Parameter: {gae_param}")
         QMessageBox.information(self, "Training", "Training started (dummy function).")
