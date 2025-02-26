@@ -1,4 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QLineEdit, QGroupBox, QFileDialog, QMessageBox, QDoubleValidator
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QLineEdit, QGroupBox, QFileDialog, QMessageBox
+from PyQt6.QtGui import QDoubleValidator
 from training.trainer import Trainer
 
 class Interface_Trainer(QWidget):

@@ -78,7 +78,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _add_node(self, data_dict, node_label):
         query = (
             f"MERGE (n:{node_label} {{ content: $content }}) "
-            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding, n.sentient = $sentiment, n.emotion = $emotion"
+            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding, n.sentiment = $sentiment, n.emotion = $emotion"
         )
         params = {
             "content": data_dict.get("content"),

@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from typing import Dict, Any, List
 from meta.meta_singleton import Meta_Singleton
@@ -65,11 +66,14 @@ class Manager_Extraction(metaclass=Meta_Singleton):
                 return best_candidate
         return entity
     
+
     def extract_sentiment(self, text):
-        return self.manage_analysis_sentiment.analyze(text)
-    
+        sentiment_result = self.manage_analysis_sentiment.analyze(text)
+        return json.dumps(sentiment_result) 
+
     def extract_emotion(self, text):
-        return self.manage_analysis_emotion.analyze(text, top_k=None)
+        emotion_result = self.manage_analysis_emotion.analyze(text, top_k=None)[0]
+        return json.dumps(emotion_result)
 
     def cosine_similarity(self, vec1, vec2):
         vec1, vec2 = np.array(vec1), np.array(vec2)
