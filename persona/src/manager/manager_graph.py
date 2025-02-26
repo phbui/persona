@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from meta.meta_singleton import Meta_Singleton
 from log.logger import Logger, Log
 from manager.manager_file import Manager_File
-from manager.manager_extraction import Manager_Extraction
+from manager.ai.manager_extraction import Manager_Extraction
 
 load_dotenv()
 NEO4J_URI = os.getenv('NEO4J_URI')
@@ -78,12 +78,14 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _add_node(self, data_dict, node_label):
         query = (
             f"MERGE (n:{node_label} {{ content: $content }}) "
-            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding"
+            "ON CREATE SET n.timestamp = $timestamp, n.embedding = $embedding, n.sentient = $sentiment, n.emotion = $emotion"
         )
         params = {
             "content": data_dict.get("content"),
             "timestamp": data_dict.get("timestamp", time.time()),
             "embedding": data_dict.get("embedding"),
+            "sentiment": data_dict.get("sentiment"),
+            "emotion": data_dict.get("emotion")
         }
         self.run_query(query, params)
         self._log("INFO", "_add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
@@ -226,7 +228,12 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def process_new_memory(self, episode_data, context_window=5):
         episode_content = episode_data.get("content")
         episode_embedding = self.manager_extraction.extract_embedding(episode_content)
+        episode_sentiment = self.manager_extraction.extract_sentiment(episode_content)
+        episode_emotion = self.manager_extraction.extract_emotion(episode_content)
+
         episode_data["embedding"] = episode_embedding
+        episode_data["sentiment"] = episode_sentiment
+        episode_data["emotion"] = episode_emotion
         self._add_episode(episode_data)
 
         self._log("INFO", "process_new_memory", f"Processing new memory: {episode_content}")
@@ -257,20 +264,20 @@ class Manager_Graph(metaclass=Meta_Singleton):
 
     @log_function
     def _update_semantic_subgraph(self):
-        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding, en.sentiment AS sentiment, en.emotion AS emotion")
         if not entities_data:
             return
-        entities_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
+        entities_list = [{"content": record["content"], "embedding": record["embedding"], "sentiment": record["sentiment"], "emotion": record["emotion"]} for record in entities_data]
         self._build_semantic_subgraph(entities_list, similarity_threshold=0.7)
         self._log("INFO", "_update_semantic_subgraph", "Semantic subgraph updated.")
 
     @log_function
     def _update_community_subgraph(self):
-        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding")
+        entities_data = self.run_query("MATCH (en:Entity) RETURN en.content AS content, en.embedding AS embedding, en.sentiment AS sentiment, en.emotion AS emotion")
         if not entities_data:
-            self._log("INFO", "_update_community_subgraph", "No entities found for community update.")
+            self._log("CRITICAL", "_update_community_subgraph", "No entities found for community update.")
             return
-        entity_list = [{"content": record["content"], "embedding": record["embedding"]} for record in entities_data]
+        entity_list = [{"content": record["content"], "embedding": record["embedding"], "sentiment": record["sentiment"], "emotion": record["emotion"]} for record in entities_data]
         labels = self._propagate_labels(entity_list, max_iterations=10)
         new_assignments = {}  # entity content -> community id
         clusters = {}
@@ -292,7 +299,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
                         "MATCH (en:Entity {content: $entity})-[r:BELONGS_TO]->(c:Community {content: $current_comm}) DELETE r",
                         {"entity": entity, "current_comm": current_comm}
                     )
-                self._add_community({"content": new_comm, "timestamp": time.time(), "embedding": None})
+                self._add_community({"content": new_comm, "timestamp": time.time(), "embedding": None, "sentiment": None, "emotion": None})
                 self.run_query(
                     "MATCH (en:Entity {content: $entity}), (c:Community {content: $new_comm}) MERGE (en)-[:BELONGS_TO]->(c)",
                     {"entity": entity, "new_comm": new_comm}
@@ -323,7 +330,15 @@ class Manager_Graph(metaclass=Meta_Singleton):
             content = r["node"]["content"]
             timestamp = r["node"]["timestamp"]
             embedding = r["node"]["embedding"]
-            candidates[content] = {"content": content, "timestamp": timestamp, "embedding": embedding, f"{index_name}_score": r["score"]}
+            sentiment = r["node"]["sentiment"]
+            emotion = r["node"]["emotion"]
+            candidates[content] = {
+                "content": content, 
+                "timestamp": timestamp, 
+                "embedding": embedding, 
+                "sentiment": sentiment, 
+                "emotion": emotion, 
+                f"{index_name}_score": r["score"]}
         return candidates
 
     @log_function
@@ -371,55 +386,75 @@ class Manager_Graph(metaclass=Meta_Singleton):
         sem = semantic_candidates.get(key, {})
         bm25 = bm25_candidates.get(key, {})
         bfs = bfs_candidates.get(key, {})
+
         ts_sem = sem.get("timestamp", None)
         ts_bm25 = bm25.get("timestamp", None)
 
-        if ts_sem is not None and ts_bm25 is not None:
-            merged_ts = (ts_sem + ts_bm25) / 2
-        elif ts_sem is not None:
+        if ts_sem is not None:
             merged_ts = ts_sem
         elif ts_bm25 is not None:
             merged_ts = ts_bm25
         else:
             merged_ts = 0
         timestamp = time.time() - merged_ts
+
         emb_sem = sem.get("embedding", None)
         emb_bm25 = bm25.get("embedding", None)
 
-        if emb_sem is not None and emb_bm25 is not None:
-            emb_sem = np.array(emb_sem)
-            emb_bm25 = np.array(emb_bm25)
-            merged_embedding = ((emb_sem + emb_bm25) / 2).tolist()
-        elif emb_sem is not None:
+        if emb_sem is not None:
             merged_embedding = emb_sem
         elif emb_bm25 is not None:
             merged_embedding = emb_bm25
         else:
             merged_embedding = [0]
 
+        sentiment_sem = sem.get("sentiment", None)
+        sentiment_bm25 = bm25.get("sentiment", None)
+
+        if sentiment_sem is not None:
+            merged_sentiment = sentiment_sem
+        elif sentiment_bm25 is not None:
+            merged_sentiment = sentiment_bm25
+        else:
+            merged_sentiment = {}
+
+        emotion_sem = sem.get("emotion", {})
+        emotion_bm25 = bm25.get("emotion", {})
+
+        merged_emotion = {}
+        
+        if emotion_sem:
+            merged_emotion = emotion_sem
+        elif emotion_bm25:
+            merged_emotion = emotion_bm25
+
+        # Scores
         semantic_score = sem.get("semanticIndex_score", 0)
         bm25_score = bm25.get("bm25Index_score", 0)
         graph_score = bfs.get("graph_score", 0)
+
         candidate = {
             "content": key,
             "timestamp": timestamp,
             "embedding": merged_embedding,
+            "sentiment": merged_sentiment,
+            "emotion": merged_emotion,
             "semantic_score": semantic_score,
             "bm25_score": bm25_score,
             "graph_score": graph_score,
         }
         return candidate
-    
+
     @log_function
     def retrieve_candidates(self, query_text, result_limit=5):
         query_embedding = self.manager_extraction.extract_embedding(query_text)
-        semantic_candidates = self._semantic_search(query_text, result_limit)
-        bm25_candidates = self._bm25_search(query_text, result_limit)
+        semantic_candidates = self._semantic_search(query_text, result_limit*2)
+        bm25_candidates = self._bm25_search(query_text, result_limit*2)
         bfs_candidates = {}
 
         if semantic_candidates:
             seed_content = next(iter(semantic_candidates.values()))["content"]
-            bfs_candidates = self._bfs_search(seed_content, result_limit, depth=2)
+            bfs_candidates = self._bfs_search(seed_content, result_limit*2, depth=2)
         all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
         all_keys = {key for key in all_keys if not key.startswith("community_")}
         all_candidates = {}
@@ -439,5 +474,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
 
             candidate["similarity"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
+            del candidate["embedding"]
 
         return list(all_candidates.values())

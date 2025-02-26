@@ -1,8 +1,10 @@
-import json
-import time
+import os
+import sys
 import numpy as np
 import pytest
-from manager.manager_extraction import Manager_Extraction
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+from manager.ai.manager_extraction import Manager_Extraction
 
 @pytest.fixture
 def extraction_manager():
@@ -14,35 +16,45 @@ def extraction_manager():
 
 def test_extract_entities_real(extraction_manager):
     text = "Japan was nuked by North Korea."
-    # This will send the prompt to the LLM and then generate embeddings using the model.
+    
+    # Extract entities (should also handle sentiment & emotion now)
     entities = extraction_manager.extract_entities(text)
     print("Extracted entities:", entities)
-    # Check that the returned value is a list.
+
     assert isinstance(entities, list), "Output is not a list."
-    # We expect at least one entity to be extracted.
     assert len(entities) > 0, "No entities extracted."
-    # Each entity should have a 'content' key and a computed embedding.
+
     for entity in entities:
         assert "content" in entity, "Entity missing 'content' key."
         assert "embedding" in entity, f"Entity '{entity['content']}' missing 'embedding' key."
-        # Check that the embedding is a non-empty list of numbers.
+        
+        # Check embedding validity
         embedding = entity["embedding"]
         assert isinstance(embedding, list) and len(embedding) > 0, f"Invalid embedding for entity '{entity['content']}'."
-        # Optionally, print embedding length and a snippet of values.
-        print(f"Entity '{entity['content']}' embedding (first 5 values): {embedding[:5]}")
 
-def test_extract_facts_real(extraction_manager):
-    text = "John is a farmer, but Jake is a war criminal."
-    facts = extraction_manager.extract_facts(text)
-    print("Extracted facts:", facts)
-    assert isinstance(facts, list), "Output is not a list."
-    assert len(facts) > 0, "No facts extracted."
-    for fact in facts:
-        assert "fact" in fact, "Fact missing 'fact' key."
-        assert "embedding" in fact, f"Fact '{fact['fact']}' missing 'embedding' key."
-        embedding = fact["embedding"]
-        assert isinstance(embedding, list) and len(embedding) > 0, f"Invalid embedding for fact '{fact['fact']}'."
-        print(f"Fact '{fact['fact']}' embedding (first 5 values): {embedding[:5]}")
+        # Validate sentiment
+        assert "sentiment" in entity, f"Entity '{entity['content']}' missing 'sentiment' key."
+        sentiment = entity["sentiment"]
+        assert isinstance(sentiment, list), f"Sentiment must be a list, got {type(sentiment)}."
+        assert len(sentiment) > 0, "Sentiment list is empty."
+        assert isinstance(sentiment[0], dict), f"Sentiment list must contain a dictionary, got {type(sentiment[0])}."
+        assert "label" in sentiment[0] and "score" in sentiment[0], "Sentiment dictionary missing 'label' or 'score' key."
+        assert isinstance(sentiment[0]["label"], str), "Sentiment label must be a string."
+        assert isinstance(sentiment[0]["score"], float), "Sentiment score must be a float."
+        assert 0 <= sentiment[0]["score"] <= 1, f"Sentiment score out of range: {sentiment[0]['score']}."
+        
+        # Validate emotion
+        assert "emotion" in entity, f"Entity '{entity['content']}' missing 'emotion' key."
+        emotion = entity["emotion"][0]
+        assert isinstance(emotion, list), f"Emotion must be a list, got {type(emotion)}."
+        assert len(emotion) > 0, "Emotion list is empty."
+        assert isinstance(emotion[0], dict), f"Emotion list must contain a dictionary, got {type(emotion[0])}."
+        assert "label" in emotion[0] and "score" in emotion[0], "Emotion dictionary missing 'label' or 'score' key."
+        assert isinstance(emotion[0]["label"], str), "Emotion label must be a string."
+        assert isinstance(emotion[0]["score"], float), "Emotion score must be a float."
+        assert 0 <= emotion[0]["score"] <= 1, f"Emotion score out of range: {emotion[0]['score']}."
+
+        print(f"Entity '{entity['content']}' - Sentiment: {sentiment}, Emotions: {emotion}")
 
 def test_cosine_similarity(extraction_manager):
     vec1 = [1, 0, 0]

@@ -17,10 +17,16 @@ class Trainer(metaclass=Meta_Singleton):
 
         manager_chat = Manager_Chat(agent_trainer, agent_rl, epochs, rounds)
 
-    def load_policy(self, file_path):
+    def load_mem_policy(self, file_path):
         print()
 
-    def download_policy(self, file_path, file_name):
+    def download_mem_policy(self, file_path, file_name):
+        print()
+
+    def load_emo_policy(self, file_path):
+        print()
+
+    def download_emo_policy(self, file_path, file_name):
         print()
 
     def create_graph(self, file_path):

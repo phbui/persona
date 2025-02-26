@@ -1,4 +1,3 @@
-import json
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QLineEdit, QGroupBox, QFileDialog, QMessageBox, QDoubleValidator
 from training.trainer import Trainer
 
@@ -10,6 +9,8 @@ class Interface_Trainer(QWidget):
 
     def _setup_ui(self):
         self.main_layout = QVBoxLayout(self)
+
+        # Hyperparameter Section
         hyper_group = QGroupBox("Hyperparameters")
         hyper_layout = QGridLayout()
         self.label_epochs = QLabel("Number of Epochs:")
@@ -38,16 +39,29 @@ class Interface_Trainer(QWidget):
         hyper_layout.addWidget(self.gae_entry, 5, 1)
         hyper_group.setLayout(hyper_layout)
         self.main_layout.addWidget(hyper_group)
-        policy_group = QGroupBox("Policy")
-        policy_layout = QHBoxLayout()
-        self.download_policy_button = QPushButton("Download Policy (to JSON)")
-        self.download_policy_button.clicked.connect(self.download_policy)
-        policy_layout.addWidget(self.download_policy_button)
-        self.load_policy_button = QPushButton("Load Policy (from JSON)")
-        self.load_policy_button.clicked.connect(self.load_policy)
-        policy_layout.addWidget(self.load_policy_button)
-        policy_group.setLayout(policy_layout)
-        self.main_layout.addWidget(policy_group)
+
+        mem_policy_group = QGroupBox("Memory Policy")
+        mem_policy_layout = QHBoxLayout()
+        self.download_mem_policy_button = QPushButton("Download Memory Policy (to JSON)")
+        self.download_mem_policy_button.clicked.connect(self.download_mem_policy)
+        mem_policy_layout.addWidget(self.download_mem_policy_button)
+        self.load_mem_policy_button = QPushButton("Load Memory Policy (from JSON)")
+        self.load_mem_policy_button.clicked.connect(self.load_mem_policy)
+        mem_policy_layout.addWidget(self.load_mem_policy_button)
+        mem_policy_group.setLayout(mem_policy_layout)
+        self.main_layout.addWidget(mem_policy_group)
+
+        emo_policy_group = QGroupBox("Emotion Policy")
+        emo_policy_layout = QHBoxLayout()
+        self.download_emo_policy_button = QPushButton("Download Emotion Policy (to JSON)")
+        self.download_emo_policy_button.clicked.connect(self.download_emo_policy)
+        emo_policy_layout.addWidget(self.download_emo_policy_button)
+        self.load_emo_policy_button = QPushButton("Load Emotion Policy (from JSON)")
+        self.load_emo_policy_button.clicked.connect(self.load_emo_policy)
+        emo_policy_layout.addWidget(self.load_emo_policy_button)
+        emo_policy_group.setLayout(emo_policy_layout)
+        self.main_layout.addWidget(emo_policy_group)
+
         mem_group = QGroupBox("Memory Graph")
         mem_layout = QHBoxLayout()
         self.create_mem_graph_button = QPushButton("Create Memory Graph (from .txt)")
@@ -64,9 +78,11 @@ class Interface_Trainer(QWidget):
         mem_layout.addWidget(self.delete_mem_graph_button)
         mem_group.setLayout(mem_layout)
         self.main_layout.addWidget(mem_group)
+
         self.start_training_button = QPushButton("Start Training")
         self.start_training_button.clicked.connect(self.start_training)
         self.main_layout.addWidget(self.start_training_button)
+
         self.setLayout(self.main_layout)
 
         self.epochs_entry.setValidator(QDoubleValidator())
@@ -76,17 +92,29 @@ class Interface_Trainer(QWidget):
         self.discount_factor_entry.setValidator(QDoubleValidator())
         self.gae_entry.setValidator(QDoubleValidator())
 
-    def download_policy(self):
-        file_path, file_name = QFileDialog.getSaveFileName(self, "Save Policy as JSON", "", "JSON Files (*.json)")
+    def download_mem_policy(self):
+        file_path, file_name = QFileDialog.getSaveFileName(self, "Save Memory Policy as JSON", "", "JSON Files (*.json)")
         if file_path:
-            self.trainer.download_policy(file_path, file_name)
-            QMessageBox.information(self, "Policy", f"Policy downloaded to {file_path} (dummy file).")
+            self.trainer.download_mem_policy(file_path, file_name)
+            QMessageBox.information(self, "Memory Policy", f"Memory Policy downloaded to {file_path} (dummy file).")
 
-    def load_policy(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Load Policy from JSON", "", "JSON Files (*.json)")
+    def load_mem_policy(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load Memory Policy from JSON", "", "JSON Files (*.json)")
         if file_path:
-            self.trainer.load_policy(file_path)
-            QMessageBox.information(self, "Policy", f"Policy loaded from {file_path} (dummy load).")
+            self.trainer.load_mem_policy(file_path)
+            QMessageBox.information(self, "Memory Policy", f"Memory Policy loaded from {file_path} (dummy load).")
+
+    def download_emo_policy(self):
+        file_path, file_name = QFileDialog.getSaveFileName(self, "Save Emotion Policy as JSON", "", "JSON Files (*.json)")
+        if file_path:
+            self.trainer.download_emo_policy(file_path, file_name)
+            QMessageBox.information(self, "Emotion Policy", f"Emotion Policy downloaded to {file_path} (dummy file).")
+
+    def load_emo_policy(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load Emotion Policy from JSON", "", "JSON Files (*.json)")
+        if file_path:
+            self.trainer.load_emo_policy(file_path)
+            QMessageBox.information(self, "Emotion Policy", f"Emotion Policy loaded from {file_path} (dummy load).")
 
     def create_mem_graph(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select .txt file for Memory Graph", "", "Text Files (*.txt)")

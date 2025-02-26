@@ -1,13 +1,15 @@
-import json
 import numpy as np
 from typing import Dict, Any, List
 from meta.meta_singleton import Meta_Singleton
 from log.logger import Logger, Log
 from manager.ai.manager_llm import Manager_LLM
+from manager.ai.manager_analysis import Manager_Analysis
 
 class Manager_Extraction(metaclass=Meta_Singleton):
     def __init__(self):
         self.manager_llm = Manager_LLM("google/flan-t5-base")
+        self.manage_analysis_sentiment = Manager_Analysis("sentiment-analysis", "siebert/sentiment-roberta-large-english")
+        self.manage_analysis_emotion = Manager_Analysis("text-classification", "j-hartmann/emotion-english-distilroberta-base")
         self.logger = Logger()
 
     def _log(self, level, method, message):
@@ -35,8 +37,10 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             for item in items:
                 if item:
                     embedding = self.extract_embedding(item)
-                    entity_obj = {"content": item, "embedding": embedding}
-                    self._log("INFO", "extract_entities", f"Generated embedding for entity '{item}': {embedding}")
+                    sentiment = self.extract_sentiment(item)
+                    emotion = self.extract_emotion(item)
+                    entity_obj = {"content": item, "embedding": embedding, "sentiment": sentiment, "emotion": emotion}
+                    self._log("INFO", "extract_entities", f"Generated embedding for entity '{item}'")
                     entities.append(entity_obj)
             self._log("INFO", "extract_entities", f"Extracted {len(entities)} entities.")
             return entities
@@ -44,33 +48,6 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             self._log("ERROR", "extract_entities", f"Failed to process response: {e}")
             return []
         
-    def extract_facts(self, text: str) -> List[Dict[str, Any]]:
-        prompt = (
-            "Extract the factual statements from the following text. "
-            "Return them as a comma-separated list. "
-            "For example, if the text is: 'Alice visited Paris and Bob is a teacher.' "
-            "the correct output would be: 'Alice visited Paris, Bob is a teacher'. "
-            "Text: " + text
-        )
-        self._log("INFO", "extract_facts", f"Sending prompt: {prompt}")
-        response = self.manager_llm.generate_response(prompt, max_new_tokens=256, temperature=0.2)
-        self._log("INFO", "extract_facts", f"Received response: {response}")
-        try:
-            cleaned = response.strip()
-            items = [item.strip() for item in cleaned.split(",")]
-            facts = []
-            for item in items:
-                if item:
-                    embedding = self.extract_embedding(item)
-                    fact_obj = {"fact": item, "embedding": embedding}
-                    self._log("INFO", "extract_facts", f"Generated embedding for fact '{item}': {embedding}")
-                    facts.append(fact_obj)
-            self._log("INFO", "extract_facts", f"Extracted {len(facts)} facts.")
-            return facts
-        except Exception as e:
-            self._log("ERROR", "extract_facts", f"Failed to process response: {e}")
-            return []
-
     def resolve_entity(self, entity, candidates):
         if not candidates:
             return entity
@@ -88,6 +65,12 @@ class Manager_Extraction(metaclass=Meta_Singleton):
                 return best_candidate
         return entity
     
+    def extract_sentiment(self, text):
+        return self.manage_analysis_sentiment.analyze(text)
+    
+    def extract_emotion(self, text):
+        return self.manage_analysis_emotion.analyze(text, top_k=None)
+
     def cosine_similarity(self, vec1, vec2):
         vec1, vec2 = np.array(vec1), np.array(vec2)
         norm1, norm2 = np.linalg.norm(vec1), np.linalg.norm(vec2)
