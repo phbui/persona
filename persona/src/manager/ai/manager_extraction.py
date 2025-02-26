@@ -72,7 +72,7 @@ class Manager_Extraction(metaclass=Meta_Singleton):
         return json.dumps(sentiment_result) 
 
     def extract_emotion(self, text):
-        emotion_result = self.manage_analysis_emotion.analyze(text, top_k=None)[0]
+        emotion_result = self.manage_analysis_emotion.analyze(text, top_k=None)
         return json.dumps(emotion_result)
 
     def cosine_similarity(self, vec1, vec2):

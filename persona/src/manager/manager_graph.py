@@ -322,158 +322,40 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "_update_entire_graph", "Updated entire graph with new connections.")
 
     @log_function
-    def _search_index(self, index_name, query_text, result_limit=5):
-        query = f"CALL db.index.fulltext.queryNodes('{index_name}', $query_text) YIELD node, score RETURN node, score LIMIT $result_limit"
-        results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})
-        candidates = {}
-        for r in results or []:
-            content = r["node"]["content"]
-            timestamp = r["node"]["timestamp"]
-            embedding = r["node"]["embedding"]
-            sentiment = r["node"]["sentiment"]
-            emotion = r["node"]["emotion"]
-            candidates[content] = {
-                "content": content, 
-                "timestamp": timestamp, 
-                "embedding": embedding, 
-                "sentiment": sentiment, 
-                "emotion": emotion, 
-                f"{index_name}_score": r["score"]}
-        return candidates
-
-    @log_function
-    def _semantic_search(self, query_text, result_limit=5):
-        return self._search_index("semanticIndex", query_text, result_limit)
+    def _format_candidate(self, node, score, score_label):
+        return {
+            "content": node["content"],
+            "timestamp": node["timestamp"],
+            "embedding": node["embedding"],
+            "sentiment": node["sentiment"],
+            "emotion": node["emotion"],
+            f"{score_label}": score
+        }
 
     @log_function
     def _bm25_search(self, query_text, result_limit=5):
-        return self._search_index("bm25Index", query_text, result_limit)
-    
-    @log_function
-    def _graph_search(self, start_node_id, depth):
-        query = ("MATCH (n) WHERE id(n) = $start_node_id "
-                 "WITH n CALL apoc.path.subgraphAll(n, {maxLevel: $depth}) YIELD nodes, relationships "
-                 "RETURN nodes, relationships")
-        return self.run_query(query, {"start_node_id": start_node_id, "depth": depth})
-
-    @log_function
-    def _graph_search_score(self, content, depth=1):
-        id_res = self.run_query("MATCH (m) WHERE m.content = $content AND (m:Episode OR m:Entity OR m:Community) RETURN id(m) AS id LIMIT 1", {"content": content})
-        if id_res and (nid := id_res[0].get("id")):
-            gs = self._graph_search(nid, depth)
-            return len(gs[0].get("nodes", [])) if gs and gs[0].get("nodes") else 0
-        return 0
-
-    @log_function
-    def _bfs_search(self, seed_content, result_limit=5, depth=2):
-        id_result = self.run_query("MATCH (m) WHERE m.content = $content RETURN id(m) AS id LIMIT 1", {"content": seed_content})
-        if id_result and (node_id := id_result[0].get("id")):
-            query = (
-                "MATCH (start) WHERE id(start) = $node_id "
-                "CALL apoc.path.subgraphNodes(start, {maxLevel: $depth}) YIELD node "
-                "RETURN node LIMIT $result_limit"
-            )
-            results = self.run_query(query, {"node_id": node_id, "depth": depth, "result_limit": result_limit})
-            candidates = {}
-            for r in results or []:
-                content = r["node"]["content"]
-                candidates[content] = {"content": content, "graph_score": self._graph_search_score(content, depth=1)}
-            return candidates
-        return {}
+        query = (
+            "CALL db.index.fulltext.queryNodes('bm25Index', $query_text) "
+            "YIELD node, score "
+            "WHERE node:Episode "
+            "RETURN node, score LIMIT $result_limit"
+        )
+        results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})
         
-    @log_function
-    def merge_candidate(self, key, semantic_candidates, bm25_candidates, bfs_candidates):
-        sem = semantic_candidates.get(key, {})
-        bm25 = bm25_candidates.get(key, {})
-        bfs = bfs_candidates.get(key, {})
-
-        ts_sem = sem.get("timestamp", None)
-        ts_bm25 = bm25.get("timestamp", None)
-
-        if ts_sem is not None:
-            merged_ts = ts_sem
-        elif ts_bm25 is not None:
-            merged_ts = ts_bm25
-        else:
-            merged_ts = 0
-        timestamp = time.time() - merged_ts
-
-        emb_sem = sem.get("embedding", None)
-        emb_bm25 = bm25.get("embedding", None)
-
-        if emb_sem is not None:
-            merged_embedding = emb_sem
-        elif emb_bm25 is not None:
-            merged_embedding = emb_bm25
-        else:
-            merged_embedding = [0]
-
-        sentiment_sem = sem.get("sentiment", None)
-        sentiment_bm25 = bm25.get("sentiment", None)
-
-        if sentiment_sem is not None:
-            merged_sentiment = sentiment_sem
-        elif sentiment_bm25 is not None:
-            merged_sentiment = sentiment_bm25
-        else:
-            merged_sentiment = {}
-
-        emotion_sem = sem.get("emotion", {})
-        emotion_bm25 = bm25.get("emotion", {})
-
-        merged_emotion = {}
-        
-        if emotion_sem:
-            merged_emotion = emotion_sem
-        elif emotion_bm25:
-            merged_emotion = emotion_bm25
-
-        # Scores
-        semantic_score = sem.get("semanticIndex_score", 0)
-        bm25_score = bm25.get("bm25Index_score", 0)
-        graph_score = bfs.get("graph_score", 0)
-
-        candidate = {
-            "content": key,
-            "timestamp": timestamp,
-            "embedding": merged_embedding,
-            "sentiment": merged_sentiment,
-            "emotion": merged_emotion,
-            "semantic_score": semantic_score,
-            "bm25_score": bm25_score,
-            "graph_score": graph_score,
-        }
-        return candidate
+        candidates = {}
+        for r in results or []:
+            node = r["node"]
+            candidate = self._format_candidate(node, r["score"], "bm25_score")
+            candidates[candidate["content"]] = candidate
+        return candidates
 
     @log_function
     def retrieve_candidates(self, query_text, result_limit=5):
         query_embedding = self.manager_extraction.extract_embedding(query_text)
-        semantic_candidates = self._semantic_search(query_text, result_limit*2)
-        bm25_candidates = self._bm25_search(query_text, result_limit*2)
-        bfs_candidates = {}
-
-        if semantic_candidates:
-            seed_content = next(iter(semantic_candidates.values()))["content"]
-            bfs_candidates = self._bfs_search(seed_content, result_limit*2, depth=2)
-        all_keys = set(semantic_candidates.keys()) | set(bm25_candidates.keys()) | set(bfs_candidates.keys())
-        all_keys = {key for key in all_keys if not key.startswith("community_")}
-        all_candidates = {}
-
-        for key in all_keys:
-            candidate = self.merge_candidate(key, semantic_candidates, bm25_candidates, bfs_candidates)
-            all_candidates[key] = candidate
-
-        for candidate in all_candidates.values():
-            if candidate["semantic_score"] == 0 or candidate["timestamp"] == 0:
-                sem = self._search_index("semanticIndex", candidate["content"], result_limit=1)
-                candidate["semantic_score"] = next(iter(sem.values()), {}).get("semanticIndex_score", candidate["semantic_score"])
-            if candidate["bm25_score"] == 0:
-                bm25 = self._search_index("bm25Index", candidate["content"], result_limit=1)
-                candidate["bm25_score"] = next(iter(bm25.values()), {}).get("bm25Index_score", 0)
-            if candidate["graph_score"] == 0:
-                candidate["graph_score"] = self._graph_search_score(candidate["content"], depth=1)
-
-            candidate["similarity"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
-            del candidate["embedding"]
-
-        return list(all_candidates.values())
+        bm25_candidates = self._bm25_search(query_text, result_limit)
+        
+        for candidate in bm25_candidates.values():
+            candidate["semantic_score"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
+            candidate.pop("embedding", None)
+        
+        return list(bm25_candidates.values())
