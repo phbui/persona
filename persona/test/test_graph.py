@@ -50,10 +50,18 @@ def test_full_hierarchy_and_retrieval(graph_manager):
         assert len(semantic_relationships) > 0, "Semantic relationships should be present but none were found."
 
     query_text = "Tell me about New York"
-    candidates = graph_manager.retrieve_candidates(query_text, result_limit=5)
+    candidates = graph_manager.retrieve_candidates(query_text, result_limit=10)
     assert isinstance(candidates, list) and len(candidates) > 0, "No candidates retrieved for query."
     found = any("New York" in candidate["content"] for candidate in candidates)
     assert found, "Candidate matching 'New York' was not found."
+
+
+    print(query_text)
+
+    for candidate in candidates:
+        print("\n")
+        print(candidate)
+
 
 if __name__ == "__main__":
     pytest.main()

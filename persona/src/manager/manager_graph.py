@@ -325,7 +325,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _format_candidate(self, node, score, score_label):
         return {
             "content": node["content"],
-            "timestamp": node["timestamp"],
+            "timestamp": time.time() - node["timestamp"],
             "embedding": node["embedding"],
             "sentiment": node["sentiment"],
             "emotion": node["emotion"],
