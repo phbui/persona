@@ -48,7 +48,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _create_fulltext_index(self):
         query = (
             "CREATE FULLTEXT INDEX bm25Index IF NOT EXISTS "
-            "FOR (n:Episode) ON EACH [n.content]; "
+            "FOR (n:Memory) ON EACH [n.content]; "
         )
         self.run_query(query)
 
@@ -91,8 +91,8 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self._log("INFO", "_add_node", f"Added {node_label} node with content: {data_dict.get('content')}")
 
     @log_function
-    def _add_episode(self, episode_data):
-        self._add_node(episode_data, node_label="Episode")
+    def _add_memory(self, memory_data):
+        self._add_node(memory_data, node_label="Memory")
 
     @log_function
     def _add_entity(self, entity_data):
@@ -119,28 +119,41 @@ class Manager_Graph(metaclass=Meta_Singleton):
         self.run_query(query, params)
 
     @log_function
-    def break_string(self, str):
+    def break_string(self, text):
+        # Regular expression pattern to detect sentence endings while preserving quoted text
         sentence_endings = re.compile(
-            r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.{3}|[.!?])\s'
+            r'([.!?])\s+(?=(?:[^"]*"[^"]*")*[^"]*$)'
         )
-        
-        sentences = sentence_endings.split(str)
-        sentences = [sentence.strip() for sentence in sentences if sentence.strip()]
-        
-        return sentences
 
+        # Split text while keeping delimiters (punctuation) attached to sentences
+        sentences = sentence_endings.split(text)
 
+        # Recombine sentences while keeping punctuation attached
+        cleaned_sentences = []
+        for i in range(0, len(sentences) - 1, 2):
+            cleaned_sentences.append(sentences[i] + sentences[i + 1])
+
+        # Ensure no empty strings remain
+        cleaned_sentences = [s.strip() for s in cleaned_sentences if s.strip()]
+        
+        return cleaned_sentences
+
+    
     @log_function
-    def create_entire_graph(self, file_path):
-        graph_data = Manager_File().upload_file(file_path)
-        sentences = self.break_string(graph_data)
+    def text_to_memories(self, text, context_window = 5):
+        sentences = self.break_string(text)
         for sentence in sentences:
             input_memory = {
                 "content": sentence, 
                 "timestamp": time.time()
                 }
 
-            self.process_new_memory(input_memory)
+            self.process_new_memory(input_memory, context_window)
+
+    @log_function
+    def create_entire_graph(self, file_path, context_window = 5):
+        graph_data = Manager_File().upload_file(file_path)
+        self.text_to_memories(graph_data, context_window)
 
 
     @log_function
@@ -219,36 +232,19 @@ class Manager_Graph(metaclass=Meta_Singleton):
                     )
 
     @log_function
-    def _link_episode_to_entity(self, episode_content, entity_content):
-        query = "MATCH (e:Episode {content: $episode_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)"
-        self.run_query(query, {"episode_content": episode_content, "entity_content": entity_content})
-        self._log("INFO", "_link_episode_to_entity", f"Linked Episode '{episode_content}' to Entity '{entity_content}'")
+    def _link_memory_to_entity(self, memory_content, entity_content):
+        query = "MATCH (e:Memory {content: $memory_content}), (en:Entity {content: $entity_content}) MERGE (e)-[:EXTRACTS]->(en)"
+        self.run_query(query, {"memory_content": memory_content, "entity_content": entity_content})
+        self._log("INFO", "_link_memory_to_entity", f"Linked Memory '{memory_content}' to Entity '{entity_content}'")
 
     @log_function
-    def process_new_memory(self, episode_data, context_window=5):
-        episode_content = episode_data.get("content")
-        episode_embedding = self.manager_extraction.extract_embedding(episode_content)
-        episode_sentiment = self.manager_extraction.extract_sentiment(episode_content)
-        episode_emotion = self.manager_extraction.extract_emotion(episode_content)
-
-        episode_data["embedding"] = episode_embedding
-        episode_data["sentiment"] = episode_sentiment
-        episode_data["emotion"] = episode_emotion
-        self._add_episode(episode_data)
-
-        self._log("INFO", "process_new_memory", f"Processing new memory: {episode_content}")
-        previous_episodes = self.run_query(
-            "MATCH (e:Episode) WHERE e.timestamp < $current_timestamp ORDER BY e.timestamp DESC LIMIT $limit",
-            {"current_timestamp": time.time(), "limit": context_window}
-        )
-        context_text = episode_content
-        if previous_episodes:
-            context_text += " " + " ".join([record["n"]["content"] for record in previous_episodes if "n" in record])
+    def _process_entities(self, memory_content):
+        extracted_entities = []
         try:
-            extracted_entities = self.manager_extraction.extract_entities(context_text)
+            extracted_entities = self.manager_extraction.extract_entities(memory_content)
         except Exception as e:
-            self._log("ERROR", "process_new_memory", f"Entity extraction failed: {e}")
-            extracted_entities = []
+            self._log("ERROR", "_process_new_entities_from_memory", f"Entity extraction failed: {e}")
+
         resolved_entities = []
         for entity in extracted_entities:
             candidates = self.run_query(
@@ -258,9 +254,45 @@ class Manager_Graph(metaclass=Meta_Singleton):
             resolved_entity = self.manager_extraction.resolve_entity(entity, candidates)
             resolved_entities.append(resolved_entity)
             self._add_entity(resolved_entity)
-            self._link_episode_to_entity(episode_content, resolved_entity["content"])
-        self._log("INFO", "process_new_memory", f"Extracted and linked {len(resolved_entities)} entities.")
-        self._update_entire_graph()
+            self._link_memory_to_entity(memory_content, resolved_entity["content"])
+
+        return resolved_entities
+    
+    @log_function
+    def _process_memory(self, memory_content, context_window=5):
+        previous_memories = self.run_query(
+            "MATCH (e:Memory) ORDER BY e.timestamp DESC RETURN e.content AS content, e.embedding AS embedding, e.sentiment AS sentiment, e.emotion AS emotion LIMIT $limit",
+            {"limit": context_window}
+        )
+        context_text = memory_content
+
+        if previous_memories:
+            context_text += " " + " ".join([record["content"] for record in previous_memories])
+
+        memory = self.manager_extraction.extract_memory(memory_content)
+
+        resolved_memory = self.manager_extraction.resolve_memory(memory, previous_memories)
+
+        if resolved_memory is not None:
+            memory_data = {'timestamp': time.time()}
+            memory_data["content"] = resolved_memory.get("content")
+            memory_data["embedding"] = resolved_memory.get("embedding")
+            memory_data["sentiment"] = resolved_memory.get("sentiment")
+            memory_data["emotion"] = resolved_memory.get("emotion")
+
+            self._add_memory(memory_data)
+
+        return resolved_memory
+
+    @log_function
+    def process_new_memory(self, memory_data, context_window=5):
+        memory_content = memory_data.get("content")
+        self._log("INFO", "process_new_memory", f"Processing new memory: {memory_content}")
+        memory = self._process_memory(memory_content, context_window)
+
+        if memory is not None:
+            self._process_entities(memory.get("content"))
+            self._update_entire_graph()
 
     @log_function
     def _update_semantic_subgraph(self):
@@ -268,7 +300,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         if not entities_data:
             return
         entities_list = [{"content": record["content"], "embedding": record["embedding"], "sentiment": record["sentiment"], "emotion": record["emotion"]} for record in entities_data]
-        self._build_semantic_subgraph(entities_list, similarity_threshold=0.7)
+        self._build_semantic_subgraph(entities_list)
         self._log("INFO", "_update_semantic_subgraph", "Semantic subgraph updated.")
 
     @log_function
@@ -337,7 +369,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
         query = (
             "CALL db.index.fulltext.queryNodes('bm25Index', $query_text) "
             "YIELD node, score "
-            "WHERE node:Episode "
+            "WHERE node:Memory "
             "RETURN node, score LIMIT $result_limit"
         )
         results = self.run_query(query, {"query_text": query_text, "result_limit": result_limit})

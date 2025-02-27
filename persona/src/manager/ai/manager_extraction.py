@@ -8,7 +8,7 @@ from manager.ai.manager_analysis import Manager_Analysis
 
 class Manager_Extraction(metaclass=Meta_Singleton):
     def __init__(self):
-        self.manager_llm = Manager_LLM("google/flan-t5-base")
+        self.manager_llm = Manager_LLM("google/flan-t5-large")
         self.manage_analysis_sentiment = Manager_Analysis("sentiment-analysis", "siebert/sentiment-roberta-large-english")
         self.manage_analysis_emotion = Manager_Analysis("text-classification", "j-hartmann/emotion-english-distilroberta-base")
         self.logger = Logger()
@@ -22,7 +22,7 @@ class Manager_Extraction(metaclass=Meta_Singleton):
 
     def extract_entities(self, text: str) -> List[Dict[str, Any]]:
         prompt = (
-            "Extract the named entities from the following text. "
+            "Extract the entities from the following text. "
             "Return them as a comma-separated list. "
             "For example, if the text is: 'Alice visited Paris.' "
             "the correct output would be: 'Alice, Paris'. "
@@ -49,6 +49,18 @@ class Manager_Extraction(metaclass=Meta_Singleton):
             self._log("ERROR", "extract_entities", f"Failed to process response: {e}")
             return []
         
+    def extract_memory(self, text: str) -> List[Dict[str, Any]]:
+        try:
+            embedding = self.extract_embedding(text)
+            sentiment = self.extract_sentiment(text)
+            emotion = self.extract_emotion(text)
+            fact_obj = {"content": text, "embedding": embedding, "sentiment": sentiment, "emotion": emotion}
+            self._log("INFO", "extract_memory", f"Generated embedding for memory '{text}': {embedding}")
+            return fact_obj
+        except Exception as e:
+            self._log("ERROR", "extract_memory", f"Failed to process response: {e}")
+            return []
+        
     def resolve_entity(self, entity, candidates):
         if not candidates:
             return entity
@@ -62,11 +74,27 @@ class Manager_Extraction(metaclass=Meta_Singleton):
         if best_candidate and best_sim > 0.8:
             prompt = f"Are the following two entities redundant? Entity A: {entity['content']}. Entity B: {best_candidate['content']}. Answer yes or no."
             answer = self.manager_llm.generate_response(prompt, max_new_tokens=16, temperature=0.2)
+
             if "yes" in answer.lower():
                 return best_candidate
         return entity
+        
+    def resolve_memory(self, memory, candidates):
+        best_candidate = None
+        best_sim = 0
+        for candidate in candidates:
+            sim = self.cosine_similarity(memory["embedding"], candidate["embedding"])
+            if sim > best_sim:
+                best_sim = sim
+                best_candidate = candidate
+        if best_candidate and best_sim > 0.8:
+            prompt = f"Are the following two memories redundant? Memory A: {memory['content']}. Memory B: {best_candidate['content']}. Answer yes or no."
+            answer = self.manager_llm.generate_response(prompt, max_new_tokens=16, temperature=0.2)
+            if "yes" in answer.lower():
+                return None
+            
+        return memory
     
-
     def extract_sentiment(self, text):
         sentiment_result = self.manage_analysis_sentiment.analyze(text)
         return json.dumps(sentiment_result) 

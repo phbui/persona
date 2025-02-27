@@ -15,45 +15,22 @@ def graph_manager():
     mg.close()
 
 def test_full_hierarchy_and_retrieval(graph_manager):
-    episodes = [
-        {"content": "Alice visited New York last week and loved the food.", "timestamp": time.time()},
-        {"content": "Bob went to New York and saw a Broadway show.", "timestamp": time.time()},
-        {"content": "Charlie is planning to visit New York for a conference.", "timestamp": time.time()},
-        {"content": "Diana discussed politics and art in New York with her colleagues.", "timestamp": time.time()},
-        {"content": "Tinguan is Japanese but lives in China.", "timestamp": time.time()},
-        {"content": "Eve traveled to Paris and enjoyed the art museums.", "timestamp": time.time()},
-        {"content": "Frank attended a technology expo in San Francisco.", "timestamp": time.time()},
-        {"content": "Grace participated in a local food festival in Rome.", "timestamp": time.time()},
-        {"content": "Henry played football with friends in London.", "timestamp": time.time()},
-        {"content": "Ivy wrote a book about the history of Berlin.", "timestamp": time.time()},
-        {"content": "Jack explored the ancient ruins of Athens.", "timestamp": time.time()},
-        {"content": "Karen attended a jazz festival in New Orleans.", "timestamp": time.time()},
-        {"content": "Leo enjoyed the calm beaches of Bali.", "timestamp": time.time()},
-        {"content": "Mona took a cooking class in Tokyo and learned new recipes.", "timestamp": time.time()},
-        {"content": "Nate visited the bustling markets of Mumbai.", "timestamp": time.time()},
-        {"content": "Olivia discovered hidden gems in Sydney.", "timestamp": time.time()},
-        {"content": "Peter marveled at the skyscrapers of Dubai.", "timestamp": time.time()},
-        {"content": "Quinn studied the ancient ruins in Cairo.", "timestamp": time.time()},
-        {"content": "Rachel enjoyed a scenic drive through the Swiss Alps.", "timestamp": time.time()},
-        {"content": "Steve experienced the vibrant culture of Rio de Janeiro.", "timestamp": time.time()},
-    ]
-
-    for episode in episodes:
-        graph_manager.process_new_memory(episode, context_window=5)
+    memories = "Thalrik Stormbinder, a name spoken in whispers across the battlefields of Eldrath, emerged from the frostbitten reaches of the Northlands. Born in the village of Varnheim, Thalrik Stormbinder inherited a lineage of warriors and mystics. The blood of the Stormbinders carried a gift—an attunement to the elemental forces that shaped the world. From childhood, the elders of Varnheim recognized an unusual affinity for tempestuous magic in Thalrik Stormbinder, a power both revered and feared among the clans of the Northlands. During the early years, Thalrik Stormbinder studied under the tutelage of Greymane Frostcaller, the eldest shaman of Varnheim. Greymane Frostcaller imparted ancient wisdom concerning the harnessing of wind and lightning, shaping Thalrik Stormbinder’s raw energy into controlled mastery. The training required meditation beneath the storm-laden skies, trials of endurance within the icy waters of Lake Varndar, and communion with the spirits of the mountain peaks. As years passed, the teachings of Greymane Frostcaller transformed into a foundation for the abilities that would later forge a legend. The first great trial of Thalrik Stormbinder arrived during the siege of Varnheim. The warbands of Jorik the Black-Toothed descended upon the village, razing the outer defenses with brutal efficiency. Armed with knowledge and boundless rage, Thalrik Stormbinder stood at the gates, summoning the fury of the skies. The storm answered. Lightning split the battlefield, fire and ice clashed in the howling winds, and the warbands of Jorik the Black-Toothed fled before the tempest’s wrath. The victory over the invaders cemented Thalrik Stormbinder as a warrior-mystic, a guardian of the Northlands. Following the defense of Varnheim, Thalrik Stormbinder sought the lost relics of the Stormbinders, ancient artifacts infused with primordial energy. The journey led across the tundras of Skaldir, through the ruins of Durn’Vok, and into the labyrinthine depths of the Hollow Peak Caves. In the depths of Hollow Peak Caves, the artifact known as the Stormfang Gauntlet was discovered—an armament of gleaming silver, imbued with the raw force of the heavens. With the Stormfang Gauntlet in hand, the command of storms ascended to an unparalleled level, earning Thalrik Stormbinder a place in the annals of the Northlands. The legend of Thalrik Stormbinder reached its zenith during the War of Sundering Tides. The kingdoms of Eldrath waged bitter conflict against the Abyssal Conclave, a cabal of warlocks seeking dominion over the land. The forces of the Abyssal Conclave conjured rifts in the fabric of reality, unleashing horrors from beyond the veil. Kings and warlords faltered before the onslaught, but the banners of the Northlands stood firm under the command of Thalrik Stormbinder. Leading an army of battle-hardened clans, Thalrik Stormbinder struck against the warlocks of the Abyssal Conclave, severing the conduits of abyssal power and shattering the portals that spewed darkness into the world. At the final battle upon the cliffs of Ael’Thun, the culmination of Thalrik Stormbinder’s power reached its peak. The sky churned with obsidian clouds, the sea roared in defiance, and the warlock-lord Malgrith the Hollow prepared the final incantation to engulf Eldrath in eternal night. Thalrik Stormbinder ascended the summit, Stormfang Gauntlet alight with the wrath of the tempest. A single strike, infused with the fury of a thousand storms, tore through the defenses of Malgrith the Hollow, obliterating the abyssal throne and silencing the darkness. The War of Sundering Tides ended with the fall of the Abyssal Conclave. The kingdoms of Eldrath heralded Thalrik Stormbinder as the Stormborn Champion, a title etched into the histories of scholars and bards alike. Despite the accolades, the battle left scars unseen. The power wielded upon the cliffs of Ael’Thun demanded a toll. The once-boundless energy of the storms waned, and the strength once possessed began to fade. Seeking solace, Thalrik Stormbinder departed from the grand cities of Eldrath, returning to the ancestral homeland of Varnheim. In the twilight years, Thalrik Stormbinder passed into legend, vanishing into the frozen expanse beyond the Northern Reach. Some claim that the spirit of the Stormborn Champion roams the high peaks, watching over the Northlands in silence. Others whisper that the legacy of Thalrik Stormbinder remains hidden, waiting for one worthy to claim the mantle of the storm. The tale of the Stormbinder endures, woven into the tapestry of myth, spoken beneath the glow of firelight in the halls of warriors and sages. The chronicles of Thalrik Stormbinder remain a testament to the power of will, the bond between mortals and the elements, and the echoes of a tempest that once shook the foundations of Eldrath. The name Thalrik Stormbinder, spoken in reverence and awe, endures as a symbol of defiance against the tides of darkness, forever bound to the storm that gave birth to a legend."
+    graph_manager.text_to_memories(memories, context_window=5)
 
     community_nodes = graph_manager.run_query("MATCH (c:Community) RETURN c LIMIT 1")
     assert community_nodes is not None and len(community_nodes) > 0, "No Community nodes found in the graph."
-    episode_nodes = graph_manager.run_query("MATCH (e:Episode) RETURN e LIMIT 1")
-    assert episode_nodes is not None and len(episode_nodes) > 0, "No Episode nodes found in the graph."
+    memory_nodes = graph_manager.run_query("MATCH (e:Memory) RETURN e LIMIT 1")
+    assert memory_nodes is not None and len(memory_nodes) > 0, "No Memory nodes found in the graph."
     semantic_relationships = graph_manager.run_query("MATCH ()-[r:SEMANTICALLY_RELATED]->() RETURN r LIMIT 1")
     if semantic_relationships:
         assert len(semantic_relationships) > 0, "Semantic relationships should be present but none were found."
 
-    query_text = "Tell me about New York"
+    query_text = "Tell me about the battles."
     candidates = graph_manager.retrieve_candidates(query_text, result_limit=10)
     assert isinstance(candidates, list) and len(candidates) > 0, "No candidates retrieved for query."
-    found = any("New York" in candidate["content"] for candidate in candidates)
-    assert found, "Candidate matching 'New York' was not found."
+    found = any("battles" in candidate["content"] for candidate in candidates)
+    assert found, "Candidate matching 'battles' was not found."
 
 
     print(query_text)
