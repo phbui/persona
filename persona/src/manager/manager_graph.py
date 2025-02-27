@@ -363,6 +363,28 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "emotion": node["emotion"],
             f"{score_label}": score
         }
+    
+    @log_function
+    def _semantic_search(self, query_embedding, result_limit=5):
+        query = (
+            "MATCH (n:Memory) "
+            "WHERE n.embedding IS NOT NULL "
+            "WITH n, gds.similarity.cosine(n.embedding, $query_embedding) AS similarity "
+            "RETURN n, similarity AS score "
+            "ORDER BY score DESC "
+            "LIMIT $result_limit"
+        )
+        results = self.run_query(query, {"query_embedding": query_embedding, "result_limit": result_limit})
+
+        print(results)
+        
+        candidates = {}
+        for r in results or []:
+            node = r["n"]
+            candidate = self._format_candidate(node, r["score"], "semantic_score")
+            candidates[candidate["content"]] = candidate
+        return candidates
+
 
     @log_function
     def _bm25_search(self, query_text, result_limit=5):
@@ -382,12 +404,26 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return candidates
 
     @log_function
-    def retrieve_candidates(self, query_text, result_limit=5):
+    def retrieve_candidates(self, query_text, result_min=5):
         query_embedding = self.manager_extraction.extract_embedding(query_text)
-        bm25_candidates = self._bm25_search(query_text, result_limit)
         
-        for candidate in bm25_candidates.values():
-            candidate["semantic_score"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
+        bm25_candidates = self._bm25_search(query_text, result_min)
+        sem_candidates = self._semantic_search(query_embedding, result_min)
+        
+        combined_candidates = {}
+        
+        for content, candidate in bm25_candidates.items():
+            if content in sem_candidates:
+                candidate["semantic_score"] = sem_candidates[content]["semantic_score"]
+            else:
+                candidate["semantic_score"] = self.manager_extraction.cosine_similarity(query_embedding, candidate["embedding"])
             candidate.pop("embedding", None)
-        
-        return list(bm25_candidates.values())
+            combined_candidates[content] = candidate
+            
+        for content, candidate in sem_candidates.items():
+            if content not in combined_candidates:
+                candidate["bm25_score"] = 0
+                candidate.pop("embedding", None)
+                combined_candidates[content] = candidate
+                
+        return list(combined_candidates.values())
