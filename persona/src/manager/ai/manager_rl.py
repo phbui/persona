@@ -2,6 +2,19 @@ import numpy as np
 import json
 
 class Manager_RL():
+    def __init__(self, model):
+        self.manager_model = model
+        self.manager_model.gamma = 0.99        # Future rewards are slightly discounted
+        self.manager_model.gae_lambda = 0.95   # Balances bias and variance in advantage estimation
+        self.manager_model.clip_range = 0.2    # Limits policy update step size
+
+    def set_hyperparameters(self, clip_range, learning_rate, discount_factor, gae_param):
+        for param_group in self.manager_model.policy.optimizer.param_groups:
+            param_group['lr'] = learning_rate
+
+        self.manager_model.gamma = discount_factor
+        self.manager_model.gae_lambda = gae_param
+        self.manager_model.clip_range = clip_range
 
     def encode_candidate_to_vector(self, json_obj):
         vector = self.encode_data_to_vector(json_obj)

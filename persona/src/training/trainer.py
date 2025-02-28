@@ -12,38 +12,36 @@ class Trainer(metaclass=Meta_Singleton):
     def __init__(self):
         self.logger = Logger()
         self.manager_graph = Manager_Graph()
-        self.agent_rl = None
+        self.agent_rl = Agent_RL()
 
     def train(self, epochs, rounds, clip_range, learning_rate, discount_factor, gae_param, trainer_agent_name, rl_agent_name):
         agent_trainer = Agent_Trainer(trainer_agent_name)
-        agent_rl = Agent_RL(rl_agent_name,)
+        self.agent_rl.set_name(rl_agent_name)
+        self.agent_rl.set_hyperparameters(clip_range, learning_rate, discount_factor, gae_param)
 
-        manager_chat = Manager_Chat(agent_trainer, agent_rl, epochs, rounds)
+        manager_chat = Manager_Chat(agent_trainer, self.agent_rl, epochs, rounds)
 
     def _load_policy(self, file_path, policy):
-        model = Manager_File().upload_file(file_path)
-        state_dict = {k: th.tensor(v) for k, v in model.items()}
+        policy_json = Manager_File().upload_file(file_path)
+        state_dict = {k: th.tensor(v) for k, v in policy_json.items()}
         policy.load_state_dict(state_dict)
 
     def _download_policy(self, file_path, file_name, policy):
-        if self.agent_rl is None:
-            Manager_File().download_file({}, file_path, file_name)
-            return
         state_dict = policy.state_dict()
         serializable_dict = {k: v.cpu().tolist() for k, v in state_dict.items()}
         Manager_File().download_file(serializable_dict, file_path, file_name)
 
     def load_mem_policy(self, file_path):
-        self._load_policy(file_path, self.model.policy_mem)
+        self._load_policy(file_path, self.agent_rl.manager_rl_mem.model.policy)
 
-    def download_mem_policy(self, file_path, file_name):
-        self._download_policy(file_path, file_name, self.agent_rl.policy_mem)
+    def download_mem_policy(self, file_path, file_name):        
+        self._download_policy(file_path, file_name, self.agent_rl.manager_rl_mem.model.policy)
 
     def load_emo_policy(self, file_path):
-        self._load_policy(file_path, self.model.policy_emo)
+        self._load_policy(file_path, self.agent_rl.manager_rl_emo.model.policy)
 
     def download_emo_policy(self, file_path, file_name):
-        self._download_policy(file_path, file_name, self.agent_rl.policy_emo)
+        self._download_policy(file_path, file_name, self.agent_rl.manager_rl_emo.model.policy)
 
     def create_graph(self, file_path):
         self.manager_graph.create_entire_graph(file_path)

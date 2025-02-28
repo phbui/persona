@@ -6,16 +6,15 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 import numpy as np
 
 class Manager_Policy_Mem(ActorCriticPolicy):
-    def __init__(self, observation_space, action_space, lr_schedule, **kwargs):
-        super(Manager_Policy_Mem, self).__init__(observation_space, action_space, lr_schedule, **kwargs)
-        # Hard-code known dimensions:
-        self.num_candidates = 10      # fixed number of candidates
-        self.candidate_dim = 12       # candidate features
-        self.query_dim = 10           # query features
-        self.mask_dim = 1             # mask dimension
-        self.total_feature_dim = self.candidate_dim + self.query_dim + self.mask_dim  # 23
-        self.obs_dim = self.num_candidates * self.total_feature_dim
+    num_candidates = 10      # fixed number of candidates
+    candidate_dim = 12       # candidate features
+    query_dim = 10           # query features
+    mask_dim = 1             # mask dimension
+    total_feature_dim = candidate_dim + query_dim + mask_dim  # 23
+    obs_dim = num_candidates * total_feature_dim    
 
+    def __init__(self, lr_schedule, **kwargs):
+        super(Manager_Policy_Mem, self).__init__(self.observation_space, self.action_space, lr_schedule, **kwargs)
         # Define a simple MLP that processes each candidate independently.
         # It will output one logit per candidate.
         self.policy_net = nn.Sequential(

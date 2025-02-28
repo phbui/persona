@@ -1,10 +1,12 @@
-from manager.ai.manager_model import Manager_Model
 from manager.ai.manager_rl import Manager_RL
+from stable_baselines3 import PPO
 import numpy as np
 
 class Manager_RL_Mem(Manager_RL):
-    def __init__(self, model):
-        self.manager_model = model
+    def __init__(self):
+        super().__init__(
+            PPO()
+        )
 
     def create_state(self, query_data, candidates, selected_indices):
         query_vector = self.encode_data_to_vector(query_data) 
