@@ -1,8 +1,9 @@
 from log.logger import Logger, Log
 from chat.round import Round 
+from agent.agent_rl import Agent_RL
 
 class Chat:
-    def __init__(self, agent_a, agent_b, rounds_count):
+    def __init__(self, agent_a: Agent_RL, agent_b: Agent_RL, rounds_count):
         self.agent_a = agent_a
         self.agent_b = agent_b
         self.rounds_count = rounds_count

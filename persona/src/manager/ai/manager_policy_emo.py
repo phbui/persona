@@ -5,7 +5,7 @@ from gym import spaces
 from stable_baselines3.common.policies import ActorCriticPolicy
 import numpy as np
 
-class Manager_Policy_Mem(ActorCriticPolicy):
+class Manager_Policy_Emo(ActorCriticPolicy):
     num_candidates = 10      # fixed number of candidates
     candidate_dim = 12       # candidate features
     query_dim = 10           # query features
@@ -16,7 +16,7 @@ class Manager_Policy_Mem(ActorCriticPolicy):
     action_space = spaces.Discrete(num_candidates)  
 
     def __init__(self, **kwargs):
-        super(Manager_Policy_Mem, self).__init__(**kwargs)
+        super(Manager_Policy_Emo, self).__init__(**kwargs)
         # Define a simple MLP that processes each candidate independently.
         # It will output one logit per candidate.
         self.policy_net = nn.Sequential(
@@ -73,49 +73,6 @@ class Manager_Policy_Mem(ActorCriticPolicy):
         
         return actions, values, log_prob
 
-    def predict(self, obs, deterministic=False):
+    def _predict(self, obs, deterministic=False):
         actions, _, _ = self.forward(obs, deterministic=deterministic)
         return actions
-    
-    def train(self, rollout_buffer):
-        advantages, returns = self.compute_advantages(rollout_buffer)
-
-        for _ in range(self.epochs):
-            for start in range(0, len(rollout_buffer.states), self.batch_size):
-                end = start + self.batch_size
-
-                states = th.tensor(rollout_buffer.states[start:end], dtype=th.float32)
-                actions = th.tensor(rollout_buffer.actions[start:end], dtype=th.int64)
-                old_log_probs = th.tensor(rollout_buffer.log_probs[start:end], dtype=th.float32)
-                returns_batch = th.tensor(returns[start:end], dtype=th.float32)
-                advantages_batch = th.tensor(advantages[start:end], dtype=th.float32)
-
-                _, values, log_probs = self.forward(states)
-                values = values.squeeze()
-                log_probs = log_probs.gather(1, actions.unsqueeze(1)).squeeze()
-
-                ratio = th.exp(log_probs - old_log_probs)
-                surr1 = ratio * advantages_batch
-                surr2 = th.clamp(ratio, 1 - self.clip_range, 1 + self.clip_range) * advantages_batch
-                policy_loss = -th.min(surr1, surr2).mean()
-
-                value_loss = F.mse_loss(values, returns_batch)
-                entropy_loss = -self.ent_coef * self.action_dist(logits=log_probs).entropy().mean()
-
-                loss = policy_loss + self.vf_coef * value_loss + entropy_loss
-
-                self.optimizer.zero_grad()
-                loss.backward()
-                th.nn.utils.clip_grad_norm_(self.parameters(), self.max_grad_norm)
-                self.optimizer.step()
-
-    def compute_advantages(self, rollout_buffer):
-        advantages = np.zeros_like(rollout_buffer.rewards, dtype=np.float32)
-        returns = np.zeros_like(rollout_buffer.rewards, dtype=np.float32)
-        last_advantage = 0.0
-        for t in reversed(range(len(rollout_buffer.rewards))):
-            mask = 1.0 - rollout_buffer.dones[t]
-            delta = rollout_buffer.rewards[t] + self.gamma * rollout_buffer.values[t + 1] * mask - rollout_buffer.values[t]
-            advantages[t] = last_advantage = delta + self.gamma * self.gae_lambda * mask * last_advantage
-        returns = advantages + rollout_buffer.values[:-1]
-        return advantages, returns

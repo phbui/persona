@@ -404,6 +404,15 @@ class Manager_Graph(metaclass=Meta_Singleton):
     @log_function
     def retrieve_candidates(self, query_text, result_limit=10):
         query_embedding = self.manager_extraction.extract_embedding(query_text)
+        query_sentiment = self.manager_extraction.extract_sentiment(query_text)
+        query_emotion = self.manager_extraction.extract_emotion(query_text)
+
+        query_data = {
+            'timestamp': time.time(),
+            'content': query_text,
+            'sentiment':query_sentiment,
+            'emotion': query_emotion
+        }
         
         bm25_candidates = self._bm25_search(query_text, result_limit)
         sem_candidates = self._semantic_search(query_embedding, result_limit)
@@ -424,4 +433,4 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 candidate.pop("embedding", None)
                 combined_candidates[content] = candidate
                 
-        return random.sample(list(combined_candidates.values()), min(result_limit, len(combined_candidates)))
+        return query_data, random.sample(list(combined_candidates.values()), min(result_limit, len(combined_candidates)))

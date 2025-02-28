@@ -21,6 +21,8 @@ class Trainer(metaclass=Meta_Singleton):
 
         manager_chat = Manager_Chat(agent_trainer, self.agent_rl, epochs, rounds)
 
+        manager_chat.run()
+
     def _load_policy(self, file_path, policy):
         policy_json = Manager_File().upload_file(file_path)
         state_dict = {k: th.tensor(v) for k, v in policy_json.items()}
@@ -32,16 +34,16 @@ class Trainer(metaclass=Meta_Singleton):
         Manager_File().download_file(serializable_dict, file_path, file_name)
 
     def load_mem_policy(self, file_path):
-        self._load_policy(file_path, self.agent_rl.manager_rl_mem.model.policy)
+        self._load_policy(file_path, self.agent_rl.manager_rl_mem.manager_model.policy)
 
     def download_mem_policy(self, file_path, file_name):        
-        self._download_policy(file_path, file_name, self.agent_rl.manager_rl_mem.model.policy)
+        self._download_policy(file_path, file_name, self.agent_rl.manager_rl_mem.manager_model.policy)
 
     def load_emo_policy(self, file_path):
-        self._load_policy(file_path, self.agent_rl.manager_rl_emo.model.policy)
+        self._load_policy(file_path, self.agent_rl.manager_rl_emo.manager_model.policy)
 
     def download_emo_policy(self, file_path, file_name):
-        self._download_policy(file_path, file_name, self.agent_rl.manager_rl_emo.model.policy)
+        self._download_policy(file_path, file_name, self.agent_rl.manager_rl_emo.manager_model.policy)
 
     def create_graph(self, file_path):
         self.manager_graph.create_entire_graph(file_path)
