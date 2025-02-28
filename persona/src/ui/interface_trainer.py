@@ -38,6 +38,14 @@ class Interface_Trainer(QWidget):
         self.gae_entry = QLineEdit()
         hyper_layout.addWidget(self.label_gae, 5, 0)
         hyper_layout.addWidget(self.gae_entry, 5, 1)
+        self.label_tan = QLabel("Trainer Agent Name:")
+        self.tan_entry = QLineEdit()
+        hyper_layout.addWidget(self.label_gae, 6, 0)
+        hyper_layout.addWidget(self.gae_entry, 6, 1)
+        self.label_ran = QLabel("RL Agent Name:")
+        self.ran_entry = QLineEdit()
+        hyper_layout.addWidget(self.label_gae, 7, 0)
+        hyper_layout.addWidget(self.gae_entry, 7, 1)
         hyper_group.setLayout(hyper_layout)
         self.main_layout.addWidget(hyper_group)
 
@@ -147,6 +155,8 @@ class Interface_Trainer(QWidget):
             learning_rate = float(self.learning_rate_entry.text())
             discount_factor = float(self.discount_factor_entry.text())
             gae_param = float(self.gae_entry.text())
+            trainer_agent_name = str(self.tan_entry.text())
+            rl_agent_name = str(self.ran_entry.text())
 
             if not (0 < clip_range <= 1):
                 raise ValueError("Clip range must be between 0 and 1.")
@@ -157,7 +167,7 @@ class Interface_Trainer(QWidget):
             if not (0 < gae_param <= 1):
                 raise ValueError("GAE parameter must be between 0 and 1.")
 
-            self.trainer.train(epochs, rounds, clip_range, learning_rate, discount_factor, gae_param)
+            self.trainer.train(epochs, rounds, clip_range, learning_rate, discount_factor, gae_param, trainer_agent_name, rl_agent_name)
             QMessageBox.information(self, "Training", "Training started successfully.")
 
         except ValueError as e:

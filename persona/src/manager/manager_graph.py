@@ -1,7 +1,7 @@
 import os
 import re
 import time
-import numpy as np
+import random
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
 from meta.meta_singleton import Meta_Singleton
@@ -357,7 +357,7 @@ class Manager_Graph(metaclass=Meta_Singleton):
     def _format_candidate(self, node, score, score_label):
         return {
             "content": node["content"],
-            "timestamp": time.time() - node["timestamp"],
+            "timestamp": node["timestamp"],
             "embedding": node["embedding"],
             "sentiment": node["sentiment"],
             "emotion": node["emotion"],
@@ -375,8 +375,6 @@ class Manager_Graph(metaclass=Meta_Singleton):
             "LIMIT $result_limit"
         )
         results = self.run_query(query, {"query_embedding": query_embedding, "result_limit": result_limit})
-
-        print(results)
         
         candidates = {}
         for r in results or []:
@@ -404,11 +402,11 @@ class Manager_Graph(metaclass=Meta_Singleton):
         return candidates
 
     @log_function
-    def retrieve_candidates(self, query_text, result_min=5):
+    def retrieve_candidates(self, query_text, result_limit=10):
         query_embedding = self.manager_extraction.extract_embedding(query_text)
         
-        bm25_candidates = self._bm25_search(query_text, result_min)
-        sem_candidates = self._semantic_search(query_embedding, result_min)
+        bm25_candidates = self._bm25_search(query_text, result_limit)
+        sem_candidates = self._semantic_search(query_embedding, result_limit)
         
         combined_candidates = {}
         
@@ -426,4 +424,4 @@ class Manager_Graph(metaclass=Meta_Singleton):
                 candidate.pop("embedding", None)
                 combined_candidates[content] = candidate
                 
-        return list(combined_candidates.values())
+        return random.sample(list(combined_candidates.values()), min(result_limit, len(combined_candidates)))

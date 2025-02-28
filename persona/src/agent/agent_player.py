@@ -1,4 +1,4 @@
-from agent import Agent
+from agent.agent import Agent
 from log.logger import Logger, Log
 
 class Agent_Player(Agent):    

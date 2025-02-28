@@ -10,7 +10,6 @@ from manager.manager_graph import Manager_Graph
 @pytest.fixture(scope="function", autouse=True)
 def graph_manager():
     mg = Manager_Graph()
-    mg.delete_entire_graph()
     yield mg
     mg.close()
 

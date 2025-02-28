@@ -1,5 +1,5 @@
 from log.logger import Logger, Log
-from .round import Round 
+from chat.round import Round 
 
 class Chat:
     def __init__(self, agent_a, agent_b, rounds_count):

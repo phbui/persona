@@ -1,6 +1,6 @@
 from log.logger import Logger, Log
-from .chat import Chat
-from .epoch import Epoch  
+from chat.chat import Chat
+from chat.epoch import Epoch  
 
 class Manager_Chat:
     def __init__(self, agent_a, agent_b, num_epochs, rounds_per_epoch):

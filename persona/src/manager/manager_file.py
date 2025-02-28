@@ -18,16 +18,16 @@ class Manager_File(metaclass=Meta_Singleton):
             self.logger.add_log("ERROR", "uploads", self.__class__.__name__, "upload_file", f"Error reading JSON from {file_path}: {e}")
             return None
 
-    def download_file(self, data, dir_path, filename="downloaded.json"):
-        if not os.path.exists(dir_path):
+    def download_file(self, data, file_path, file_name="downloaded.json"):
+        if not os.path.exists(file_path):
             try:
-                os.makedirs(dir_path)
-                self.logger.add_log("INFO", "downloads", self.__class__.__name__, "download_file", f"Directory {dir_path} created.")
+                os.makedirs(file_path)
+                self.logger.add_log("INFO", "downloads", self.__class__.__name__, "download_file", f"Directory {file_path} created.")
             except Exception as e:
-                self.logger.add_log("ERROR", "downloads", self.__class__.__name__, "download_file", f"Error creating directory {dir_path}: {e}")
+                self.logger.add_log("ERROR", "downloads", self.__class__.__name__, "download_file", f"Error creating directory {file_path}: {e}")
                 return False
 
-        file_path = os.path.join(dir_path, filename)
+        file_path = os.path.join(file_path, file_name)
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
                 json.dump(data, file, ensure_ascii=False, indent=4)

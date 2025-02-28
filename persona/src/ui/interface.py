@@ -54,17 +54,17 @@ class Interface(QWidget):
         if not file_path:
             return False
 
-        dir_path = os.path.dirname(file_path)
-        filename = os.path.basename(file_path)
+        file_path = os.path.dirname(file_path)
+        file_name = os.path.basename(file_path)
 
         manager = Manager_File()
-        success = manager.download_file(data, dir_path, filename)
+        success = manager.download_file(data, file_path, file_name)
 
         logger = Logger()
         if success:
-            log = Log("INFO", "downloads", self.__class__.__name__, "download_file", f"File {filename} successfully downloaded to {dir_path} via interface.")
+            log = Log("INFO", "downloads", self.__class__.__name__, "download_file", f"File {file_name} successfully downloaded to {file_path} via interface.")
         else:
-            log = Log("ERROR", "downloads", self.__class__.__name__, "download_file", f"Failed to download file {filename} to {dir_path} via interface.")
+            log = Log("ERROR", "downloads", self.__class__.__name__, "download_file", f"Failed to download file {file_name} to {file_path} via interface.")
         logger.add_log(log)
 
         return success
