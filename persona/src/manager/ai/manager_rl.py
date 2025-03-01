@@ -1,20 +1,13 @@
 import numpy as np
 import json
+from persona.src.manager.ai.manager_policy import Manager_Policy
 
 class Manager_RL():
-    def __init__(self, model):
-        self.manager_model = model
-        self.manager_model.gamma = 0.99        # Future rewards are slightly discounted
-        self.manager_model.gae_lambda = 0.95   # Balances bias and variance in advantage estimation
-        self.manager_model.clip_range = 0.2    # Limits policy update step size
+    def __init__(self, input_dim, action_space):
+        self.manager_policy = Manager_Policy(input_dim, action_space)
 
     def set_hyperparameters(self, clip_range, learning_rate, discount_factor, gae_param):
-        for param_group in self.manager_model.policy.optimizer.param_groups:
-            param_group['lr'] = learning_rate
-
-        self.manager_model.gamma = discount_factor
-        self.manager_model.gae_lambda = gae_param
-        self.manager_model.clip_range = clip_range
+        self.manager_policy.update_hyperparameters(learning_rate, discount_factor, clip_range, gae_param)
 
     def encode_candidate_to_vector(self, json_obj):
         vector = self.encode_data_to_vector(json_obj)

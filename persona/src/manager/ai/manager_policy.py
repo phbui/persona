@@ -1,67 +1,18 @@
 import numpy as np
 import torch as th
-import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions import Categorical
-
-class Policy_Mem(nn.Module):
-    def __init__(self, input_dim, num_candidates, hidden_dim=64, lr=3e-4):
-        """
-        PPO Policy Network for iterative reranking.
-        Outputs both action logits and value estimates.
-        """
-        super(Policy_Mem, self).__init__()
-        self.num_candidates = num_candidates
-
-        # Policy Network (Actor)
-        self.policy_net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, num_candidates)
-        )
-
-        # Value Network (Critic)
-        self.value_net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
-        )
-
-        # Optimizer
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
-
-    def forward(self, state):
-        """Returns action logits and value estimate"""
-        logits = self.policy_net(state)
-        value = self.value_net(state).squeeze(-1)
-        return logits, value
-
-    def select_action(self, state):
-        """Sample action from categorical distribution"""
-        logits, value = self.forward(state)
-        probs = Categorical(logits=logits)
-        action = probs.sample()
-        log_prob = probs.log_prob(action)
-        return action.item(), log_prob, value
-
-    def evaluate_action(self, state, action):
-        """Compute log probability and value of a given action"""
-        logits, value = self.forward(state)
-        probs = Categorical(logits=logits)
-        log_prob = probs.log_prob(action)
-        entropy = probs.entropy()
-        return log_prob, entropy, value
+from persona.src.manager.ai.policy.policy import Policy
 
 
-class Manager_Policy_Mem:
-    def __init__(self, input_dim, num_candidates, gamma=0.99, clip_epsilon=0.2):
+class Manager_Policy:
+    def __init__(self, input_dim, num_candidates, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95):
         """
         Trainer for PPO-style updates
         """
-        self.policy = Policy_Mem(input_dim, num_candidates)
+        self.policy = Policy(input_dim, num_candidates)
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
+        self.gae_lambda = gae_lambda  # ✅ Default GAE Lambda
 
         # Storage for training
         self.states = []
@@ -70,6 +21,24 @@ class Manager_Policy_Mem:
         self.rewards = []
         self.values = []
         self.dones = []
+
+    def update_hyperparameters(self, lr=None, gamma=None, clip_epsilon=None, gae_param=None):
+        """
+        Updates PPO hyperparameters dynamically.
+        """
+        if lr is not None:
+            self.lr = lr
+            for param_group in self.policy.optimizer.param_groups:
+                param_group['lr'] = self.lr  # Update optimizer learning rate
+
+        if gamma is not None:
+            self.gamma = gamma  # Update discount factor
+
+        if clip_epsilon is not None:
+            self.clip_epsilon = clip_epsilon  # Update PPO clipping range
+
+        if gae_param is not None:
+            self.gae_lambda = gae_param 
 
     def store_transition(self, state, action, log_prob, reward, value, done):
         """Stores a step in the trajectory buffer"""
@@ -81,16 +50,20 @@ class Manager_Policy_Mem:
         self.dones.append(done)
 
     def compute_advantages(self):
-        """Compute discounted returns and advantages"""
+        """Compute Generalized Advantage Estimation (GAE)"""
         returns = []
         advantages = []
         last_advantage = 0
+
+        values = self.values + [0]  # Add bootstrap value at the end
+
         for t in reversed(range(len(self.rewards))):
             mask = 1 - self.dones[t]
-            delta = self.rewards[t] + self.gamma * self.values[t + 1] * mask - self.values[t]
-            last_advantage = delta + self.gamma * self.clip_epsilon * mask * last_advantage
+            delta = self.rewards[t] + self.gamma * values[t + 1] * mask - values[t]
+            last_advantage = delta + self.gamma * self.gae_lambda * mask * last_advantage
             advantages.insert(0, last_advantage)
-            returns.insert(0, last_advantage + self.values[t])
+            returns.insert(0, last_advantage + values[t])
+
         return th.tensor(returns), th.tensor(advantages)
 
     def update_policy(self, batch_size=32):
@@ -105,7 +78,7 @@ class Manager_Policy_Mem:
             np.random.shuffle(indices)
 
             for i in range(0, len(states), batch_size):
-                batch_indices = indices[i:i+batch_size]
+                batch_indices = indices[i:i + batch_size]
                 batch_states = states[batch_indices]
                 batch_actions = actions[batch_indices]
                 batch_returns = returns[batch_indices]
@@ -131,4 +104,3 @@ class Manager_Policy_Mem:
         self.rewards.clear()
         self.values.clear()
         self.dones.clear()
-

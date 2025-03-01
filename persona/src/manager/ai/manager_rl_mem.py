@@ -1,13 +1,9 @@
 import torch as th
 import numpy as np
-from manager.ai.manager_policy_mem import Manager_Policy_Mem
 from manager.ai.manager_prompt import Manager_Prompt
+from manager.ai.manager_rl import Manager_RL
 
-class Manager_RL_Mem:
-    def __init__(self, input_dim, num_candidates):
-        """Manages the iterative reranking and training process"""
-        self.ppo = Manager_Policy_Mem(input_dim, num_candidates)
-
+class Manager_RL_Mem(Manager_RL):
     def create_state(self, query_vector, candidates, selected_indices):
         """Encodes query and candidate features into state representation"""
         candidate_vectors = np.array([self.encode_candidate_to_vector(c) for c in candidates])
@@ -27,7 +23,7 @@ class Manager_RL_Mem:
         while len(selected_indices) < n_select and available_indices:
             state_vector = self.create_state(candidates, selected_indices)
             state_tensor = th.tensor(state_vector, dtype=th.float32).unsqueeze(0)
-            action, log_prob, value = self.ppo.policy.select_action(state_tensor)
+            action, log_prob, value = self.manager_policy.policy.select_action(state_tensor)
 
             action = action % len(available_indices)
             chosen_idx = available_indices[action]
@@ -35,7 +31,7 @@ class Manager_RL_Mem:
             selected_indices.append(chosen_idx)
             available_indices.remove(chosen_idx)
 
-            self.ppo.store_transition(state_tensor, action, log_prob, 0, value, done=False)
+            self.manager_policy.store_transition(state_tensor, action, log_prob, 0, value, done=False)
 
         return selected_indices
 
@@ -56,7 +52,7 @@ class Manager_RL_Mem:
             self.ppo.rewards[-(i+1)] = reward_2  # Assign reward backward
 
         # Finalize advantage calculations and update policy
-        self.ppo.values.append(0)  # Bootstrap last value
-        self.ppo.update_policy()
+        self.manager_policy.values.append(0)  # Bootstrap last value
+        self.manager_policy.update_policy()
 
         return preferred_response
