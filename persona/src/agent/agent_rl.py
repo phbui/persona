@@ -19,7 +19,7 @@ class Agent_RL(Agent):
         self.manager_graph = Manager_Graph()
         self.manager_prompt = Manager_Prompt()
         self.manager_rl_mem = Manager_RL_Mem(self.obs_dim, self.num_candidates)
-        self.manager_rl_emo = Manager_RL_Emo()
+        self.manager_rl_emo = Manager_RL_Emo(self.obs_dim, self.num_candidates)
 
     def set_name(self, name):
         self.name = name

@@ -1,6 +1,6 @@
 import numpy as np
 import json
-from persona.src.manager.ai.manager_policy import Manager_Policy
+from manager.ai.manager_policy import Manager_Policy
 
 class Manager_RL():
     def __init__(self, input_dim, action_space):

@@ -1,7 +1,7 @@
 import numpy as np
 import torch as th
 import torch.nn.functional as F
-from persona.src.manager.ai.policy.policy import Policy
+from manager.ai.policy.policy import Policy
 
 
 class Manager_Policy:
