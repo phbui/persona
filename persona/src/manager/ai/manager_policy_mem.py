@@ -16,7 +16,7 @@ class Manager_Policy_Mem(ActorCriticPolicy):
     action_space = spaces.Discrete(num_candidates)  
 
     def __init__(self, **kwargs):
-        super(Manager_Policy_Mem, self).__init__(**kwargs)
+        super(Manager_Policy_Mem, self).__init__(observation_space=self.observation_space, action_space=self.action_space, **kwargs)
         # Define a simple MLP that processes each candidate independently.
         # It will output one logit per candidate.
         self.policy_net = nn.Sequential(

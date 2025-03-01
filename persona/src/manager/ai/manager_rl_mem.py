@@ -62,7 +62,7 @@ class Manager_RL_Mem(Manager_RL):
         
         return selected_indices
         
-    def run_episode_and_update(self, rounds, query_data, candidates, n_select, manager_prompt: Manager_Prompt):
+    def run_episode_and_update(self, rounds, query_data, candidates, n_select, manager_prompt: Manager_Prompt, agent_name):
         states_1, actions_1, rewards_1, dones_1 = [], [], [], []
         states_2, actions_2, rewards_2, dones_2 = [], [], [], []
 
@@ -96,10 +96,10 @@ class Manager_RL_Mem(Manager_RL):
                 final_ordering_1 = selected_indices_1.copy()
                 final_ordering_2 = selected_indices_2.copy()
 
-                response_1 = manager_prompt.generate_response(rounds, query_data, final_ordering_1)
-                response_2 = manager_prompt.generate_response(rounds, query_data, final_ordering_2)
+                response_1 = manager_prompt.generate_response(rounds, query_data, final_ordering_1, agent_name)
+                response_2 = manager_prompt.generate_response(rounds, query_data, final_ordering_2, agent_name)
 
-                preferred_response, reward_1, reward_2 = manager_prompt.choose_response(response_1, response_2)
+                preferred_response, reward_1, reward_2 = manager_prompt.choose_response(rounds, query_data, response_1, response_2)
 
             else:
                 reward_1, reward_2 = 0.0, 0.0

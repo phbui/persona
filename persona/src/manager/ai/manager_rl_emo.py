@@ -1,4 +1,3 @@
-from manager.ai.manager_model import Manager_Model
 from manager.ai.manager_rl import Manager_RL
 import numpy as np
 

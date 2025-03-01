@@ -27,7 +27,7 @@ class Agent_RL(Agent):
         num_candidates = 10
         query_data, candidates = self.manager_graph.retrieve_candidates(last_message, num_candidates)
 
-        response = self.manager_rl_mem.run_episode_and_update(rounds, query_data, candidates, num_candidates)
+        response = self.manager_rl_mem.run_episode_and_update(rounds, query_data, candidates, num_candidates, self.name)
         return response
     
     
