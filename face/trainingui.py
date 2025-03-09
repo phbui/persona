@@ -1,11 +1,12 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from feat.plotting import plot_face
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, 
-    QTabWidget, QListWidget, QListWidgetItem, QHBoxLayout
+    QTabWidget, QListWidget, QListWidgetItem, QHBoxLayout, QComboBox
 )
-from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from ai.manager_ppo import Manager_PPO  # RL system
@@ -22,7 +23,6 @@ class TrainingUI(QWidget):
         self.tabs = QTabWidget()
         self.human_feedback_tab = QWidget()
         self.auto_training_tab = QWidget()
-        self.llm = Manager_LLM()
 
         self.tabs.addTab(self.human_feedback_tab, "Human Feedback")
         self.tabs.addTab(self.auto_training_tab, "Automatic Training")
@@ -31,19 +31,73 @@ class TrainingUI(QWidget):
 
         self.manager_extraction = Manager_Extraction()
 
-        self.rl_agent = Manager_PPO(input_dim=9, num_candidates=20)
+        # 🔹 UI for Model Selection
+        self.setup_model_selection()
 
+        # 🔹 Initialize RL and LLM Models
+        self.rl_agent = self.load_rl_model()
+        self.llm = self.load_llm_model()
+
+        # 🔹 Setup Training UI
+        self.setup_human_feedback()
+        self.setup_auto_training()
+
+    def setup_model_selection(self):
+        """Allows selection of RL and LLM models from saved models."""
+        self.model_selection_layout = QHBoxLayout()
+        
+        # RL Model Selection
+        self.rl_model_dropdown = QComboBox()
+        self.rl_model_dropdown.addItem("Train New RL Model")
+        self.rl_model_dropdown.addItems(self.get_model_list("models/rl"))
+        self.rl_model_dropdown.currentTextChanged.connect(self.load_rl_model)
+        self.model_selection_layout.addWidget(QLabel("Select RL Model:"))
+        self.model_selection_layout.addWidget(self.rl_model_dropdown)
+
+        # LLM Model Selection
+        self.llm_model_dropdown = QComboBox()
+        self.llm_model_dropdown.addItem("Train New LLM Model")
+        self.llm_model_dropdown.addItems(self.get_model_list("models/llm"))
+        self.llm_model_dropdown.currentTextChanged.connect(self.load_llm_model)
+        self.model_selection_layout.addWidget(QLabel("Select LLM Model:"))
+        self.model_selection_layout.addWidget(self.llm_model_dropdown)
+
+        self.layout.addLayout(self.model_selection_layout)
+
+    def get_model_list(self, folder):
+        """Returns a list of saved models in the given folder."""
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        return [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f))]
+
+    def load_rl_model(self):
+        """Loads a saved RL model or initializes a new one."""
+        selected_model = self.rl_model_dropdown.currentText()
+        if selected_model == "Train New RL Model":
+            print("Initializing new RL model...")
+            return Manager_PPO(input_dim=9, num_candidates=80)  # Updated to 80
+        else:
+            print(f"Loading RL model: {selected_model}")
+            return Manager_PPO.load(os.path.join("models/rl", selected_model))  # Load method must be implemented in Manager_PPO
+
+    def load_llm_model(self):
+        """Loads a saved LLM model or initializes a new one."""
+        selected_model = self.llm_model_dropdown.currentText()
+        if selected_model == "Train New LLM Model":
+            print("Initializing new LLM model...")
+            return Manager_LLM()
+        else:
+            print(f"Loading LLM model: {selected_model}")
+            return Manager_LLM.load(os.path.join("models/llm", selected_model))  # Load method must be implemented in Manager_LLM
 
     def setup_human_feedback(self):
+        """Setup human feedback tab."""
         layout = QVBoxLayout()
-
-        # Display Situation
         self.situation_label = QLabel("Situation: Loading...")
         self.situation_label.setFont(QFont("Arial", 14))
         self.situation_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.situation_label)
 
-        # Face display area
         self.face_layout = QHBoxLayout()
         self.face_widgets = []
         for _ in range(10):  # 10 generated faces
@@ -52,12 +106,10 @@ class TrainingUI(QWidget):
             self.face_layout.addWidget(face_canvas)
         layout.addLayout(self.face_layout)
 
-        # Ranking list
         self.face_list = QListWidget()
         self.face_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         layout.addWidget(self.face_list)
 
-        # Submit Button
         self.submit_button = QPushButton("Submit Ranking")
         self.submit_button.clicked.connect(self.submit_ranking)
         layout.addWidget(self.submit_button)
@@ -74,10 +126,9 @@ class TrainingUI(QWidget):
         ]
         self.situation_label.setText(f"Situation: {np.random.choice(situations)}")
 
-        # Generate AUs using RL
         self.generated_faces = self.generate_faces()
         self.display_faces()
-                    
+
     def generate_faces(self):
         """Uses RL system to generate 10 AU sets where each value is between [0,3]."""
         text_situation = self.situation_label.text().replace("Situation: ", "")
@@ -86,79 +137,38 @@ class TrainingUI(QWidget):
         generated_faces = []
         for _ in range(10):
             action, _, _ = self.rl_agent.policy.select_action(state)
-            action_au = np.clip(action, 0, 3)  # Ensure AU values are in range
+            action_au = np.clip(action, 0, 3)
             generated_faces.append(action_au)
 
         return generated_faces  
 
-    def display_faces(self):
-        """Plots AU-generated faces using Py-Feat and displays them in the UI."""
-        self.face_list.clear()
-        for i, (face_canvas, au) in enumerate(zip(self.face_widgets, self.generated_faces)):
-            face_canvas.figure.clear()
-            ax = face_canvas.figure.add_subplot(111)
-            plot_face(ax=ax, au=au, title=f"Face {i+1}")
-            face_canvas.draw()
-
-            item = QListWidgetItem(f"Face {i+1}")
-            self.face_list.addItem(item)
-
     def submit_ranking(self):
-        """Collects ranking input and trains the RL system."""
+        """Trains both RL and LLM using human rankings."""
         ranking = [self.face_list.row(self.face_list.item(i)) for i in range(self.face_list.count())]
-        print("User Ranking Submitted:", ranking)
 
-        self.train_models(ranking)
+        # Train RLHF
+        self.train_rl_model(ranking)
+        # Train LLM using RLHF
+        self.finetune_llm(ranking)
+
         self.load_new_situation()
 
-
-    def train_models(self, ranking):
+    def train_rl_model(self, ranking):
         """Trains RL system with user rankings."""
-        print("Training RL system with user feedback...")
         for rank, action_au in enumerate(self.generated_faces):
-            reward = 1 - (rank / len(self.generated_faces))  # Higher rank = higher reward
-            self.rl_agent.store_transition(state=np.random.rand(100), action=action_au, log_prob=0, reward=reward, value=0, done=False)
+            reward = 1 - (rank / len(self.generated_faces))
+            self.rl_agent.store_transition(state=np.random.rand(9), action=action_au, log_prob=0, reward=reward, value=0, done=False)
 
-        # Perform a training step every 10 rankings
         if len(self.rl_agent.states) >= 10:
             self.rl_agent.update_policy()
 
-    def setup_auto_training(self):
-        """Automated training using LLM ranking."""
-        layout = QVBoxLayout()
-        self.auto_train_button = QPushButton("Start Automatic Training")
-        self.auto_train_button.clicked.connect(self.auto_train)
-        layout.addWidget(self.auto_train_button)
-        self.auto_training_tab.setLayout(layout)
+    def finetune_llm(self, ranking):
+        """Finetunes the LLM based on human rankings."""
+        self.llm.finetune(ranking)  # Implement this in Manager_LLM
 
     def auto_train(self):
-        """Uses the LLM to rank AU faces and trains RL automatically."""
-        print("Starting automatic training...")
-
+        """Uses the finetuned LLM to rank AU faces and trains RL automatically."""
         text_situation = self.situation_label.text().replace("Situation: ", "")
-
-        state = self.manager_extraction.extract_features(text_situation)
-
-        generated_faces = []
-        for _ in range(10):
-            action, _, _ = self.rl_agent.policy.select_action(state)
-            action_au = np.clip(action, 0, 3)  # Ensure AU values are in range
-            generated_faces.append(action_au)
-
-        ranking_prompt = f"Rank the following faces based on their appropriateness for the situation: {text_situation}\n\n"
-        for i, face in enumerate(generated_faces):
-            ranking_prompt += f"{i+1}. AU Intensities: {face}\n"
-
-        llm_ranking = self.llm.generate_response(ranking_prompt)
-
-        # ✅ Convert ranking response to list
-        ranking = [int(x) - 1 for x in llm_ranking.split(",")]
-
-        # ✅ Assign rewards based on LLM ranking
-        for rank, action_au in enumerate(generated_faces):
-            reward = 1 - (rank / len(generated_faces))  # Higher rank = higher reward
-            self.rl_agent.store_transition(state, action_au, log_prob=0, reward=reward, value=0, done=False)
-
-        # ✅ Perform a training step
-        self.rl_agent.update_policy()
+        ranking = self.llm.generate_response(f"Rank these faces: {text_situation}")
+        self.train_rl_model(ranking)
 

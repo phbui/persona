@@ -1,44 +1,43 @@
-import numpy as np
+import os
 import torch as th
 import torch.nn.functional as F
 from ai.manager_policy import Manager_Policy
 
 
 class Manager_PPO:
-    def __init__(self, input_dim, num_candidates, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95):
+    def __init__(self, input_dim, num_candidates=80, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95, model_path=None):
         """
-        Trainer for PPO-style updates
+        PPO Trainer with model saving/loading support.
         """
-        self.policy = Manager_Policy(input_dim, num_candidates)
+        self.model_path = model_path
+        if model_path and os.path.exists(model_path):
+            print(f"Loading PPO model from {model_path}")
+            self.policy = torch.load(model_path)
+        else:
+            print("Initializing new PPO model...")
+            self.policy = Manager_Policy(input_dim, num_candidates)
+
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
-        self.gae_lambda = gae_lambda  # ✅ Default GAE Lambda
+        self.gae_lambda = gae_lambda  
 
         # Storage for training
-        self.states = []
-        self.actions = []
-        self.log_probs = []
-        self.rewards = []
-        self.values = []
-        self.dones = []
+        self.states, self.actions, self.log_probs = [], [], []
+        self.rewards, self.values, self.dones = [], [], []
 
-    def update_hyperparameters(self, lr=None, gamma=None, clip_epsilon=None, gae_param=None):
-        """
-        Updates PPO hyperparameters dynamically.
-        """
-        if lr is not None:
-            self.lr = lr
-            for param_group in self.policy.optimizer.param_groups:
-                param_group['lr'] = self.lr  # Update optimizer learning rate
+    def save_model(self, save_path="models/rl/ppo_model.pth"):
+        """Saves the PPO model."""
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        torch.save(self.policy, save_path)
+        print(f"Saved PPO model to {save_path}")
 
-        if gamma is not None:
-            self.gamma = gamma  # Update discount factor
-
-        if clip_epsilon is not None:
-            self.clip_epsilon = clip_epsilon  # Update PPO clipping range
-
-        if gae_param is not None:
-            self.gae_lambda = gae_param 
+    def load_model(self, load_path):
+        """Loads the PPO model."""
+        if os.path.exists(load_path):
+            print(f"Loading PPO model from {load_path}")
+            self.policy = torch.load(load_path)
+        else:
+            print("No saved PPO model found! Training a new model.")
 
     def store_transition(self, state, action, log_prob, reward, value, done):
         """Stores a step in the trajectory buffer"""
@@ -51,11 +50,10 @@ class Manager_PPO:
 
     def compute_advantages(self):
         """Compute Generalized Advantage Estimation (GAE)"""
-        returns = []
-        advantages = []
+        returns, advantages = [], []
         last_advantage = 0
 
-        values = self.values + [0]  # Add bootstrap value at the end
+        values = self.values + [0]  # Bootstrap value at the end
 
         for t in reversed(range(len(self.rewards))):
             mask = 1 - self.dones[t]
@@ -73,9 +71,8 @@ class Manager_PPO:
         log_probs_old = th.tensor(self.log_probs)
         returns, advantages = self.compute_advantages()
 
-        for _ in range(4):  # Number of epochs
-            indices = np.arange(len(states))
-            np.random.shuffle(indices)
+        for _ in range(4):  # Number of PPO epochs
+            indices = th.randperm(len(states))
 
             for i in range(0, len(states), batch_size):
                 batch_indices = indices[i:i + batch_size]
