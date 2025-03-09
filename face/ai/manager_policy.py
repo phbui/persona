@@ -4,24 +4,21 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 class Manager_Policy(nn.Module):
-    def __init__(self, input_dim, action_dim=20, num_categories=4, hidden_dim=64, lr=3e-4):
+    def __init__(self, input_dim, num_candidates=80, hidden_dim=64, lr=3e-4):
         """
-        PPO Policy Network for discrete AU control.
+        PPO Policy Network for AU generation.
         - Each of the 20 AUs takes values from {0,1,2,3}.
         - Outputs both action logits and value estimates.
         """
         super(Manager_Policy, self).__init__()
-        self.action_dim = action_dim
-        self.num_categories = num_categories  # 4 choices per AU
+        self.num_candidates = num_candidates  
 
-        # Policy Network (Actor) - Outputs logits for 80 discrete actions (20 AUs × 4 categories)
         self.policy_net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim * num_categories)  # 80 logits total
+            nn.Linear(hidden_dim, num_candidates) 
         )
 
-        # Value Network (Critic) - Predicts state value
         self.value_net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),

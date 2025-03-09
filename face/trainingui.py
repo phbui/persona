@@ -9,6 +9,8 @@ from PyQt6.QtGui import QPixmap, QFont
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from ai.manager_ppo import Manager_PPO  # RL system
+from ai.manager_extraction import Manager_Extraction 
+from ai.manager_llm import Manager_LLM
 
 class TrainingUI(QWidget):
     def __init__(self):
@@ -20,17 +22,17 @@ class TrainingUI(QWidget):
         self.tabs = QTabWidget()
         self.human_feedback_tab = QWidget()
         self.auto_training_tab = QWidget()
+        self.llm = Manager_LLM()
 
         self.tabs.addTab(self.human_feedback_tab, "Human Feedback")
         self.tabs.addTab(self.auto_training_tab, "Automatic Training")
         self.layout.addWidget(self.tabs)
         self.setLayout(self.layout)
 
-        self.setup_human_feedback()
-        self.setup_auto_training()
+        self.manager_extraction = Manager_Extraction()
 
-        # RL Manager for AU generation
-        self.rl_agent = Manager_PPO(input_dim=100, num_candidates=20)
+        self.rl_agent = Manager_PPO(input_dim=9, num_candidates=20)
+
 
     def setup_human_feedback(self):
         layout = QVBoxLayout()
@@ -75,19 +77,19 @@ class TrainingUI(QWidget):
         # Generate AUs using RL
         self.generated_faces = self.generate_faces()
         self.display_faces()
-                
+                    
     def generate_faces(self):
-        """Uses RL system to generate an AU set where each value is between [0,3]."""
-
+        """Uses RL system to generate 10 AU sets where each value is between [0,3]."""
         text_situation = self.situation_label.text().replace("Situation: ", "")
-
-        # Extract 9D sentiment + emotion feature vector
         state = self.manager_extraction.extract_features(text_situation)
 
-        action, _, _ = self.rl_agent.policy.select_action(state)
-        action_au = np.clip(action, 0, 3)  # Ensure AU values are in range
+        generated_faces = []
+        for _ in range(10):
+            action, _, _ = self.rl_agent.policy.select_action(state)
+            action_au = np.clip(action, 0, 3)  # Ensure AU values are in range
+            generated_faces.append(action_au)
 
-        return [action_au]  # Return a list with a single 20D AU vector
+        return generated_faces  
 
     def display_faces(self):
         """Plots AU-generated faces using Py-Feat and displays them in the UI."""
@@ -106,11 +108,9 @@ class TrainingUI(QWidget):
         ranking = [self.face_list.row(self.face_list.item(i)) for i in range(self.face_list.count())]
         print("User Ranking Submitted:", ranking)
 
-        # Train RL Model
         self.train_models(ranking)
-
-        # Load new set of faces
         self.load_new_situation()
+
 
     def train_models(self, ranking):
         """Trains RL system with user rankings."""
@@ -134,13 +134,31 @@ class TrainingUI(QWidget):
     def auto_train(self):
         """Uses the LLM to rank AU faces and trains RL automatically."""
         print("Starting automatic training...")
-        # Simulate LLM rankings
-        for _ in range(10):  # Simulating 10 training samples
-            action_au = np.clip(np.random.rand(20) * 3, 0, 3)
-            llm_ranking = np.argsort(np.random.rand(10))  # Random ranking
-            reward = 1 - (llm_ranking / len(llm_ranking))
 
-            self.rl_agent.store_transition(state=np.random.rand(100), action=action_au, log_prob=0, reward=np.mean(reward), value=0, done=False)
+        text_situation = self.situation_label.text().replace("Situation: ", "")
 
-        # Perform a training step
+        state = self.manager_extraction.extract_features(text_situation)
+
+        generated_faces = []
+        for _ in range(10):
+            action, _, _ = self.rl_agent.policy.select_action(state)
+            action_au = np.clip(action, 0, 3)  # Ensure AU values are in range
+            generated_faces.append(action_au)
+
+        ranking_prompt = f"Rank the following faces based on their appropriateness for the situation: {text_situation}\n\n"
+        for i, face in enumerate(generated_faces):
+            ranking_prompt += f"{i+1}. AU Intensities: {face}\n"
+
+        llm_ranking = self.llm.generate_response(ranking_prompt)
+
+        # ✅ Convert ranking response to list
+        ranking = [int(x) - 1 for x in llm_ranking.split(",")]
+
+        # ✅ Assign rewards based on LLM ranking
+        for rank, action_au in enumerate(generated_faces):
+            reward = 1 - (rank / len(generated_faces))  # Higher rank = higher reward
+            self.rl_agent.store_transition(state, action_au, log_prob=0, reward=reward, value=0, done=False)
+
+        # ✅ Perform a training step
         self.rl_agent.update_policy()
+
