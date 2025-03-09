@@ -5,17 +5,17 @@ from ai.manager_policy import Manager_Policy
 
 
 class Manager_PPO:
-    def __init__(self, input_dim, num_candidates=80, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95, model_path=None):
+    def __init__(self, input_dim, action_dim=20, num_categories=4, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95, model_path=None):
         """
         PPO Trainer with model saving/loading support.
         """
         self.model_path = model_path
         if model_path and os.path.exists(model_path):
             print(f"Loading PPO model from {model_path}")
-            self.policy = torch.load(model_path)
+            self.policy = th.load(model_path)
         else:
             print("Initializing new PPO model...")
-            self.policy = Manager_Policy(input_dim, num_candidates)
+            self.policy = Manager_Policy(input_dim, action_dim, num_categories)
 
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
@@ -28,21 +28,21 @@ class Manager_PPO:
     def save_model(self, save_path="models/rl/ppo_model.pth"):
         """Saves the PPO model."""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        torch.save(self.policy, save_path)
+        th.save(self.policy, save_path)
         print(f"Saved PPO model to {save_path}")
 
     def load_model(self, load_path):
         """Loads the PPO model."""
         if os.path.exists(load_path):
             print(f"Loading PPO model from {load_path}")
-            self.policy = torch.load(load_path)
+            self.policy = th.load(load_path)
         else:
             print("No saved PPO model found! Training a new model.")
 
     def store_transition(self, state, action, log_prob, reward, value, done):
         """Stores a step in the trajectory buffer"""
         self.states.append(state)
-        self.actions.append(action)
+        self.actions.append(th.tensor(action))  # Convert action array to tensor
         self.log_probs.append(log_prob)
         self.rewards.append(reward)
         self.values.append(value)
@@ -67,7 +67,7 @@ class Manager_PPO:
     def update_policy(self, batch_size=32):
         """Performs a PPO update"""
         states = th.stack(self.states)
-        actions = th.tensor(self.actions)
+        actions = th.stack(self.actions)  # Convert to tensor
         log_probs_old = th.tensor(self.log_probs)
         returns, advantages = self.compute_advantages()
 

@@ -5,7 +5,8 @@ from transformers import (
     AutoModelForCausalLM,
     Trainer,
     TrainingArguments,
-    DataCollatorForSeq2Seq
+    DataCollatorForSeq2Seq,
+    BitsAndBytesConfig
 )
 from datasets import Dataset
 from dotenv import load_dotenv
@@ -15,22 +16,42 @@ secret_key = os.getenv('hf_key')
 
 
 class Manager_LLM:
-    def __init__(self, model_name="mistralai/Mistral-7B-Instruct-v0.3", model_path=None):
+    def __init__(self, model_name="meta-llama/Llama-2-7b-chat-hf", model_path=None):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         local_models_dir = "models/llm"
         os.makedirs(local_models_dir, exist_ok=True)
 
+        quantization_config = self._get_quantization_config()
+
         if model_path and os.path.isdir(model_path):
             self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-            self.model = AutoModelForCausalLM.from_pretrained(model_path)
-            print(f"Loaded finetuned model from {model_path}")
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                quantization_config=quantization_config,
+                device_map="auto"
+            )
+            print(f"Loaded fine-tuned model from {model_path}")
         else:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=secret_key)
-            self.model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=secret_key)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                token=secret_key,
+                quantization_config=quantization_config,
+                device_map="auto"
+            )
             print(f"Loaded pretrained model '{model_name}' from Hugging Face.")
 
         self.model.to(self.device)
+
+    def _get_quantization_config(self):
+        """Sets up 4-bit quantization for memory efficiency."""
+        return BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type='nf4',
+            bnb_4bit_compute_dtype=torch.float16
+        )
 
     def save_model(self, save_path="models/llm/finetuned_llm"):
         """Saves the fine-tuned LLM model to disk."""
@@ -43,7 +64,11 @@ class Manager_LLM:
         """Loads a saved fine-tuned LLM."""
         if os.path.isdir(load_path):
             self.tokenizer = AutoTokenizer.from_pretrained(load_path)
-            self.model = AutoModelForCausalLM.from_pretrained(load_path)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                load_path, 
+                quantization_config=self._get_quantization_config(),
+                device_map="auto"
+            )
             print(f"Loaded fine-tuned LLM from {load_path}")
         else:
             print("No saved LLM model found! Using default.")
@@ -84,8 +109,13 @@ class Manager_LLM:
 
         return Dataset.from_dict(formatted_data)
 
-    def generate_response(self, prompt, max_new_tokens=256, temperature=1.0):
+    def generate_response(self, prompt, max_new_tokens=128, temperature=1.0):
         """Generates a ranking response from the LLM."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-        outputs = self.model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=True, temperature=temperature)
+        outputs = self.model.generate(
+            **inputs, 
+            max_new_tokens=max_new_tokens, 
+            do_sample=True, 
+            temperature=temperature
+        )
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
