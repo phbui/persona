@@ -20,7 +20,7 @@ class Manager_Policy(nn.Module):
         self.policy_net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim * num_categories)  # Output 20 * 4 logits
+            nn.Linear(hidden_dim, action_dim * num_categories)  # Output (20 * 4) logits
         )
 
         # Value Network (Critic)
@@ -35,7 +35,7 @@ class Manager_Policy(nn.Module):
 
     def forward(self, state):
         """Returns logits reshaped for categorical distribution & value estimate."""
-        logits = self.policy_net(state)
+        logits = self.policy_net(state)  # Shape: (batch, 80)
         logits = logits.view(-1, self.action_dim, self.num_categories)  # Reshape to (batch, 20, 4)
         value = self.value_net(state).squeeze(-1)
         return logits, value
@@ -43,7 +43,7 @@ class Manager_Policy(nn.Module):
     def select_action(self, state):
         """
         Sample an action for each AU (20 AUs, 4 categories each).
-        Returns a 20D array where each element is {0,1,2,3}.
+        Returns a **20D action array**, where each value is `{0,1,2,3}`.
         """
         logits, value = self.forward(state)  # (batch, 20, 4)
         probs = Categorical(logits=logits)  # Create categorical distribution

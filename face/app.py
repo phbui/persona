@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from trainingui import TrainingUI
+from ui.trainingui import TrainingUI
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -15,7 +15,7 @@ class Manager_PPO:
             self.policy = th.load(model_path)
         else:
             print("Initializing new PPO model...")
-            self.policy = Manager_Policy(input_dim, action_dim, num_categories)
+            self.policy = Manager_Policy(input_dim, action_dim, num_categories)  # ✅ Corrected arguments
 
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
