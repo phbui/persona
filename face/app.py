@@ -1,9 +1,9 @@
 import sys
 from PyQt6.QtWidgets import QApplication
-from ui.trainingui import TrainingUI
+from ui.trainingwizard import TrainingWizard 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = TrainingUI()
+    window = TrainingWizard()
     window.show()
     sys.exit(app.exec())

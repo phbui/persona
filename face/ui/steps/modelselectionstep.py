@@ -1,31 +1,17 @@
 import os
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, 
-    QComboBox, QStackedWidget
+    QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox
 )
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 from ai.manager_ppo import Manager_PPO
 from ai.manager_llm import Manager_LLM
 
-class TrainingUI(QWidget):
-    def __init__(self):
+class ModelSelectionStep(QWidget):
+    def __init__(self, wizard):
         super().__init__()
-        self.setWindowTitle("Model Selection Wizard")
-        self.setGeometry(100, 100, 800, 400)
+        self.wizard = wizard
 
-        self.layout = QVBoxLayout()
-        self.stacked_widget = QStackedWidget()
-        self.layout.addWidget(self.stacked_widget)
-        self.setLayout(self.layout)
-
-        self.rl_model = None
-        self.llm = None
-
-        self.setup_wizard_ui()
-
-    def setup_wizard_ui(self):
-        self.model_selection_widget = QWidget()
         layout = QVBoxLayout()
 
         title_label = QLabel("Select Models Before Proceeding")
@@ -41,9 +27,9 @@ class TrainingUI(QWidget):
         self.llm_model_dropdown.addItem("Finetune New LLM Model")
         self.llm_model_dropdown.addItems(self.get_model_list("models/llm"))
 
-        self.continue_button = QPushButton("Continue")
+        self.continue_button = QPushButton("Next")
         self.continue_button.setEnabled(False)
-        self.continue_button.clicked.connect(self.initialize_models)
+        self.continue_button.clicked.connect(self.proceed)
 
         self.rl_model_dropdown.currentTextChanged.connect(self.check_ready)
         self.llm_model_dropdown.currentTextChanged.connect(self.check_ready)
@@ -54,24 +40,16 @@ class TrainingUI(QWidget):
         layout.addWidget(self.llm_model_dropdown)
         layout.addWidget(self.continue_button)
 
-        self.model_selection_widget.setLayout(layout)
-        self.stacked_widget.addWidget(self.model_selection_widget)
-
+        self.setLayout(layout)
         self.check_ready()
 
     def check_ready(self):
-        if self.rl_model_dropdown.currentText() and self.llm_model_dropdown.currentText():
-            self.continue_button.setEnabled(True)
-        else:
-            self.continue_button.setEnabled(False)
+        self.continue_button.setEnabled(bool(self.rl_model_dropdown.currentText()) and bool(self.llm_model_dropdown.currentText()))
 
-
-    def initialize_models(self):
-        self.rl_model = self.load_rl_model()
-        self.llm = self.load_llm_model()
-        print("RL Model Loaded:", self.rl_model)
-        print("LLM Model Loaded:", self.llm)
-        self.close()
+    def proceed(self):
+        self.wizard.rl_model = self.load_rl_model()
+        self.wizard.llm = self.load_llm_model()
+        self.wizard.show_training_mode_step()
 
     def get_model_list(self, folder):
         if not os.path.exists(folder):
@@ -89,3 +67,5 @@ class TrainingUI(QWidget):
         if selected_model == "Finetune New LLM Model":
             return Manager_LLM()
         return Manager_LLM.load(os.path.join("models/llm", selected_model))
+
+
