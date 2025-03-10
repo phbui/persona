@@ -35,8 +35,17 @@ class TrainingWizard(QWidget):
     def show_training_mode_step(self):
         self.stacked_widget.setCurrentWidget(self.training_mode_step)
 
+    def show_training_mode_step(self):
+        if not self.rl_model or not self.llm:
+            print("Error: Models must be selected before proceeding.")
+            return
+        self.stacked_widget.setCurrentWidget(self.training_mode_step)
+
     def show_training_step(self):
         if self.training_mode == "human_feedback":
-            self.stacked_widget.setCurrentWidget(self.human_feedback_training)
+            self.training_widget = HumanFeedbackTraining(self)
         elif self.training_mode == "auto_training":
-            self.stacked_widget.setCurrentWidget(self.auto_training)
+            self.training_widget = AutoTraining(self)
+
+        self.stacked_widget.addWidget(self.training_widget)
+        self.stacked_widget.setCurrentWidget(self.training_widget)
