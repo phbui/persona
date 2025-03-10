@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
 from PyQt6.QtGui import QPixmap, QDragEnterEvent, QDropEvent
-from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtCore import Qt
 
 class DropZone(QWidget):
     def __init__(self, rank):

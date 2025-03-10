@@ -1,6 +1,7 @@
-from PyQt6.QtWidgets import QListWidgetItem, QDrag
+from PyQt6.QtWidgets import QListWidgetItem
 from PyQt6.QtCore import QMimeData, QByteArray, Qt
 from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QDrag
 
 class DraggableFace(QListWidgetItem):
     def __init__(self, au_values, pixmap):
