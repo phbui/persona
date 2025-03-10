@@ -27,14 +27,17 @@ class FaceSelectionUI(QWidget):
 
         self.setLayout(layout)
 
-    def display_faces(self, faces):
+    def display_faces(self, generated_faces):
         while self.face_grid.count():
             item = self.face_grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        self.parent.checkboxes = []
-        for i, au_values in enumerate(faces):
+        self.checkboxes = []
+        self.parent.valid_faces = []
+        self.parent.bad_faces = []
+
+        for i, au_values in enumerate(generated_faces):
             pixmap = self.parent.generate_face_pixmap(au_values, size=(200, 200))
 
             label = QLabel()
@@ -42,15 +45,29 @@ class FaceSelectionUI(QWidget):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             valid_checkbox = QCheckBox("Valid")
-            valid_checkbox.setChecked(True)
+            valid_checkbox.setChecked(True)  # Default to valid
             bad_checkbox = QCheckBox("Bad")
 
-            valid_checkbox.stateChanged.connect(lambda _, v=valid_checkbox, b=bad_checkbox, au=au_values: self.parent.toggle_valid_bad(v, b, au))
-            bad_checkbox.stateChanged.connect(lambda _, v=valid_checkbox, b=bad_checkbox, au=au_values: self.parent.toggle_valid_bad(b, v, au))
+            valid_checkbox.stateChanged.connect(lambda _, v=valid_checkbox, b=bad_checkbox, au=au_values: self.toggle_valid_bad(v, b))
+            bad_checkbox.stateChanged.connect(lambda _, v=valid_checkbox, b=bad_checkbox, au=au_values: self.toggle_valid_bad(b, v))
 
-            self.parent.checkboxes.append((valid_checkbox, bad_checkbox, au_values))
+            self.checkboxes.append((valid_checkbox, bad_checkbox, au_values))
+            self.parent.valid_faces.append(au_values)  # By default, all faces are valid
 
             self.face_grid.addWidget(label, i // 5, (i % 5) * 3)
             self.face_grid.addWidget(valid_checkbox, i // 5, (i % 5) * 3 + 1)
             self.face_grid.addWidget(bad_checkbox, i // 5, (i % 5) * 3 + 2)
 
+        self.update_valid_bad_faces()
+
+    def toggle_valid_bad(self, checked_box, other_box):
+        if checked_box.isChecked():
+            other_box.setChecked(False)
+        self.update_valid_bad_faces()
+
+    def update_valid_bad_faces(self):
+        self.parent.valid_faces = [au for v, b, au in self.checkboxes if v.isChecked()]
+        self.parent.bad_faces = [au for v, b, au in self.checkboxes if b.isChecked()]
+
+        self.rank_faces_button.setEnabled(bool(self.parent.valid_faces))
+        self.submit_button.setEnabled(bool(self.parent.valid_faces))
