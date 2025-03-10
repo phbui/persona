@@ -101,6 +101,10 @@ class HumanFeedbackTraining(QWidget):
             faces.append(action_au)
 
         return faces
+    
+    def rank_valid_faces(self):
+        self.valid_faces.sort(key=lambda x: self.valid_faces.index(x))
+        self.face_selection_ui.submit_button.setEnabled(True)
 
     def generate_face_pixmap(self, au_values, size=(200, 200)):
         fig, ax = plt.subplots(figsize=(8, 9), dpi=400)
