@@ -2,6 +2,7 @@ from ui.steps.modelselectionstep import ModelSelectionStep
 from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
 from ui.training.autotraining import AutoTraining
+from ai.manager_extraction import Manager_Extraction
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QStackedWidget
 )
@@ -22,6 +23,7 @@ class TrainingWizard(QWidget):
         self.llm = None
         self.training_mode = None  
 
+        self.manager_extraction = Manager_Extraction()
         self.model_selection_step = ModelSelectionStep(self)
         self.training_mode_step = TrainingModeStep(self)
         self.human_feedback_training = HumanFeedbackTrainingWizard(self)
