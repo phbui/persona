@@ -1,17 +1,19 @@
 import os
+import json
 import numpy as np
 import torch as th
 import matplotlib.pyplot as plt
 from feat.plotting import plot_face
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, 
-    QTabWidget, QListWidget, QHBoxLayout, QComboBox
+    QTabWidget, QHBoxLayout, QComboBox
 )
 from PyQt6.QtGui import QFont, QPixmap
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt
 from ai.manager_ppo import Manager_PPO
 from ai.manager_extraction import Manager_Extraction 
 from ai.manager_llm import Manager_LLM
+from ui.dropzone import DropZone
 from ui.draggableface import DraggableFace
 from io import BytesIO
 
@@ -79,14 +81,15 @@ class TrainingUI(QWidget):
         self.situation_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.situation_label)
 
-        self.face_list = QListWidget()
-        self.face_list.setViewMode(QListWidget.ViewMode.IconMode) 
-        self.face_list.setResizeMode(QListWidget.ResizeMode.Adjust)
-        self.face_list.setFlow(QListWidget.Flow.LeftToRight) 
-        self.face_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
-        self.face_list.setIconSize(QSize(150, 150))  
+        self.face_list = QHBoxLayout()  
+        self.drop_zones = []
 
-        layout.addWidget(self.face_list)
+        for i in range(1, 11):  
+            drop_zone = DropZone(i)
+            self.face_list.addWidget(drop_zone)
+            self.drop_zones.append(drop_zone)
+
+        layout.addLayout(self.face_list)
 
         self.submit_button = QPushButton("Submit Ranking")
         self.submit_button.clicked.connect(self.submit_ranking)
@@ -94,7 +97,6 @@ class TrainingUI(QWidget):
 
         self.human_feedback_tab.setLayout(layout)
         self.load_new_situation()
-
 
     def setup_auto_training(self):
         layout = QVBoxLayout()
@@ -104,25 +106,41 @@ class TrainingUI(QWidget):
         self.auto_training_tab.setLayout(layout)
 
     def load_new_situation(self):
-        situations = [
-            "Happy reaction to winning a prize",
-            "Angry response to an insult",
-            "Sadness after losing a pet"
-        ]
-        self.situation_label.setText(f"Situation: {np.random.choice(situations)}")
-        self.generated_faces = self.generate_faces()
-        self.display_faces()
+        situations_file = "data/situations.json"
+
+        try:
+            with open(situations_file, "r", encoding="utf-8") as file:
+                data = json.load(file)
+                situations = data.get("situations", [])  
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error loading situations.json: {e}")
+            situations = [
+                "Happy reaction to winning a prize",
+                "Angry response to an insult",
+                "Sadness after losing a pet"
+            ]  
+
+        if situations:
+            self.situation_label.setText(f"Situation: {np.random.choice(situations)}")
+            self.generated_faces = self.generate_faces()
+            self.display_faces()
+        else:
+            print("No situations found in JSON!")
 
     def display_faces(self):
-        self.face_list.clear()
-        self.face_list.setIconSize(QSize(100, 100)) 
+        for drop_zone in self.drop_zones:
+            drop_zone.clear()  
 
         for i, au in enumerate(self.generated_faces):
-            pixmap = self.generate_face_pixmap(au)
-            item = DraggableFace(au, pixmap)
-            self.face_list.addItem(item)
+            pixmap = self.generate_face_pixmap(au, size=(150, 150))  
+            face_item = DraggableFace(au, pixmap)
 
-    def generate_face_pixmap(self, au_values, size=(100, 100)): 
+            if i < len(self.drop_zones):
+                self.drop_zones[i].set_face(face_item)  
+            else:
+                self.face_list.addItem(face_item)  
+
+    def generate_face_pixmap(self, au_values, size=(120, 140)): 
         fig, ax = plt.subplots(figsize=(7, 8), dpi=300) 
         plot_face(ax=ax, au=au_values)
         
@@ -155,12 +173,15 @@ class TrainingUI(QWidget):
 
     def submit_ranking(self):
         ranking = []
-        for i in range(self.face_list.count()):
-            item = self.face_list.item(i)
-            ranking.append(item.au_values)
+        for drop_zone in self.drop_zones:
+            if drop_zone.face:
+                ranking.append((drop_zone.rank, drop_zone.face))
 
-        self.train_rl_model(ranking)
-        self.finetune_llm(ranking)
+        ranking.sort()  
+        ranked_faces = [face for _, face in ranking]
+
+        self.train_rl_model(ranked_faces)
+        self.finetune_llm(ranked_faces)
         self.load_new_situation()
 
     def train_rl_model(self, ranking):
