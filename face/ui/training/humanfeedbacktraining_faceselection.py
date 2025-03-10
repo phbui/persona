@@ -34,8 +34,8 @@ class FaceSelectionUI(QWidget):
                 item.widget().deleteLater()
 
         self.checkboxes = []
-        self.parent.valid_faces = []
-        self.parent.bad_faces = []
+        self.parent.valid_faces = []  
+        self.parent.bad_faces = [] 
 
         for i, au_values in enumerate(generated_faces):
             pixmap = self.parent.generate_face_pixmap(au_values, size=(200, 200))
@@ -45,20 +45,20 @@ class FaceSelectionUI(QWidget):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             valid_checkbox = QCheckBox("Valid")
-            valid_checkbox.setChecked(True)  # Default to valid
+            valid_checkbox.setChecked(True) 
             bad_checkbox = QCheckBox("Bad")
 
             valid_checkbox.stateChanged.connect(lambda _, v=valid_checkbox, b=bad_checkbox, au=au_values: self.toggle_valid_bad(v, b))
             bad_checkbox.stateChanged.connect(lambda _, v=valid_checkbox, b=bad_checkbox, au=au_values: self.toggle_valid_bad(b, v))
 
             self.checkboxes.append((valid_checkbox, bad_checkbox, au_values))
-            self.parent.valid_faces.append(au_values)  # By default, all faces are valid
+            self.parent.valid_faces.append(au_values)
 
             self.face_grid.addWidget(label, i // 5, (i % 5) * 3)
             self.face_grid.addWidget(valid_checkbox, i // 5, (i % 5) * 3 + 1)
             self.face_grid.addWidget(bad_checkbox, i // 5, (i % 5) * 3 + 2)
 
-        self.update_valid_bad_faces()
+        self.update_valid_bad_faces() 
 
     def toggle_valid_bad(self, checked_box, other_box):
         if checked_box.isChecked():
