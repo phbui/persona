@@ -44,4 +44,4 @@ class TrainingModeStep(QWidget):
         print("RL Model Loaded:", self.wizard.rl_model)
         print("LLM Model Loaded:", self.wizard.llm)
         print("Training Mode Selected:", self.wizard.training_mode)
-        self.wizard.close()
+        self.wizard.show_training_step()

@@ -1,0 +1,28 @@
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QPushButton
+)
+from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt
+
+
+class HumanFeedbackTraining(QWidget):
+    def __init__(self, wizard):
+        super().__init__()
+        self.wizard = wizard
+
+        layout = QVBoxLayout()
+
+        title_label = QLabel("Human Feedback Training")
+        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        self.start_training_button = QPushButton("Start Training")
+        self.start_training_button.clicked.connect(self.start_training)
+        layout.addWidget(self.start_training_button)
+
+        self.setLayout(layout)
+
+    def start_training(self):
+        print("Starting Human Feedback Training...")
+        # TODO: Implement UI for ranking faces with human input
