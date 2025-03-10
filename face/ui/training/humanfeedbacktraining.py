@@ -6,13 +6,12 @@ import matplotlib.pyplot as plt
 from feat.plotting import plot_face
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem,
-    QHBoxLayout, QSpinBox
+    QSpinBox
 )
 from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtCore import Qt
-from ai.manager_ppo import Manager_PPO
+from PyQt6.QtGui import QIcon
 from ai.manager_extraction import Manager_Extraction
-from ai.manager_llm import Manager_LLM
 from io import BytesIO
 
 
@@ -153,8 +152,10 @@ class HumanFeedbackTraining(QWidget):
             pixmap = self.generate_face_pixmap(au_values)
             item = QListWidgetItem(f"Face {i+1}")
             item.setData(Qt.ItemDataRole.UserRole, au_values)
-            icon = QPixmap(pixmap)
-            item.setIcon(icon)
+
+            icon = QIcon(pixmap)  
+            item.setIcon(icon)    
+
             self.face_list.addItem(item)
 
     def generate_face_pixmap(self, au_values, size=(150, 150)):
