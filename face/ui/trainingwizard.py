@@ -1,6 +1,6 @@
 from ui.steps.modelselectionstep import ModelSelectionStep
 from ui.steps.trainingmodestep import TrainingModeStep
-from ui.training.humanfeedbacktraining import HumanFeedbackTraining
+from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
 from ui.training.autotraining import AutoTraining
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QStackedWidget
@@ -24,7 +24,7 @@ class TrainingWizard(QWidget):
 
         self.model_selection_step = ModelSelectionStep(self)
         self.training_mode_step = TrainingModeStep(self)
-        self.human_feedback_training = HumanFeedbackTraining(self)
+        self.human_feedback_training = HumanFeedbackTrainingWizard(self)
         self.auto_training = AutoTraining(self)
 
         self.stacked_widget.addWidget(self.model_selection_step)
@@ -43,7 +43,7 @@ class TrainingWizard(QWidget):
 
     def show_training_step(self):
         if self.training_mode == "human_feedback":
-            self.training_widget = HumanFeedbackTraining(self)
+            self.training_widget = HumanFeedbackTrainingWizard(self)
         elif self.training_mode == "auto_training":
             self.training_widget = AutoTraining(self)
 
