@@ -9,16 +9,19 @@ from feat.plotting import plot_face
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from io import BytesIO
+import json
 
 class HumanFeedbackTrainingWizard(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
         self.epochs = 1
-        self.current_epoch = 0  
+        self.current_epoch = 0
+        self.current_situation_index = 0
         self.valid_faces = []
         self.invalid_faces = []
         self.generated_faces = []
+        self.situations = self.load_situations()
 
         layout = QVBoxLayout()
         self.stacked_widget = QStackedWidget()
@@ -35,11 +38,20 @@ class HumanFeedbackTrainingWizard(QWidget):
 
         self.show_epoch_selection_step()
 
+    def load_situations(self):
+        try:
+            with open("data/situations.json", "r", encoding="utf-8") as file:
+                data = json.load(file)
+                return data.get("situations", ["Default Situation"])
+        except (FileNotFoundError, json.JSONDecodeError):
+            return ["Default Situation"]
+
     def show_epoch_selection_step(self):
         self.stacked_widget.setCurrentWidget(self.epoch_selection_step)
 
     def start_training(self):
-        self.current_epoch = 0  
+        self.current_epoch = 0
+        self.current_situation_index = 0
         self.run_epoch()
 
     def run_epoch(self):
@@ -47,16 +59,25 @@ class HumanFeedbackTrainingWizard(QWidget):
             print("Training complete.")
             return
 
-        print(f"Starting epoch {self.current_epoch + 1} / {self.epochs}")
+        if self.current_situation_index >= len(self.situations):
+            self.current_epoch += 1
+            self.current_situation_index = 0
+            if self.current_epoch >= self.epochs:
+                print("Training complete.")
+                return
+
         self.show_face_marking_step()
 
     def show_face_marking_step(self):
         self.generated_faces = self.generate_faces()
-        self.face_marking_step.display_faces(self.generated_faces)
+        situation_text = self.situations[self.current_situation_index]
+        self.face_marking_step.display_faces(self.generated_faces, situation_text)
         self.stacked_widget.setCurrentWidget(self.face_marking_step)
 
     def show_ranking_step(self):
         if self.valid_faces:
+            situation_text = self.face_marking_step.situation_label.text()
+            self.ranking_step.display_situation(situation_text)
             self.stacked_widget.setCurrentWidget(self.ranking_step)
             self.ranking_step.enable_buttons()
 
@@ -66,11 +87,11 @@ class HumanFeedbackTrainingWizard(QWidget):
 
     def ranking_done(self):
         self.parent.submit_ranking()
-        self.current_epoch += 1
+        self.current_situation_index += 1
         self.run_epoch()
 
     def generate_faces(self):
-        state = self.parent.manager_extraction.extract_features("Current Situation")
+        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])
         state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
         state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
 
@@ -98,4 +119,3 @@ class HumanFeedbackTrainingWizard(QWidget):
         buf.close()
 
         return pixmap.scaled(size[0], size[1], Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-

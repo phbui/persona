@@ -12,7 +12,7 @@ class FaceMarkingStep(QWidget):
         layout = QVBoxLayout()
 
         self.situation_label = QLabel("")
-        layout.addWidget(self.situation_label)
+        layout.addWidget(self.situation_label) 
 
         self.face_grid = QGridLayout()
         layout.addLayout(self.face_grid)
@@ -24,7 +24,9 @@ class FaceMarkingStep(QWidget):
 
         self.setLayout(layout)
 
-    def display_faces(self, generated_faces):
+    def display_faces(self, generated_faces, situation):
+        self.situation_label.setText(f"Situation: {situation}")
+
         while self.face_grid.count():
             item = self.face_grid.takeAt(0)
             if item.widget():
