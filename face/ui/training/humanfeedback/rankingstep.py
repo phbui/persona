@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
+import numpy as np
 
 class RankingStep(QWidget):
     def __init__(self, parent):
@@ -13,13 +13,13 @@ class RankingStep(QWidget):
         self.situation_label = QLabel("")
         layout.addWidget(self.situation_label)
 
-        main_layout = QHBoxLayout()  
+        main_layout = QHBoxLayout()
 
         self.valid_faces_list = QListWidget()
         self.valid_faces_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         main_layout.addWidget(self.valid_faces_list)
 
-        button_layout = QVBoxLayout() 
+        button_layout = QVBoxLayout()
 
         self.move_up_button = QPushButton("↑")
         self.move_down_button = QPushButton("↓")
@@ -42,13 +42,22 @@ class RankingStep(QWidget):
 
         self.setLayout(layout)
 
+        self.face_pixmaps = {}
+
     def display_faces(self, valid_faces, situation):
         self.situation_label.setText(f"Situation: {situation}")
         self.valid_faces_list.clear()
-        
-        self.face_data = valid_faces[:] 
-        self.render_faces()
 
+        self.face_data = valid_faces[:]
+        self.face_pixmaps.clear()
+
+        for face in valid_faces:
+            face_key = tuple(face.tolist()) 
+            if face_key not in self.face_pixmaps:
+                pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))
+                self.face_pixmaps[face_key] = pixmap
+
+        self.render_faces()
         self.submit_button.setEnabled(bool(valid_faces))
 
     def render_faces(self):
@@ -56,23 +65,24 @@ class RankingStep(QWidget):
         for face in self.face_data:
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, face)
-            pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))
 
-            widget = QWidget()
-            layout = QHBoxLayout()
+            face_key = tuple(face.tolist()) 
+            pixmap = self.face_pixmaps.get(face_key)
 
-            label = QLabel()
-            label.setPixmap(pixmap)
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(label)
-            widget.setLayout(layout)
+            if pixmap:
+                widget = QWidget()
+                layout = QHBoxLayout()
 
-            item = QListWidgetItem()
-            item.setData(Qt.ItemDataRole.UserRole, face)
-            item.setSizeHint(widget.sizeHint())
+                label = QLabel()
+                label.setPixmap(pixmap)
+                label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                layout.addWidget(label)
 
-            self.valid_faces_list.addItem(item)
-            self.valid_faces_list.setItemWidget(item, widget)
+                widget.setLayout(layout)
+                item.setSizeHint(widget.sizeHint())
+
+                self.valid_faces_list.addItem(item)
+                self.valid_faces_list.setItemWidget(item, widget)
 
     def move_selected_up(self):
         current_index = self.valid_faces_list.currentRow()
@@ -90,8 +100,8 @@ class RankingStep(QWidget):
                 self.face_data[current_index + 1], self.face_data[current_index]
             )
             self.render_faces()
-            self.valid_faces_list.setCurrentRow(current_index + 1)  
+            self.valid_faces_list.setCurrentRow(current_index + 1)
 
     def submit_ranking(self):
-        self.parent.valid_faces = self.face_data
+        self.parent.valid_faces = [np.array(face) for face in self.face_data]
         self.parent.ranking_done()
