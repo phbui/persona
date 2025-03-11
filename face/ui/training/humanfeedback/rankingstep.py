@@ -2,7 +2,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QPixmap
+import numpy as np  
 
 class RankingStep(QWidget):
     def __init__(self, parent):
@@ -31,13 +32,15 @@ class RankingStep(QWidget):
 
         self.valid_faces_list.clear()
 
-        for face in valid_faces:
-            pixmap = self.parent.generate_face_pixmap(face, size=(100, 100))  
+        for i, face in enumerate(valid_faces):
+            pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))  
             icon = QIcon(pixmap) 
             
-            item = QListWidgetItem(f"Face {valid_faces.index(face) + 1}")
+            item = QListWidgetItem(f"Face {i + 1}")
             item.setData(Qt.ItemDataRole.UserRole, face)
             item.setIcon(icon) 
+
+            item.setSizeHint(pixmap.size()) 
             self.valid_faces_list.addItem(item)
 
         self.submit_button.setEnabled(bool(valid_faces))
