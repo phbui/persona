@@ -12,9 +12,9 @@ class FaceMarkingStep(QWidget):
         layout = QVBoxLayout()
 
         self.name_label = QLabel("")
-        layout.addWidget(self.parent.name_label) 
+        layout.addWidget(self.name_label) 
         self.character_description_label = QLabel("")
-        layout.addWidget(self.parent.character_description) 
+        layout.addWidget(self.character_description_label) 
         self.situation_label = QLabel("")
         layout.addWidget(self.situation_label) 
 
