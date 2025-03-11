@@ -81,6 +81,9 @@ class HumanFeedbackTrainingWizard(QWidget):
     def show_ranking_step(self):
         print(f"Current Valid Faces: {self.valid_faces}")
         print(f"Current Invalid Faces: {self.invalid_faces}")
+        if (len(self.valid_faces)) == 0:
+            self.ranking_done()
+            return
         situation_text = self.situations[self.current_situation_index]
         self.ranking_step.display_faces(self.valid_faces, situation_text)
         self.stacked_widget.setCurrentWidget(self.ranking_step)
@@ -90,12 +93,13 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.show_ranking_step()
 
     def ranking_done(self):
-        print(f"Valid: {self.valid_faces}")
-        print(f"Invalid: {self.invalid_faces}")
-
-        # self.parent.submit_ranking()
+        self.submit_human_feedback()
         self.current_situation_index += 1
         self.run_epoch()
+
+    def submit_human_feedback(self):
+        print(f"Valid: {self.valid_faces}")
+        print(f"Invalid: {self.invalid_faces}")
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])

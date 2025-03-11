@@ -17,7 +17,7 @@ class FaceMarkingStep(QWidget):
         self.face_grid = QGridLayout()
         layout.addLayout(self.face_grid)
 
-        self.next_button = QPushButton("Proceed to Ranking")
+        self.next_button = QPushButton("Proceed to next step")
         self.next_button.clicked.connect(self.parent.show_ranking_step)
         layout.addWidget(self.next_button)
         self.next_button.setEnabled(False)

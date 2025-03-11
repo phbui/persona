@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QSpinBox
 )
+from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
 
 class EpochSelectionStep(QWidget):
@@ -10,6 +11,7 @@ class EpochSelectionStep(QWidget):
         layout = QVBoxLayout()
 
         title_label = QLabel("Select Number of Epochs")
+        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
 
@@ -26,4 +28,5 @@ class EpochSelectionStep(QWidget):
 
     def confirm_epochs(self):
         self.parent.epochs = self.epoch_selector.value()
+        print(f"Selected {self.parent.epochs} epochs")
         self.parent.show_face_marking_step()

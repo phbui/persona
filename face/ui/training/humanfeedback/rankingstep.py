@@ -31,18 +31,26 @@ class RankingStep(QWidget):
         self.situation_label.setText(f"Situation: {situation}")
 
         self.valid_faces_list.clear()
-
+        
         for i, face in enumerate(valid_faces):
             pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))  
-            icon = QIcon(pixmap) 
+            widget = QWidget()
+            layout = QVBoxLayout()
             
-            item = QListWidgetItem(f"Face {i + 1}")
+            label = QLabel()
+            label.setPixmap(pixmap)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            layout.addWidget(label)
+            widget.setLayout(layout)
+
+            item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, face)
-            item.setIcon(icon) 
-
             item.setSizeHint(pixmap.size()) 
+            
             self.valid_faces_list.addItem(item)
-
+            self.valid_faces_list.setItemWidget(item, widget)
+            
         self.submit_button.setEnabled(bool(valid_faces))
 
     def submit_ranking(self):
