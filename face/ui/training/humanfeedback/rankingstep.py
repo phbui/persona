@@ -58,11 +58,21 @@ class RankingStep(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, face)
             pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))
 
-            icon = QIcon(pixmap)
-            item.setIcon(icon)
+            widget = QWidget()
+            layout = QHBoxLayout()
 
-            item.setSizeHint(pixmap.size())  
+            label = QLabel()
+            label.setPixmap(pixmap)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(label)
+            widget.setLayout(layout)
+
+            item = QListWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, face)
+            item.setSizeHint(widget.sizeHint())
+
             self.valid_faces_list.addItem(item)
+            self.valid_faces_list.setItemWidget(item, widget)
 
     def move_selected_up(self):
         current_index = self.valid_faces_list.currentRow()
