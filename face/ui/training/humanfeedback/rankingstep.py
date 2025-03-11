@@ -1,9 +1,8 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem
+    QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon, QPixmap
-import numpy as np  
+from PyQt6.QtGui import QIcon
 
 class RankingStep(QWidget):
     def __init__(self, parent):
@@ -14,11 +13,27 @@ class RankingStep(QWidget):
         self.situation_label = QLabel("")
         layout.addWidget(self.situation_label)
 
+        main_layout = QHBoxLayout()  
+
         self.valid_faces_list = QListWidget()
         self.valid_faces_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-        self.valid_faces_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        main_layout.addWidget(self.valid_faces_list)
+
+        button_layout = QVBoxLayout() 
+
+        self.move_up_button = QPushButton("↑")
+        self.move_down_button = QPushButton("↓")
+
+        self.move_up_button.clicked.connect(self.move_selected_up)
+        self.move_down_button.clicked.connect(self.move_selected_down)
+
+        button_layout.addWidget(self.move_up_button)
+        button_layout.addWidget(self.move_down_button)
+
+        main_layout.addLayout(button_layout)
+
         layout.addWidget(QLabel("Rank valid faces:"))
-        layout.addWidget(self.valid_faces_list)
+        layout.addLayout(main_layout)
 
         self.submit_button = QPushButton("Submit Ranking")
         self.submit_button.clicked.connect(self.submit_ranking)
@@ -29,31 +44,44 @@ class RankingStep(QWidget):
 
     def display_faces(self, valid_faces, situation):
         self.situation_label.setText(f"Situation: {situation}")
-
         self.valid_faces_list.clear()
         
-        for i, face in enumerate(valid_faces):
-            pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))  
-            widget = QWidget()
-            layout = QVBoxLayout()
-            
-            label = QLabel()
-            label.setPixmap(pixmap)
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.face_data = valid_faces[:] 
+        self.render_faces()
 
-            layout.addWidget(label)
-            widget.setLayout(layout)
-
-            item = QListWidgetItem()
-            item.setData(Qt.ItemDataRole.UserRole, face)
-            item.setSizeHint(pixmap.size()) 
-            
-            self.valid_faces_list.addItem(item)
-            self.valid_faces_list.setItemWidget(item, widget)
-            
         self.submit_button.setEnabled(bool(valid_faces))
 
+    def render_faces(self):
+        self.valid_faces_list.clear()
+        for face in self.face_data:
+            item = QListWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, face)
+            pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))
+
+            icon = QIcon(pixmap)
+            item.setIcon(icon)
+
+            item.setSizeHint(pixmap.size())  
+            self.valid_faces_list.addItem(item)
+
+    def move_selected_up(self):
+        current_index = self.valid_faces_list.currentRow()
+        if current_index > 0:
+            self.face_data[current_index], self.face_data[current_index - 1] = (
+                self.face_data[current_index - 1], self.face_data[current_index]
+            )
+            self.render_faces()
+            self.valid_faces_list.setCurrentRow(current_index - 1)
+
+    def move_selected_down(self):
+        current_index = self.valid_faces_list.currentRow()
+        if current_index < len(self.face_data) - 1:
+            self.face_data[current_index], self.face_data[current_index + 1] = (
+                self.face_data[current_index + 1], self.face_data[current_index]
+            )
+            self.render_faces()
+            self.valid_faces_list.setCurrentRow(current_index + 1)  
+
     def submit_ranking(self):
-        ranked_valid_faces = [self.valid_faces_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.valid_faces_list.count())]
-        self.parent.valid_faces = ranked_valid_faces
+        self.parent.valid_faces = self.face_data
         self.parent.ranking_done()
