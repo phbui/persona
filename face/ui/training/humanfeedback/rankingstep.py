@@ -50,7 +50,8 @@ class RankingStep(QWidget):
 
     def display_faces(self, valid_faces, situation, name, character_description):
         self.name_label.setText(f"Name: {name}")
-        self.character_description_label(f"Character Description: {character_description}")
+        self.character_description_label.setText(f"Character Description: {character_description}")
+        self.situation_label.setText(f"Situation: {situation}")
         self.valid_faces_list.clear()
 
         self.face_data = valid_faces[:]

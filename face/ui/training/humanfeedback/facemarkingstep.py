@@ -30,7 +30,7 @@ class FaceMarkingStep(QWidget):
 
     def display_faces(self, generated_faces, situation, name, character_description):
         self.name_label.setText(f"Name: {name}")
-        self.character_description_label(f"Character Description: {character_description}")
+        self.character_description_label.setText(f"Character Description: {character_description}")
         self.situation_label.setText(f"Situation: {situation}")
 
         while self.face_grid.count():
