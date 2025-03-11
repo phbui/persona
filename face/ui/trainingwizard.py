@@ -13,7 +13,7 @@ class TrainingWizard(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Training Wizard")
-        self.setGeometry(100, 10, 800, 1000)
+        self.setGeometry(10, 10, 800, 1000)
 
         self.layout = QVBoxLayout()
         self.stacked_widget = QStackedWidget()

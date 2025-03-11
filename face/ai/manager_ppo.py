@@ -66,7 +66,8 @@ class Manager_PPO:
 
     def update_policy(self, batch_size=32):
         """Performs a PPO update"""
-        states = th.stack(self.states)
+        states = [th.tensor(state, dtype=th.float32) if isinstance(state, np.ndarray) else state for state in self.states]
+        states = th.stack(states)
         actions = th.stack(self.actions)  # Convert to tensor
         log_probs_old = th.tensor(self.log_probs)
         returns, advantages = self.compute_advantages()
