@@ -55,6 +55,10 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.run_epoch()
 
     def run_epoch(self):
+        self.valid_faces = []
+        self.invalid_faces = []
+        self.generated_faces = []
+
         if self.current_epoch >= self.epochs:
             print("Training complete.")
             return
@@ -79,14 +83,16 @@ class HumanFeedbackTrainingWizard(QWidget):
             situation_text = self.face_marking_step.situation_label.text()
             self.ranking_step.display_situation(situation_text)
             self.stacked_widget.setCurrentWidget(self.ranking_step)
-            self.ranking_step.enable_buttons()
 
     def rank_valid_faces(self):
         self.valid_faces.sort(key=lambda x: self.valid_faces.index(x))
         self.show_ranking_step()
 
     def ranking_done(self):
-        self.parent.submit_ranking()
+        print(f"Valid: {self.valid_faces}")
+        print(f"Invalid: {self.invalid_faces}")
+
+        # self.parent.submit_ranking()
         self.current_situation_index += 1
         self.run_epoch()
 
