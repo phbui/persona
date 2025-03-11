@@ -119,3 +119,6 @@ class Manager_LLM:
             temperature=temperature
         )
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    def generate_training_text(self, chracter_description, face_descriptions, valid_faces, invalid_faces):
+        print()

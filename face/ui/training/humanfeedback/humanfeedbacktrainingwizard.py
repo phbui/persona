@@ -75,7 +75,7 @@ class HumanFeedbackTrainingWizard(QWidget):
     def show_face_marking_step(self):
         self.generated_faces = self.generate_faces()
         situation_text = self.situations[self.current_situation_index]
-        self.face_marking_step.display_faces(self.generated_faces, situation_text)
+        self.face_marking_step.display_faces(self.generated_faces, situation_text, self.parent.name, self.parent.character_description)
         self.stacked_widget.setCurrentWidget(self.face_marking_step)
 
     def show_ranking_step(self):
@@ -85,7 +85,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             self.ranking_done()
             return
         situation_text = self.situations[self.current_situation_index]
-        self.ranking_step.display_faces(self.valid_faces, situation_text)
+        self.face_marking_step.display_faces(self.generated_faces, situation_text, self.parent.name, self.parent.character_description)
         self.stacked_widget.setCurrentWidget(self.ranking_step)
 
     def rank_valid_faces(self):
@@ -98,8 +98,25 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.run_epoch()
 
     def submit_human_feedback(self):
-        print(f"Valid: {self.valid_faces}")
-        print(f"Invalid: {self.invalid_faces}")
+        print(f"Valid Faces (Ranked): {self.valid_faces}")
+        print(f"Invalid Faces: {self.invalid_faces}")
+
+        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])
+
+        for action_au in self.invalid_faces:
+            self.parent.rl_model.store_transition(
+                state=state, action=action_au, log_prob=0, reward=-1.0, value=0, done=False
+            )
+
+        num_valid = len(self.valid_faces)
+        for rank, action_au in enumerate(self.valid_faces):
+            reward = 1 - (rank / num_valid) 
+            self.parent.rl_model.store_transition(
+                state=state, action=action_au, log_prob=0, reward=reward, value=0, done=False
+            )
+
+        self.parent.rl_model.update_policy()
+
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])

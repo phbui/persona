@@ -1,3 +1,4 @@
+from ui.steps.characterdescriptionstep import CharacterDescriptionStep
 from ui.steps.modelselectionstep import ModelSelectionStep
 from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
@@ -24,15 +25,20 @@ class TrainingWizard(QWidget):
         self.training_mode = None  
 
         self.manager_extraction = Manager_Extraction()
+        self.character_description_step = CharacterDescriptionStep(self)
         self.model_selection_step = ModelSelectionStep(self)
         self.training_mode_step = TrainingModeStep(self)
         self.human_feedback_training = HumanFeedbackTrainingWizard(self)
         self.auto_training = AutoTraining(self)
 
+        self.stacked_widget.addWidget(self.character_description_step)
         self.stacked_widget.addWidget(self.model_selection_step)
         self.stacked_widget.addWidget(self.training_mode_step)
         self.stacked_widget.addWidget(self.human_feedback_training)
         self.stacked_widget.addWidget(self.auto_training)
+
+    def show_model_selection_step(self):
+        self.stacked_widget.setCurrentWidget(self.model_selection_step)
 
     def show_training_mode_step(self):
         self.stacked_widget.setCurrentWidget(self.training_mode_step)
