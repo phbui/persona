@@ -75,7 +75,7 @@ class HumanFeedbackTrainingWizard(QWidget):
     def show_face_marking_step(self):
         self.generated_faces = self.generate_faces()
         situation_text = self.situations[self.current_situation_index]
-        self.face_marking_step.display_faces(self.generated_faces, situation_text, self.parent.name, self.parent.character_description)
+        self.face_marking_step.display_faces(self.generated_faces, situation_text, self.parent.character_name, self.parent.character_description)
         self.stacked_widget.setCurrentWidget(self.face_marking_step)
 
     def show_ranking_step(self):
@@ -85,7 +85,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             self.ranking_done()
             return
         situation_text = self.situations[self.current_situation_index]
-        self.face_marking_step.display_faces(self.generated_faces, situation_text, self.parent.name, self.parent.character_description)
+        self.face_marking_step.display_faces(self.generated_faces, situation_text, self.parent.character_name, self.parent.character_description)
         self.stacked_widget.setCurrentWidget(self.ranking_step)
 
     def rank_valid_faces(self):
