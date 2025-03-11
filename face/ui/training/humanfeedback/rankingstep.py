@@ -49,7 +49,6 @@ class RankingStep(QWidget):
         self.face_pixmaps = {}
 
     def display_faces(self, valid_faces, situation, name, character_description):
-        print(valid_faces)
         self.name_label.setText(f"Name: {name}")
         self.character_description_label.setText(f"Character Description: {character_description}")
         self.situation_label.setText(f"Situation: {situation}")
