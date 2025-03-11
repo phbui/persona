@@ -79,10 +79,11 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.stacked_widget.setCurrentWidget(self.face_marking_step)
 
     def show_ranking_step(self):
-        if self.valid_faces:
-            situation_text = self.face_marking_step.situation_label.text()
-            self.ranking_step.display_situation(situation_text)
-            self.stacked_widget.setCurrentWidget(self.ranking_step)
+        print(f"Current Valid Faces: {self.valid_faces}")
+        print(f"Current Invalid Faces: {self.invalid_faces}")
+        situation_text = self.situations[self.current_situation_index]
+        self.ranking_step.display_faces(self.valid_faces, situation_text)
+        self.stacked_widget.setCurrentWidget(self.ranking_step)
 
     def rank_valid_faces(self):
         self.valid_faces.sort(key=lambda x: self.valid_faces.index(x))

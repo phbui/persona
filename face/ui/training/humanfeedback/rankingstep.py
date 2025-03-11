@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 
 class RankingStep(QWidget):
     def __init__(self, parent):
@@ -15,7 +16,7 @@ class RankingStep(QWidget):
         self.valid_faces_list = QListWidget()
         self.valid_faces_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self.valid_faces_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
-        layout.addWidget(QLabel("Rank Valid Faces:"))
+        layout.addWidget(QLabel("Rank valid faces:"))
         layout.addWidget(self.valid_faces_list)
 
         self.submit_button = QPushButton("Submit Ranking")
@@ -25,18 +26,21 @@ class RankingStep(QWidget):
 
         self.setLayout(layout)
 
-    def display_situation(self, situation_text):
-        self.situation_label.setText(situation_text)
+    def display_faces(self, valid_faces, situation):
+        self.situation_label.setText(f"Situation: {situation}")
 
-    def display_faces(self):
         self.valid_faces_list.clear()
-        
-        for face in self.parent.valid_faces:
-            item = QListWidgetItem(f"Face {self.parent.valid_faces.index(face) + 1}")
+
+        for face in valid_faces:
+            pixmap = self.parent.generate_face_pixmap(face, size=(100, 100))  
+            icon = QIcon(pixmap) 
+            
+            item = QListWidgetItem(f"Face {valid_faces.index(face) + 1}")
             item.setData(Qt.ItemDataRole.UserRole, face)
+            item.setIcon(icon) 
             self.valid_faces_list.addItem(item)
 
-        self.submit_button.setEnabled(bool(self.parent.valid_faces))
+        self.submit_button.setEnabled(bool(valid_faces))
 
     def submit_ranking(self):
         ranked_valid_faces = [self.valid_faces_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.valid_faces_list.count())]
