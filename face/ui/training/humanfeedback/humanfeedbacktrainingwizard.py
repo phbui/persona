@@ -116,6 +116,8 @@ class HumanFeedbackTrainingWizard(QWidget):
             )
 
         self.parent.rl_model.update_policy()
+        self.parent.rl_model.save_model(self.parent.parent.rl_model_path)
+        self.parent.llm_model.save_model(self.parent.parent.llm_model_path)
 
 
     def generate_faces(self):

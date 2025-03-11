@@ -80,12 +80,20 @@ class ModelSelectionStep(QWidget):
         selected_model = self.rl_model_dropdown.currentText()
         if selected_model == "Train New RL Model":
             model_name = self.rl_model_name_input.text().strip()
-            return Manager_PPO(input_dim=9, action_dim=20, num_categories=4, model_path=f"models/rl/{model_name}")
-        return Manager_PPO.load(os.path.join("models/rl", selected_model))
+            model_path = os.path.join("models/rl", model_name)
+            self.wizard.rl_model_path = model_path
+            return Manager_PPO(input_dim=9, action_dim=20, num_categories=4, model_path=model_path)
+        model_path = os.path.join("models/rl", selected_model)
+        self.wizard.rl_model_path = model_path
+        return Manager_PPO.load(model_path)
 
     def load_llm_model(self):
         selected_model = self.llm_model_dropdown.currentText()
         if selected_model == "Finetune New LLM Model":
             model_name = self.llm_model_name_input.text().strip()
-            return Manager_LLM(model_path=f"models/llm/{model_name}")
-        return Manager_LLM.load(os.path.join("models/llm", selected_model))
+            model_path = os.path.join("models/llm", model_name)
+            self.wizard.llm_model_path = model_path
+            return Manager_LLM(model_path=model_path)
+        model_path = os.path.join("models/llm", selected_model)
+        self.wizard.llm_model_path = model_path
+        return Manager_LLM.load(model_path)
