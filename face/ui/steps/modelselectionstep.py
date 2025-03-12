@@ -22,7 +22,7 @@ class ModelSelectionStep(QWidget):
 
         self.rl_model_dropdown = QComboBox()
         self.rl_model_dropdown.addItem("Train New RL Model")
-        self.rl_model_dropdown.addItems(self.get_model_list("models/rl"))
+        self.rl_model_dropdown.addItems(self.get_model_list("models/rl", ".pth"))
 
         self.rl_model_name_input = QLineEdit()
         self.rl_model_name_input.setPlaceholderText("Enter new RL model name...")
@@ -30,7 +30,7 @@ class ModelSelectionStep(QWidget):
 
         self.llm_model_dropdown = QComboBox()
         self.llm_model_dropdown.addItem("Finetune New LLM Model")
-        self.llm_model_dropdown.addItems(self.get_model_list("models/llm"))
+        self.llm_model_dropdown.addItems(self.get_model_list("models/llm")) 
 
         self.llm_model_name_input = QLineEdit()
         self.llm_model_name_input.setPlaceholderText("Enter new LLM model name...")
@@ -56,9 +56,16 @@ class ModelSelectionStep(QWidget):
         self.setLayout(layout)
         self.update_model_name_input()
 
-    def get_model_list(self, folder):
+    def get_model_list(self, folder, file_extension=None):
         if not os.path.exists(folder):
             os.makedirs(folder)
+
+        print(f"Checking folder: {folder}")
+        print(os.listdir(folder)) 
+
+        if file_extension:  
+            return [f.replace(file_extension, "") for f in os.listdir(folder) if f.endswith(file_extension)]
+        
         return [f for f in os.listdir(folder) if os.path.isdir(os.path.join(folder, f))]
 
     def update_model_name_input(self):
@@ -86,7 +93,8 @@ class ModelSelectionStep(QWidget):
         
         model_path = os.path.join("models/rl", f"{selected_model}.pth")
         self.wizard.rl_model_path = model_path
-        return Manager_PPO.load(model_path)
+        manager_ppo = Manager_PPO(input_dim=9, action_dim=20, num_categories=4, model_path=model_path)
+        return manager_ppo.load_model(model_path)
 
     def load_llm_model(self):
         selected_model = self.llm_model_dropdown.currentText()
@@ -97,4 +105,5 @@ class ModelSelectionStep(QWidget):
             return Manager_LLM(model_path=model_path)
         model_path = os.path.join("models/llm", selected_model)
         self.wizard.llm_model_path = model_path
-        return Manager_LLM.load(model_path)
+        manager_llm = Manager_LLM(model_path=model_path)
+        return manager_llm.load_model(model_path)

@@ -65,7 +65,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             return
 
         if self.current_situation_index >= len(self.situations):
-            self.parent.llm_model.finetune(self.llm_training, self.parent.llm_model_path)
+            self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
             self.llm_training = []
             self.current_epoch += 1
             self.current_situation_index = 0
@@ -130,6 +130,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         invalid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.invalid_faces]
         response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, self.situations[self.current_situation_index], face_descriptions, valid_faces_idx, invalid_faces_idx)
         self.llm_training.append({"prompt": prompt, "response": response})
+        self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path, 1, 10) # test
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])

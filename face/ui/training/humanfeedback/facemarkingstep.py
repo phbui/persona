@@ -24,7 +24,7 @@ class FaceMarkingStep(QWidget):
         self.next_button = QPushButton("Proceed to next step")
         self.next_button.clicked.connect(self.parent.show_ranking_step)
         layout.addWidget(self.next_button)
-        self.next_button.setEnabled(False)
+        self.next_button.setEnabled(True)
 
         self.setLayout(layout)
 
@@ -64,8 +64,6 @@ class FaceMarkingStep(QWidget):
             self.face_grid.addWidget(label, i // 5, (i % 5) * 2)
             self.face_grid.addWidget(toggle_button, i // 5, (i % 5) * 2 + 1)
 
-        self.update_valid_invalid_faces()
-
     def toggle_valid_invalid(self, button, au_values):
         if button.isChecked():
             button.setText("✔️ Valid")
@@ -79,10 +77,4 @@ class FaceMarkingStep(QWidget):
             if not any(np.array_equal(x, au_values) for x in self.parent.invalid_faces):
                 self.parent.invalid_faces.append(au_values)
             self.parent.valid_faces = [x for x in self.parent.valid_faces if not np.array_equal(x, au_values)]
-
-        self.update_valid_invalid_faces()
-
-    def update_valid_invalid_faces(self):
-        has_valid_faces = len(self.parent.valid_faces) > 0
-        self.next_button.setEnabled(has_valid_faces)
 
