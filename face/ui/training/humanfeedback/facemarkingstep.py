@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QToolButton, 
-    QScrollArea, QFrame, QGridLayout
+    QScrollArea, QFrame, QHBoxLayout
 )
 from PyQt6.QtCore import Qt
 from functools import partial
@@ -62,7 +62,7 @@ class FaceMarkingStep(QWidget):
 
         for au_values in generated_faces:
             face_widget = QWidget()
-            face_layout = QVBoxLayout(face_widget)
+            face_layout = QHBoxLayout(face_widget)
 
             pixmap = self.parent.generate_face_pixmap(au_values, size=(200, 200))
 
@@ -84,6 +84,7 @@ class FaceMarkingStep(QWidget):
 
             face_layout.addWidget(label)
             face_layout.addWidget(toggle_button)
+            face_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             face_widget.setLayout(face_layout)
 
             self.face_layout.addWidget(face_widget)
