@@ -77,7 +77,6 @@ class Manager_LLM:
         """Saves the fine-tuned LLM model with LoRA adapters."""
         os.makedirs(save_path, exist_ok=True)
         
-        self.model.save_pretrained(save_path) 
         self.tokenizer.save_pretrained(save_path)
         
         if isinstance(self.model, PeftModel):
@@ -97,10 +96,9 @@ class Manager_LLM:
                 device_map="auto"
             )
 
-
-            adapter_path = os.path.join(load_path, "adapter_model.bin")
+            adapter_path = os.path.join(load_path, "adapter_config.bin")
             if os.path.exists(adapter_path):
-                self.model = PeftModel.from_pretrained(self.model, load_path)
+                self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
                 print(f"Loaded fine-tuned LLM with LoRA adapters from {load_path}")
             else:
                 print(f"No LoRA adapter found in {load_path}. Using base model.")

@@ -99,9 +99,6 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.run_epoch()
 
     def submit_human_feedback(self):
-        print(f"Valid Faces (Ranked): {self.valid_faces}")
-        print(f"Invalid Faces: {self.invalid_faces}")
-
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])
 
         for action_au in self.invalid_faces:

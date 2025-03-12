@@ -3,6 +3,7 @@ from ui.steps.modelselectionstep import ModelSelectionStep
 from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
 from ui.training.autotraining.autotraining import AutoTraining
+from ui.training.manager_rewards import Manager_Reward
 from ai.manager_extraction import Manager_Extraction
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QStackedWidget
