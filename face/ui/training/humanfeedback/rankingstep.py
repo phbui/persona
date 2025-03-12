@@ -25,15 +25,17 @@ class RankingStep(QWidget):
 
         button_layout = QVBoxLayout()
 
+        self.go_back_button = QPushButton("Go Back") 
         self.move_up_button = QPushButton("↑")
         self.move_down_button = QPushButton("↓")
-
+ 
+        self.go_back_button.clicked.connect(self.go_back_to_facemarking) 
         self.move_up_button.clicked.connect(self.move_selected_up)
         self.move_down_button.clicked.connect(self.move_selected_down)
 
+        button_layout.addWidget(self.go_back_button) 
         button_layout.addWidget(self.move_up_button)
         button_layout.addWidget(self.move_down_button)
-
         main_layout.addLayout(button_layout)
 
         layout.addWidget(QLabel("Rank valid faces:"))
@@ -107,6 +109,9 @@ class RankingStep(QWidget):
             )
             self.render_faces()
             self.valid_faces_list.setCurrentRow(current_index + 1)
+
+    def go_back_to_facemarking(self):
+        self.parent.show_face_marking_step()
 
     def submit_ranking(self):
         self.parent.valid_faces = [np.array(face) for face in self.face_data]
