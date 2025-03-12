@@ -100,7 +100,7 @@ class Manager_LLM:
         
         return self
 
-    def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm", num_train_epochs=1, batch_size=10):
+    def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm", num_train_epochs=1, batch_size=1):
         """Fine-tunes the LLM based on human rankings at the end of each epoch."""
         
         train_dataset = Dataset.from_list(training_data)
