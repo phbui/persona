@@ -15,12 +15,9 @@ from dotenv import load_dotenv
 load_dotenv()
 secret_key = os.getenv('hf_key')
 
-from peft import PeftModel, PeftConfig
-
 class Manager_LLM:
     def __init__(self, model_name="meta-llama/Llama-2-7b-chat-hf", model_path=None):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-
         local_models_dir = "models/llm"
         os.makedirs(local_models_dir, exist_ok=True)
 
@@ -33,7 +30,7 @@ class Manager_LLM:
                 quantization_config=quantization_config,
                 device_map="auto"
             )
-            self.model = PeftModel.from_pretrained(self.model, model_path)  # Load LoRA adapters
+            self._load_lora_adapter(model_path)
             print(f"Loaded fine-tuned model from {model_path}")
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
@@ -43,7 +40,7 @@ class Manager_LLM:
                 device_map="auto"
             )
             print(f"Loaded pretrained model '{model_name}' from Hugging Face.")
-
+        self.tokenizer.pad_token = self.tokenizer.eos_token 
         self.model.to(self.device)
         self._apply_qlora()
 
@@ -69,12 +66,20 @@ class Manager_LLM:
         self.model = get_peft_model(self.model, lora_config)
         print("Applied QLoRA to the model.")
 
+    def _load_lora_adapter(self, model_path):
+        """Loads LoRA adapters if they exist."""
+        adapter_path = os.path.join(model_path, "adapter_model.bin")
+        if os.path.exists(adapter_path):
+            self.model = PeftModel.from_pretrained(self.model, model_path)
+            print(f"Loaded LoRA adapter from {model_path}")
+        else:
+            print(f"No LoRA adapter found in {model_path}. Using base model.")
+
     def save_model(self, save_path="models/llm/finetuned_llm"):
-        """Saves the fine-tuned LLM model to disk."""
+        """Saves the fine-tuned LLM model with LoRA adapters."""
         os.makedirs(save_path, exist_ok=True)
-        self.model.save_pretrained(save_path)
+        self.model.save_pretrained(save_path) 
         self.tokenizer.save_pretrained(save_path)
-        self.model.save_adapter(save_path)  # Save LoRA adapters
         print(f"Saved fine-tuned LLM with adapters to {save_path}")
 
     def load_model(self, load_path):
@@ -86,16 +91,28 @@ class Manager_LLM:
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
             )
-            self.model = PeftModel.from_pretrained(self.model, load_path)  # Load LoRA adapters
+            self._load_lora_adapter(load_path)
             print(f"Loaded fine-tuned LLM with adapters from {load_path}")
         else:
             print("No saved LLM model found! Using default.")
+            
+        return self
 
     def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm", num_train_epochs=1, batch_size=10):
         """Fine-tunes the LLM based on human rankings at the end of each epoch."""
         
-        # Convert JSON training data into a Hugging Face dataset
         train_dataset = Dataset.from_list(training_data)
+
+        def tokenize_function(examples):
+            return self.tokenizer(
+                examples["prompt"], 
+                text_target=examples["response"], 
+                padding="max_length",
+                truncation=True,
+                max_length=512
+            )
+
+        tokenized_dataset = train_dataset.map(tokenize_function, batched=True, remove_columns=["prompt", "response"])
 
         training_args = TrainingArguments(
             output_dir=output_dir,
@@ -103,6 +120,7 @@ class Manager_LLM:
             per_device_train_batch_size=batch_size,
             save_strategy="epoch",
             logging_dir=f"{output_dir}/logs",
+            remove_unused_columns=False,  
         )
 
         data_collator = DataCollatorForSeq2Seq(self.tokenizer, model=self.model)
@@ -110,8 +128,8 @@ class Manager_LLM:
         trainer = Trainer(
             model=self.model,
             args=training_args,
-            train_dataset=train_dataset,
-            tokenizer=self.tokenizer,
+            train_dataset=tokenized_dataset,
+            tokenizer=self.tokenizer,  
             data_collator=data_collator,
         )
 
@@ -128,7 +146,7 @@ class Manager_LLM:
             temperature=temperature
         )
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
+
     def generate_training_text(self, character_description, situation, face_descriptions, valid_faces, invalid_faces):
         prompt = f"""
             ### Instruction:

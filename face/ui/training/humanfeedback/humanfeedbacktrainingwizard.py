@@ -82,8 +82,6 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.stacked_widget.setCurrentWidget(self.face_marking_step)
 
     def show_ranking_step(self):
-        print(f"Current Valid Faces: {self.valid_faces}")
-        print(f"Current Invalid Faces: {self.invalid_faces}")
         if (len(self.valid_faces)) == 0:
             self.ranking_done()
             return
