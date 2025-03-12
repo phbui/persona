@@ -84,10 +84,15 @@ class Manager_LLM:
                 device_map="auto"
             )
 
-            adapter_path = os.path.join(load_path, "adapter_config.json")
-            if os.path.exists(adapter_path):
-                self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
-                print(f"Loaded fine-tuned LLM with LoRA adapters from {load_path}")
+            adapter_path = os.path.join(load_path, "adapter_model.safetensors")
+            config_path = os.path.join(load_path, "adapter_config.json")
+
+            if os.path.exists(adapter_path) and os.path.exists(config_path):
+                if not hasattr(self.model, "peft_config"):
+                    self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
+                    print(f"Loaded fine-tuned LLM with LoRA adapters from {load_path}")
+                else:
+                    print("LoRA adapter already applied. Skipping duplicate loading.")
             else:
                 print(f"No LoRA adapter found in {load_path}. Using base model.")
         else:
