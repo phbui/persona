@@ -6,12 +6,6 @@ from torch.distributions import Categorical
 
 class Manager_Policy(nn.Module):
     def __init__(self, input_dim, action_dim=20, num_categories=4, hidden_dim=128, lr=3e-4):
-        """
-        PPO Policy Network for Action Unit (AU) Selection.
-        - `action_dim=20`: Each face has 20 AUs.
-        - `num_categories=4`: Each AU can be 0,1,2,3.
-        - Outputs **logits** for a 20x4 categorical distribution.
-        """
         super(Manager_Policy, self).__init__()
         self.action_dim = action_dim
         self.num_categories = num_categories

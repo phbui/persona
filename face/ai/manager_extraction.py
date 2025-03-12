@@ -1,19 +1,29 @@
-import json
 import numpy as np
 from ai.manager_analysis import Manager_Analysis
+from ai.manager_encoder import Manager_Encoder
 
 class Manager_Extraction:
     def __init__(self):
-        self.manage_analysis_sentiment = Manager_Analysis(
+        self.manager_analysis_sentiment = Manager_Analysis(
             "sentiment-analysis", "siebert/sentiment-roberta-large-english"
         )
-        self.manage_analysis_emotion = Manager_Analysis(
+        self.manager_analysis_emotion = Manager_Analysis(
             "text-classification", "j-hartmann/emotion-english-distilroberta-base"
         )
+        self.manager_encoder = Manager_Encoder("google/flan-t5-base")
+
+        # Define the fixed embedding size based on the model configuration
+        self.embedding_size = self.manager_encoder.model.config.d_model  # Typically 768D for Flan-T5 Base
 
     def extract_features(self, text):
-        """Extracts a 9D feature vector (sentiment + emotion scores)."""
-        sentiment_result = self.manage_analysis_sentiment.analyze(text)
+        """Extracts a fixed-size feature vector (embedding + sentiment + emotion scores)."""
+        # Extract text embedding (ensuring fixed size)
+        text_embedding = self.manager_encoder.generate_embedding(text)
+        if len(text_embedding) != self.embedding_size:
+            text_embedding = [0.0] * self.embedding_size  # Ensure correct size if extraction fails
+
+        # Extract sentiment scores
+        sentiment_result = self.manager_analysis_sentiment.analyze(text)
         positive_score = 0
         negative_score = 0
 
@@ -27,16 +37,18 @@ class Manager_Extraction:
                 negative_score = score
                 positive_score = 1 - score
 
-        emotion_result = self.manage_analysis_emotion.analyze(text, top_k=None)
-
+        # Extract emotion scores
+        emotion_result = self.manager_analysis_emotion.analyze(text, top_k=None)
         target_emotions = ["disgust", "neutral", "anger", "joy", "surprise", "fear", "sadness"]
         emotion_scores = {e["label"]: e["score"] for e in emotion_result}
 
         emotion_vector = np.array([emotion_scores.get(em, 0) for em in target_emotions])
-        feature_vector = np.concatenate(([positive_score, negative_score], emotion_vector))
 
-        return feature_vector  # Shape: (9,)
-        
+        # Construct the final feature vector
+        feature_vector = np.concatenate((text_embedding, [positive_score, negative_score], emotion_vector))
+
+        return feature_vector  # Shape: (embedding_size + 9,)
+
     def describe_face(self, au_intensities):
         # Mapping of intensity levels to descriptive terms
         intensity_descriptions = {
