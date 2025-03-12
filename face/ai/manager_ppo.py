@@ -65,7 +65,7 @@ class Manager_PPO:
 
         return th.tensor(returns), th.tensor(advantages)
 
-    def update_policy(self, batch_size=32):
+    def update_policy(self, output_dir, batch_size=32):
         """Performs a PPO update"""
         states = [th.tensor(state, dtype=th.float32) if isinstance(state, np.ndarray) else state for state in self.states]
         states = th.stack(states)
@@ -103,3 +103,4 @@ class Manager_PPO:
         self.rewards.clear()
         self.values.clear()
         self.dones.clear()
+        self.save_model(output_dir)

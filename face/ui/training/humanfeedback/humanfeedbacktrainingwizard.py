@@ -22,6 +22,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.invalid_faces = []
         self.generated_faces = []
         self.situations = self.load_situations()
+        self.llm_training = []
 
         layout = QVBoxLayout()
         self.stacked_widget = QStackedWidget()
@@ -64,6 +65,8 @@ class HumanFeedbackTrainingWizard(QWidget):
             return
 
         if self.current_situation_index >= len(self.situations):
+            self.parent.llm_model.finetune(self.llm_training, self.parent.llm_model_path)
+            self.llm_training = []
             self.current_epoch += 1
             self.current_situation_index = 0
             if self.current_epoch >= self.epochs:
@@ -115,22 +118,20 @@ class HumanFeedbackTrainingWizard(QWidget):
                 state=state, action=action_au, log_prob=0, reward=reward, value=0, done=False
             )
 
-        self.parent.rl_model.update_policy()
+        self.parent.rl_model.update_policy(self.parent.rl_model_path)
 
-        face_descriptions = ""
+        face_descriptions = "Generated Faces:\n"
 
-        faces = self.valid_faces + self.invalid_faces
+        faces = self.generated_faces
         for i, face in enumerate(faces):
-            face_descriptions += f"\nFace {i}: " + self.parent.manager_extraction.describe_face(face)
+            face_descriptions += f"{i}: " + self.parent.manager_extraction.describe_face(face) + "\n"
 
-        response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, face_descriptions, len(self.valid_faces), len(self.invalid_faces))
+        valid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.valid_faces]
+        invalid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.invalid_faces]
+        response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, self.situations[self.current_situation_index], face_descriptions, valid_faces_idx, invalid_faces_idx)
 
-        print(f"Prompt: {prompt}")
-        print(f"Response: {response}")
-
-        # self.parent.rl_model.save_model(self.parent.parent.rl_model_path)
-        # self.parent.llm_model.save_model(self.parent.parent.llm_model_path)
-
+        self.llm_training.append({"prompt": prompt, "response": response})
+        print(self.llm_training)
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])

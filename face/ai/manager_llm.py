@@ -9,11 +9,11 @@ from transformers import (
     BitsAndBytesConfig
 )
 from datasets import Dataset
+from peft import LoraConfig, get_peft_model, PeftModel
 from dotenv import load_dotenv
 
 load_dotenv()
 secret_key = os.getenv('hf_key')
-
 
 class Manager_LLM:
     def __init__(self, model_name="meta-llama/Llama-2-7b-chat-hf", model_path=None):
@@ -36,13 +36,13 @@ class Manager_LLM:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                token=secret_key,
                 quantization_config=quantization_config,
                 device_map="auto"
             )
             print(f"Loaded pretrained model '{model_name}' from Hugging Face.")
 
         self.model.to(self.device)
+        self._apply_qlora()
 
     def _get_quantization_config(self):
         """Sets up 4-bit quantization for memory efficiency."""
@@ -52,6 +52,19 @@ class Manager_LLM:
             bnb_4bit_quant_type='nf4',
             bnb_4bit_compute_dtype=torch.float16
         )
+
+    def _apply_qlora(self):
+        """Applies QLoRA to the model for efficient fine-tuning."""
+        lora_config = LoraConfig(
+            r=8,
+            lora_alpha=32,
+            target_modules=["q_proj", "v_proj"],
+            lora_dropout=0.05,
+            bias="none",
+            task_type="CAUSAL_LM"
+        )
+        self.model = get_peft_model(self.model, lora_config)
+        print("Applied QLoRA to the model.")
 
     def save_model(self, save_path="models/llm/finetuned_llm"):
         """Saves the fine-tuned LLM model to disk."""
@@ -69,13 +82,16 @@ class Manager_LLM:
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
             )
+            self._apply_qlora()  # Reapply QLoRA after loading
             print(f"Loaded fine-tuned LLM from {load_path}")
         else:
             print("No saved LLM model found! Using default.")
 
-    def fine_tune(self, rankings, output_dir="models/llm/finetuned_llm", num_train_epochs=3, batch_size=8):
-        """Fine-tunes the LLM based on human rankings."""
-        train_dataset = self.prepare_llm_training_data(rankings)
+    def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm", num_train_epochs=1, batch_size=10):
+        """Fine-tunes the LLM based on human rankings at the end of each epoch."""
+        
+        # Convert JSON training data into a Hugging Face dataset
+        train_dataset = Dataset.from_list(training_data)
 
         training_args = TrainingArguments(
             output_dir=output_dir,
@@ -109,18 +125,31 @@ class Manager_LLM:
         )
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
     
-    def generate_training_text(self, chracter_description, face_descriptions, num_valid_faces, num_invalid_faces):
-        prompt = f"Character Description:\n{chracter_description}\n{face_descriptions}"
+    def generate_training_text(self, character_description, situation, face_descriptions, valid_faces, invalid_faces):
+        prompt = f"""
+            ### Instruction:
+            Analyze the Character Description, Character Situation, and Generated Faces. 
+            Respond with:
+            - A **ranked list of Valid Faces** (most accurate to the situation first).
+            - A **list of Invalid Faces**.
 
-        range_valid = list(range(1, num_valid_faces + 1))
-        range_invalid = list(range(num_valid_faces + 2, num_valid_faces + num_invalid_faces + 2))
-        
-        valid_faces = f"Valid Faces:\n{range_valid}"
-        invalid_faces = f"Invalid Faces:\n{range_invalid}"
+            ### Character Description:
+            {character_description}
+
+            ### Character Situation:
+            {situation}
+
+            ### Generated Faces:
+            {face_descriptions}
+
+            ### Response Format:
+            Valid Faces: [#, #, #, ...]
+            Invalid Faces: [#, #, #, ...]
+        """
+            
+        valid_faces = f"Valid Faces:\n{valid_faces}"
+        invalid_faces = f"Invalid Faces:\n{invalid_faces}"
 
         response = valid_faces + "\n" + invalid_faces
 
         return response, prompt
-
-
-
