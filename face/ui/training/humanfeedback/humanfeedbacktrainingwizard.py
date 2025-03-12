@@ -10,6 +10,7 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from io import BytesIO
 import json
+import sys
 
 class HumanFeedbackTrainingWizard(QWidget):
     def __init__(self, parent):
@@ -62,15 +63,18 @@ class HumanFeedbackTrainingWizard(QWidget):
 
         if self.current_epoch >= self.epochs:
             print("Training complete.")
+            sys.exit(0)
             return
 
         if self.current_situation_index >= len(self.situations):
+            self.parent.manager_reward.end_epoch(self.current_epoch)
             self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
             self.llm_training = []
             self.current_epoch += 1
             self.current_situation_index = 0
             if self.current_epoch >= self.epochs:
                 print("Training complete.")
+                sys.exit(0)
                 return
 
         self.show_face_marking_step()
@@ -105,6 +109,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             self.parent.rl_model.store_transition(
                 state=state, action=action_au, log_prob=0, reward=-1.0, value=0, done=False
             )
+            self.parent.manager_reward.store_reward(-1.0)
 
         num_valid = len(self.valid_faces)
         for rank, action_au in enumerate(self.valid_faces):
@@ -112,7 +117,9 @@ class HumanFeedbackTrainingWizard(QWidget):
             self.parent.rl_model.store_transition(
                 state=state, action=action_au, log_prob=0, reward=reward, value=0, done=False
             )
-
+            self.parent.manager_reward.store_reward(reward)
+        
+        self.parent.manager_reward.end_episode()
         self.parent.rl_model.update_policy(self.parent.rl_model_path)
 
         face_descriptions = "Generated Faces:\n"
@@ -125,7 +132,6 @@ class HumanFeedbackTrainingWizard(QWidget):
         invalid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.invalid_faces]
         response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, self.situations[self.current_situation_index], face_descriptions, valid_faces_idx, invalid_faces_idx)
         self.llm_training.append({"prompt": prompt, "response": response})
-        self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path, 1, 10) # test
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])

@@ -31,6 +31,7 @@ class TrainingWizard(QWidget):
         self.training_mode_step = TrainingModeStep(self)
         self.human_feedback_training = HumanFeedbackTrainingWizard(self)
         self.auto_training = AutoTraining(self)
+        self.manager_reward = Manager_Reward()
 
         self.stacked_widget.addWidget(self.character_description_step)
         self.stacked_widget.addWidget(self.model_selection_step)

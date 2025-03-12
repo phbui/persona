@@ -26,7 +26,7 @@ class Manager_LLM:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        if not (model_path and os.path.isdir(model_path)):
+        if model_path is None:
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 token=secret_key,
@@ -61,18 +61,6 @@ class Manager_LLM:
         else:
             print("QLoRA already applied. Skipping reapplication.")
 
-    def _load_lora_adapter(self, model_path):
-        """Loads LoRA adapters if they exist."""
-        adapter_path = os.path.join(model_path, "adapter_model.bin")
-        if os.path.exists(adapter_path):
-            if not isinstance(self.model, PeftModel): 
-                self.model = PeftModel.from_pretrained(self.model, model_path)
-                print(f"Loaded LoRA adapter from {model_path}")
-            else:
-                print("LoRA adapter already applied. Skipping reapplication.")
-        else:
-            print(f"No LoRA adapter found in {model_path}. Using base model.")
-
     def save_model(self, save_path="models/llm/finetuned_llm"):
         """Saves the fine-tuned LLM model with LoRA adapters."""
         os.makedirs(save_path, exist_ok=True)
@@ -96,7 +84,7 @@ class Manager_LLM:
                 device_map="auto"
             )
 
-            adapter_path = os.path.join(load_path, "adapter_config.bin")
+            adapter_path = os.path.join(load_path, "adapter_config.json")
             if os.path.exists(adapter_path):
                 self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
                 print(f"Loaded fine-tuned LLM with LoRA adapters from {load_path}")
