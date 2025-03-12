@@ -98,17 +98,6 @@ class Manager_LLM:
         trainer.train()
         self.save_model(output_dir)
 
-    def prepare_llm_training_data(self, rankings):
-        """Converts human rankings into a training dataset for fine-tuning."""
-        formatted_data = []
-        for situation, ranked_faces in rankings.items():
-            ranked_text = "\n".join([f"{i+1}: {face}" for i, face in enumerate(ranked_faces)])
-            prompt = f"Rank the following facial expressions for the situation: {situation}\n\n{ranked_text}\n\nRanking: "
-            ranking_output = ", ".join(str(i+1) for i in range(len(ranked_faces)))
-            formatted_data.append({"input_text": prompt, "target_text": ranking_output})
-
-        return Dataset.from_dict(formatted_data)
-
     def generate_response(self, prompt, max_new_tokens=128, temperature=1.0):
         """Generates a ranking response from the LLM."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
@@ -120,5 +109,18 @@ class Manager_LLM:
         )
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
     
-    def generate_training_text(self, chracter_description, face_descriptions, valid_faces, invalid_faces):
-        print()
+    def generate_training_text(self, chracter_description, face_descriptions, num_valid_faces, num_invalid_faces):
+        prompt = f"Character Description:\n{chracter_description}\n{face_descriptions}"
+
+        range_valid = list(range(1, num_valid_faces + 1))
+        range_invalid = list(range(num_valid_faces + 2, num_valid_faces + num_invalid_faces + 2))
+        
+        valid_faces = f"Valid Faces:\n{range_valid}"
+        invalid_faces = f"Invalid Faces:\n{range_invalid}"
+
+        response = valid_faces + "\n" + invalid_faces
+
+        return response, prompt
+
+
+

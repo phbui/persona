@@ -42,6 +42,6 @@ class TrainingModeStep(QWidget):
     def finalize_selection(self):
         self.wizard.training_mode = "human_feedback" if self.human_feedback_radio.isChecked() else "auto_training"
         print("RL Model Loaded:", self.wizard.rl_model)
-        print("LLM Model Loaded:", self.wizard.llm)
+        print("LLM Model Loaded:", self.wizard.llm_model)
         print("Training Mode Selected:", self.wizard.training_mode)
         self.wizard.show_training_step()

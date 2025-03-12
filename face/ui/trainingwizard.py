@@ -21,7 +21,7 @@ class TrainingWizard(QWidget):
         self.setLayout(self.layout)
 
         self.rl_model = None
-        self.llm = None
+        self.llm_model = None
         self.training_mode = None  
 
         self.manager_extraction = Manager_Extraction()
@@ -44,7 +44,7 @@ class TrainingWizard(QWidget):
         self.stacked_widget.setCurrentWidget(self.training_mode_step)
 
     def show_training_mode_step(self):
-        if not self.rl_model or not self.llm:
+        if not self.rl_model or not self.llm_model:
             print("Error: Models must be selected before proceeding.")
             return
         self.stacked_widget.setCurrentWidget(self.training_mode_step)

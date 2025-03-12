@@ -116,8 +116,20 @@ class HumanFeedbackTrainingWizard(QWidget):
             )
 
         self.parent.rl_model.update_policy()
-        self.parent.rl_model.save_model(self.parent.parent.rl_model_path)
-        self.parent.llm_model.save_model(self.parent.parent.llm_model_path)
+
+        face_descriptions = ""
+
+        faces = self.valid_faces + self.invalid_faces
+        for i, face in enumerate(faces):
+            face_descriptions += f"\nFace {i}: " + self.parent.manager_extraction.describe_face(face)
+
+        response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, face_descriptions, len(self.valid_faces), len(self.invalid_faces))
+
+        print(f"Prompt: {prompt}")
+        print(f"Response: {response}")
+
+        # self.parent.rl_model.save_model(self.parent.parent.rl_model_path)
+        # self.parent.llm_model.save_model(self.parent.parent.llm_model_path)
 
 
     def generate_faces(self):

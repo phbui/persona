@@ -73,7 +73,7 @@ class ModelSelectionStep(QWidget):
 
     def proceed(self):
         self.wizard.rl_model = self.load_rl_model()
-        self.wizard.llm = self.load_llm_model()
+        self.wizard.llm_model = self.load_llm_model()
         self.wizard.show_training_mode_step()
 
     def load_rl_model(self):
