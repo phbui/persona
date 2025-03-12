@@ -125,7 +125,7 @@ class RankingStep(QWidget):
             self.valid_faces_list.setCurrentRow(current_index + 1)
 
     def go_back_to_facemarking(self):
-        self.parent.show_face_marking_step()
+        self.parent.go_back_to_face_marking_step()
 
     def submit_ranking(self):
         self.parent.valid_faces = [np.array(face) for face in self.face_data]
