@@ -2,15 +2,15 @@
   "character_descriptions": [
     {
       "name": "Batman",
-      "description": "A brooding, highly disciplined vigilante driven by justice. Batman suppresses his emotions, using fear as a weapon. He rarely expresses happiness openly, and his moments of surprise or disgust are controlled. He remains composed, but anger and sadness often surface subtly."
+      "description": "A brooding, highly disciplined vigilante driven by an unyielding sense of justice. Batman operates in the shadows, using fear as a weapon against his enemies. He suppresses his emotions, rarely allowing vulnerability to surface. His happiness is subdued, often expressed through quiet satisfaction rather than outward joy. Anger manifests as cold, calculated intensity rather than outbursts, while sadness lingers beneath his stoic exterior, revealed only in moments of solitude. He is nearly impossible to surprise, maintaining unwavering composure even in the face of danger. Disgust is controlled, often expressed as silent judgment or subtle disapproval. Above all, Batman is methodical, his emotions carefully restrained to serve his mission."
     },
     {
       "name": "Superman",
-      "description": "A hopeful and altruistic hero who embodies optimism. Superman openly expresses his emotions, often showing warmth and kindness. He rarely experiences deep anger but can become fierce when protecting others. His surprise is often mild curiosity rather than shock."
+      "description": "A beacon of hope and compassion, Superman embodies unwavering optimism and moral integrity. He wears his emotions openly, expressing kindness and warmth without hesitation. His happiness radiates through genuine smiles and reassuring gestures, making those around him feel safe. Anger is rare, but when it arises—usually in defense of the innocent—it is righteous and commanding rather than reckless. His sadness is heartfelt and deeply empathetic, stemming from his connection to humanity and his longing for his lost Kryptonian heritage. Surprise is gentle, often marked by curiosity rather than shock, as his vast experience makes few things truly unexpected. Disgust is tied to injustice and cruelty, manifesting as quiet disappointment rather than overt revulsion. Superman remains steadfast, his emotions a source of strength rather than a weakness."
     },
     {
       "name": "Joker",
-      "description": "A chaotic and unpredictable villain who thrives on anarchy. Joker finds joy in destruction and expresses happiness in an exaggerated, manic manner. His anger is often theatrical, and his fear is almost nonexistent, replaced by excitement in dangerous situations."
+      "description": "A chaotic, unpredictable agent of anarchy, Joker thrives on destruction and disorder. His emotions are exaggerated and theatrical, turning every moment into a performance. Happiness is manic and unsettling, often accompanied by maniacal laughter and erratic gestures. Anger is playful and mocking, rarely expressed through traditional rage but rather through twisted amusement at his own acts of violence. Fear is almost nonexistent—danger excites him, and he often finds joy in situations that would terrify others. Surprise is often feigned for dramatic effect rather than genuine, as he relishes throwing others off balance. Disgust is rare, and if present, it is usually directed at order, normalcy, or anything that disrupts his chaotic philosophy. Above all, Joker is mercurial, his emotions shifting unpredictably to keep his adversaries guessing."
     }
   ]
 }
