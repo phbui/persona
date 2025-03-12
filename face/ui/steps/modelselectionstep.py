@@ -60,9 +60,6 @@ class ModelSelectionStep(QWidget):
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-        print(f"Checking folder: {folder}")
-        print(os.listdir(folder)) 
-
         if file_extension:  
             return [f.replace(file_extension, "") for f in os.listdir(folder) if f.endswith(file_extension)]
         

@@ -30,17 +30,12 @@ class Manager_PPO:
     def load_model(self, load_path):
         """Loads the PPO model state dictionary and optimizer."""
         if os.path.exists(load_path):
-            checkpoint = th.load(load_path, map_location="cuda" if th.cuda.is_available() else "cpu")
-
-            if "model_state_dict" in checkpoint:
-                self.policy.load_state_dict(checkpoint["model_state_dict"])
-                self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-                print(f"Loaded PPO model from {load_path}")
-            else:
-                print(f"Error: Invalid checkpoint format in {load_path}. Expected a state dictionary.")
+            checkpoint = th.load(load_path, map_location="cuda" if th.cuda.is_available() else "cpu", weights_only=True)
+            self.policy.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            print(f"Loaded PPO model from {load_path}")
         else:
             print("No saved PPO model found! Training a new model.")
-
         return self
 
     def store_transition(self, state, action, log_prob, reward, value, done):

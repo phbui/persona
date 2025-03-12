@@ -21,28 +21,20 @@ class Manager_LLM:
         local_models_dir = "models/llm"
         os.makedirs(local_models_dir, exist_ok=True)
 
-        quantization_config = self._get_quantization_config()
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
+        
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        if model_path and os.path.isdir(model_path):
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
-                quantization_config=quantization_config,
-                device_map="auto"
-            )
-            self._load_lora_adapter(model_path)
-            print(f"Loaded fine-tuned model from {model_path}")
-        else:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
+        if not (model_path and os.path.isdir(model_path)):
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                quantization_config=quantization_config,
+                token=secret_key,
+                quantization_config=self._get_quantization_config(),
                 device_map="auto"
             )
             print(f"Loaded pretrained model '{model_name}' from Hugging Face.")
-        self.tokenizer.pad_token = self.tokenizer.eos_token 
-        self.model.to(self.device)
-        self._apply_qlora()
+            self._apply_qlora() 
 
     def _get_quantization_config(self):
         """Sets up 4-bit quantization for memory efficiency."""
@@ -54,48 +46,67 @@ class Manager_LLM:
         )
 
     def _apply_qlora(self):
-        """Applies QLoRA to the model for efficient fine-tuning."""
-        lora_config = LoraConfig(
-            r=8,
-            lora_alpha=32,
-            target_modules=["q_proj", "v_proj"],
-            lora_dropout=0.05,
-            bias="none",
-            task_type="CAUSAL_LM"
-        )
-        self.model = get_peft_model(self.model, lora_config)
-        print("Applied QLoRA to the model.")
+        """Applies QLoRA to the model only if it has not been applied already."""
+        if not hasattr(self.model, "peft_config"):
+            lora_config = LoraConfig(
+                r=8,
+                lora_alpha=32,
+                target_modules=["q_proj", "v_proj"],
+                lora_dropout=0.05,
+                bias="none",
+                task_type="CAUSAL_LM"
+            )
+            self.model = get_peft_model(self.model, lora_config)
+            print("Applied QLoRA to the model.")
+        else:
+            print("QLoRA already applied. Skipping reapplication.")
 
     def _load_lora_adapter(self, model_path):
         """Loads LoRA adapters if they exist."""
         adapter_path = os.path.join(model_path, "adapter_model.bin")
         if os.path.exists(adapter_path):
-            self.model = PeftModel.from_pretrained(self.model, model_path)
-            print(f"Loaded LoRA adapter from {model_path}")
+            if not isinstance(self.model, PeftModel): 
+                self.model = PeftModel.from_pretrained(self.model, model_path)
+                print(f"Loaded LoRA adapter from {model_path}")
+            else:
+                print("LoRA adapter already applied. Skipping reapplication.")
         else:
             print(f"No LoRA adapter found in {model_path}. Using base model.")
 
     def save_model(self, save_path="models/llm/finetuned_llm"):
         """Saves the fine-tuned LLM model with LoRA adapters."""
         os.makedirs(save_path, exist_ok=True)
+        
         self.model.save_pretrained(save_path) 
         self.tokenizer.save_pretrained(save_path)
-        print(f"Saved fine-tuned LLM with adapters to {save_path}")
+        
+        if isinstance(self.model, PeftModel):
+            self.model.save_pretrained(save_path)
+            print(f"Saved fine-tuned LLM with LoRA adapters to {save_path}")
+        else:
+            print(f"Warning: No LoRA adapters found to save. Only base model saved.")
 
     def load_model(self, load_path):
-        """Loads a saved fine-tuned LLM."""
+        """Loads a saved fine-tuned LLM with LoRA adapters if available."""
         if os.path.isdir(load_path):
             self.tokenizer = AutoTokenizer.from_pretrained(load_path)
             self.model = AutoModelForCausalLM.from_pretrained(
                 load_path, 
+                token=secret_key,
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
             )
-            self._load_lora_adapter(load_path)
-            print(f"Loaded fine-tuned LLM with adapters from {load_path}")
+
+
+            adapter_path = os.path.join(load_path, "adapter_model.bin")
+            if os.path.exists(adapter_path):
+                self.model = PeftModel.from_pretrained(self.model, load_path)
+                print(f"Loaded fine-tuned LLM with LoRA adapters from {load_path}")
+            else:
+                print(f"No LoRA adapter found in {load_path}. Using base model.")
         else:
             print("No saved LLM model found! Using default.")
-            
+        
         return self
 
     def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm", num_train_epochs=1, batch_size=10):
@@ -129,7 +140,7 @@ class Manager_LLM:
             model=self.model,
             args=training_args,
             train_dataset=tokenized_dataset,
-            tokenizer=self.tokenizer,  
+            processing_class=self.tokenizer,  
             data_collator=data_collator,
         )
 
