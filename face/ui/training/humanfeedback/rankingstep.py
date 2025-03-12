@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem, QHBoxLayout
+    QWidget, QVBoxLayout, QLabel, QPushButton, QListWidget, QListWidgetItem, 
+    QHBoxLayout, QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt
 import numpy as np
@@ -8,27 +9,37 @@ class RankingStep(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
-        layout = QVBoxLayout()
+        self.setGeometry(10, 10, 800, 1000)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)  
+
+        self.scroll_widget = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_widget)
 
         self.name_label = QLabel("")
-        layout.addWidget(self.name_label) 
+        self.name_label.setWordWrap(True)
+        self.scroll_layout.addWidget(self.name_label)
+
         self.character_description_label = QLabel("")
-        layout.addWidget(self.character_description_label) 
+        self.character_description_label.setWordWrap(True)
+        self.scroll_layout.addWidget(self.character_description_label)
+
         self.situation_label = QLabel("")
-        layout.addWidget(self.situation_label)
+        self.situation_label.setWordWrap(True)
+        self.scroll_layout.addWidget(self.situation_label)
 
         main_layout = QHBoxLayout()
-
         self.valid_faces_list = QListWidget()
         self.valid_faces_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         main_layout.addWidget(self.valid_faces_list)
 
         button_layout = QVBoxLayout()
-
         self.go_back_button = QPushButton("Go Back") 
         self.move_up_button = QPushButton("↑")
         self.move_down_button = QPushButton("↓")
- 
+
         self.go_back_button.clicked.connect(self.go_back_to_facemarking) 
         self.move_up_button.clicked.connect(self.move_selected_up)
         self.move_down_button.clicked.connect(self.move_selected_down)
@@ -38,15 +49,18 @@ class RankingStep(QWidget):
         button_layout.addWidget(self.move_down_button)
         main_layout.addLayout(button_layout)
 
-        layout.addWidget(QLabel("Rank valid faces:"))
-        layout.addLayout(main_layout)
+        self.scroll_layout.addWidget(QLabel("Rank valid faces:"))
+        self.scroll_layout.addLayout(main_layout)
 
         self.submit_button = QPushButton("Submit Ranking")
         self.submit_button.clicked.connect(self.submit_ranking)
         self.submit_button.setEnabled(False)
-        layout.addWidget(self.submit_button)
+        self.scroll_layout.addWidget(self.submit_button)
 
-        self.setLayout(layout)
+        self.scroll_area.setWidget(self.scroll_widget)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.scroll_area)
+        self.setLayout(main_layout)
 
         self.face_pixmaps = {}
 

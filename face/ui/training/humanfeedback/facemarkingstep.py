@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QToolButton
+    QWidget, QVBoxLayout, QLabel, QPushButton, QGridLayout, QToolButton, 
+    QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt
 from functools import partial
@@ -9,24 +10,38 @@ class FaceMarkingStep(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
-        layout = QVBoxLayout()
+        self.setGeometry(10, 10, 800, 1000)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame) 
+
+        self.scroll_widget = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_widget)
 
         self.name_label = QLabel("")
-        layout.addWidget(self.name_label) 
-        self.character_description_label = QLabel("")
-        layout.addWidget(self.character_description_label) 
-        self.situation_label = QLabel("")
-        layout.addWidget(self.situation_label) 
+        self.name_label.setWordWrap(True)
+        self.scroll_layout.addWidget(self.name_label)
 
+        self.character_description_label = QLabel("")
+        self.character_description_label.setWordWrap(True)
+        self.scroll_layout.addWidget(self.character_description_label)
+
+        self.situation_label = QLabel("")
+        self.situation_label.setWordWrap(True)
+        self.scroll_layout.addWidget(self.situation_label)
         self.face_grid = QGridLayout()
-        layout.addLayout(self.face_grid)
+        self.scroll_layout.addLayout(self.face_grid)
 
         self.next_button = QPushButton("Proceed to next step")
         self.next_button.clicked.connect(self.parent.show_ranking_step)
-        layout.addWidget(self.next_button)
+        self.scroll_layout.addWidget(self.next_button)
         self.next_button.setEnabled(True)
 
-        self.setLayout(layout)
+        self.scroll_area.setWidget(self.scroll_widget)
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.scroll_area)
+        self.setLayout(main_layout)
 
     def display_faces(self, generated_faces, situation, name, character_description):
         self.name_label.setText(f"Name: {name}")
@@ -77,4 +92,3 @@ class FaceMarkingStep(QWidget):
             if not any(np.array_equal(x, au_values) for x in self.parent.invalid_faces):
                 self.parent.invalid_faces.append(au_values)
             self.parent.valid_faces = [x for x in self.parent.valid_faces if not np.array_equal(x, au_values)]
-
