@@ -80,10 +80,11 @@ class ModelSelectionStep(QWidget):
         selected_model = self.rl_model_dropdown.currentText()
         if selected_model == "Train New RL Model":
             model_name = self.rl_model_name_input.text().strip()
-            model_path = os.path.join("models/rl", model_name)
+            model_path = os.path.join("models/rl", f"{model_name}.pth")
             self.wizard.rl_model_path = model_path
             return Manager_PPO(input_dim=9, action_dim=20, num_categories=4, model_path=model_path)
-        model_path = os.path.join("models/rl", selected_model)
+        
+        model_path = os.path.join("models/rl", f"{selected_model}.pth")
         self.wizard.rl_model_path = model_path
         return Manager_PPO.load(model_path)
 

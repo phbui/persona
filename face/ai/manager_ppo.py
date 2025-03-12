@@ -7,32 +7,39 @@ from ai.manager_policy import Manager_Policy
 
 class Manager_PPO:
     def __init__(self, input_dim, action_dim=20, num_categories=4, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95, model_path=None):
-        """
-        PPO Trainer with model saving/loading support.
-        """
         self.model_path = model_path
-        if model_path and os.path.exists(model_path):
-            print(f"Loading PPO model from {model_path}")
-            self.policy = th.load(model_path)
-        else:
-            print("Initializing new PPO model...")
-            self.policy = Manager_Policy(input_dim, action_dim, num_categories)  # ✅ Corrected arguments
+        self.policy = Manager_Policy(input_dim, action_dim, num_categories)  # ✅ Corrected arguments
+        self.optimizer = th.optim.Adam(self.policy.parameters(), lr=3e-4)  # Added optimizer
 
         self.gamma = gamma
         self.clip_epsilon = clip_epsilon
         self.gae_lambda = gae_lambda  
 
-        # Storage for training
         self.states, self.actions, self.log_probs = [], [], []
         self.rewards, self.values, self.dones = [], [], []
 
+        if model_path and os.path.exists(model_path):
+            self.load_model(model_path)
+
     def save_model(self, save_path="models/rl/ppo_model.pth"):
-        """Saves the PPO model."""
+        """Saves the PPO model state dictionary and optimizer."""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        th.save(self.policy, save_path)
+        th.save({
+            'model_state_dict': self.policy.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict()
+        }, save_path)
         print(f"Saved PPO model to {save_path}")
 
     def load_model(self, load_path):
+        """Loads the PPO model state dictionary and optimizer."""
+        if os.path.exists(load_path):
+            checkpoint = th.load(load_path)
+            self.policy.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            print(f"Loaded PPO model from {load_path}")
+        else:
+            print("No saved PPO model found! Training a new model.")
+
         """Loads the PPO model."""
         if os.path.exists(load_path):
             print(f"Loading PPO model from {load_path}")

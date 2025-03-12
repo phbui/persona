@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 load_dotenv()
 secret_key = os.getenv('hf_key')
 
+from peft import PeftModel, PeftConfig
+
 class Manager_LLM:
     def __init__(self, model_name="meta-llama/Llama-2-7b-chat-hf", model_path=None):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -31,6 +33,7 @@ class Manager_LLM:
                 quantization_config=quantization_config,
                 device_map="auto"
             )
+            self.model = PeftModel.from_pretrained(self.model, model_path)  # Load LoRA adapters
             print(f"Loaded fine-tuned model from {model_path}")
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
@@ -71,7 +74,8 @@ class Manager_LLM:
         os.makedirs(save_path, exist_ok=True)
         self.model.save_pretrained(save_path)
         self.tokenizer.save_pretrained(save_path)
-        print(f"Saved LLM to {save_path}")
+        self.model.save_adapter(save_path)  # Save LoRA adapters
+        print(f"Saved fine-tuned LLM with adapters to {save_path}")
 
     def load_model(self, load_path):
         """Loads a saved fine-tuned LLM."""
@@ -82,8 +86,8 @@ class Manager_LLM:
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
             )
-            self._apply_qlora()  # Reapply QLoRA after loading
-            print(f"Loaded fine-tuned LLM from {load_path}")
+            self.model = PeftModel.from_pretrained(self.model, load_path)  # Load LoRA adapters
+            print(f"Loaded fine-tuned LLM with adapters from {load_path}")
         else:
             print("No saved LLM model found! Using default.")
 
