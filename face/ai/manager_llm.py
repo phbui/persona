@@ -16,7 +16,7 @@ load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class Manager_LLM:
-    def __init__(self, model_name="meta-llama/Llama-2-7b-chat-hf", model_path=None):
+    def __init__(self, model_name="mistralai/Mistral-7B-v0.1", model_path=None):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         local_models_dir = "models/llm"
         os.makedirs(local_models_dir, exist_ok=True)
