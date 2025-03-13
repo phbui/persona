@@ -100,9 +100,9 @@ class Manager_LLM:
         
         return self
 
-    def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm", num_train_epochs=1, batch_size=1):
+    def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm"):
         """Fine-tunes the LLM based on human rankings at the end of each epoch."""
-        self.model.gradient_checkpointing_enable()
+        self.model.config.use_cache = False
         train_dataset = Dataset.from_list(training_data)
 
         def tokenize_function(examples):
@@ -118,12 +118,11 @@ class Manager_LLM:
 
         training_args = TrainingArguments(
             output_dir=output_dir,
-            num_train_epochs=num_train_epochs,
-            per_device_train_batch_size=batch_size,
+            num_train_epochs=1,
+            per_device_train_batch_size=1,
             save_strategy="epoch",
             logging_dir=f"{output_dir}/logs",
             remove_unused_columns=False,  
-            fp16=True, 
         )
 
         data_collator = DataCollatorForSeq2Seq(self.tokenizer, model=self.model)
