@@ -16,7 +16,8 @@ load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class Manager_LLM:
-    def __init__(self, model_name="mistralai/Mistral-7B-v0.1", model_path=None):
+    def __init__(self, parent, model_name="mistralai/Mistral-7B-v0.1", model_path=None):
+        self.parent = parent
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         local_models_dir = "models/llm"
         os.makedirs(local_models_dir, exist_ok=True)
@@ -135,7 +136,13 @@ class Manager_LLM:
             data_collator=data_collator,
         )
 
-        trainer.train()
+        train_result = trainer.train()
+        final_loss = train_result.training_loss if hasattr(train_result, "training_loss") else None
+        if final_loss is not None:
+            self.parent.manager_loss.store_loss(final_loss)
+            self.parent.manager_loss.end_epoch(trainer.state.epoch)
+            print(f"Epoch {trainer.state.epoch}: Recorded final loss = {final_loss}")
+
         self.save_model(output_dir)
 
     def generate_response(self, prompt, max_new_tokens=128, temperature=1.0):
