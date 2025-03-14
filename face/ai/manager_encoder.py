@@ -2,7 +2,6 @@ import os
 import torch
 from transformers import (
     AutoTokenizer,
-    AutoConfig,
     AutoModelForSeq2SeqLM,
     BitsAndBytesConfig
 )
@@ -20,9 +19,8 @@ class Manager_Encoder():
 
         try:
             self.tokenizer = self._load_tokenizer(model_name)
-            config = self._load_config(model_name)
             quant_config = self._get_quantization_config()
-            self.model = self._load_model(model_name, config, quant_config)
+            self.model = self._load_model(model_name, quant_config)
             self._ensure_hidden_states_enabled()
             self.model = self._compile_model(self.model)
             self.accelerator = Accelerator()
@@ -33,9 +31,6 @@ class Manager_Encoder():
     def _load_tokenizer(self, model_name: str):
         return AutoTokenizer.from_pretrained(model_name, token=secret_key)
 
-    def _load_config(self, model_name: str):
-        return AutoConfig.from_pretrained(model_name, token=secret_key)
-
     def _get_quantization_config(self):
         return BitsAndBytesConfig(
             load_in_4bit=True,
@@ -44,7 +39,7 @@ class Manager_Encoder():
             bnb_4bit_compute_dtype=torch.float16
         )
 
-    def _load_model(self, model_name: str, config, quant_config):
+    def _load_model(self, model_name: str, quant_config):
         return AutoModelForSeq2SeqLM.from_pretrained(
             model_name,
             device_map="auto",
