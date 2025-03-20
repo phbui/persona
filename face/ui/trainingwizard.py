@@ -4,6 +4,7 @@ from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
 from ui.training.autotraining.autotraining import AutoTraining
 from ui.training.manager_rewards import Manager_Reward
+from ui.training.manager_loss import Manager_Loss
 from ai.manager_extraction import Manager_Extraction
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QStackedWidget
@@ -32,6 +33,7 @@ class TrainingWizard(QWidget):
         self.human_feedback_training = HumanFeedbackTrainingWizard(self)
         self.auto_training = AutoTraining(self)
         self.manager_reward = Manager_Reward()
+        self.manager_loss = Manager_Loss()
 
         self.stacked_widget.addWidget(self.character_description_step)
         self.stacked_widget.addWidget(self.model_selection_step)
