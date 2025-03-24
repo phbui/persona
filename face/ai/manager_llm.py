@@ -18,18 +18,19 @@ secret_key = os.getenv('hf_key')
 class Manager_LLM:
     def __init__(self, parent, model_name="mistralai/Mistral-7B-v0.1", model_path=None):
         self.parent = parent
+        self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         local_models_dir = "models/llm"
         os.makedirs(local_models_dir, exist_ok=True)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=secret_key)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, token=secret_key)
         
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         if model_path is None:
             self.model = AutoModelForCausalLM.from_pretrained(
-                model_name,
+                self.model_name,
                 token=secret_key,
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
@@ -77,9 +78,20 @@ class Manager_LLM:
     def load_model(self, load_path):
         """Loads a saved fine-tuned LLM with LoRA adapters if available."""
         if os.path.isdir(load_path):
-            self.tokenizer = AutoTokenizer.from_pretrained(load_path)
-            
-            base_model_path = "mistralai/Mistral-7B-v0.1"  # Make sure this is correct
+            print(f"Loading base model ({self.model_name}) and tokenizer...")
+
+            # Always load tokenizer from the checkpoint
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(load_path)
+            except Exception as e:
+                print(f"Tokenizer load failed from {load_path}, falling back to base. Error: {e}")
+                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, token=secret_key)
+
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+
+            # Load the base model first
+            base_model_path = self.model_name
             self.model = AutoModelForCausalLM.from_pretrained(
                 base_model_path,
                 token=secret_key,
@@ -87,6 +99,7 @@ class Manager_LLM:
                 device_map="auto"
             )
 
+            # Apply LoRA adapter if found
             adapter_path = os.path.join(load_path, "adapter_model.safetensors")
             config_path = os.path.join(load_path, "adapter_config.json")
 
@@ -95,10 +108,17 @@ class Manager_LLM:
                 self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
                 print("Successfully loaded LoRA adapter.")
             else:
-                print(f"No LoRA adapter found in {load_path}. Using base model.")
+                print("Warning: LoRA adapter files not found, using base model only.")
         else:
-            print("No saved LLM model found! Using default.")
-        
+            print("No saved LLM model directory found! Using default base model.")
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, token=secret_key)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                token=secret_key,
+                quantization_config=self._get_quantization_config(),
+                device_map="auto"
+            )
+
         return self
 
     def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm"):
