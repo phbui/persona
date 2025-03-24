@@ -78,8 +78,10 @@ class Manager_LLM:
         """Loads a saved fine-tuned LLM with LoRA adapters if available."""
         if os.path.isdir(load_path):
             self.tokenizer = AutoTokenizer.from_pretrained(load_path)
+            
+            base_model_path = "mistralai/Mistral-7B-v0.1"  # Make sure this is correct
             self.model = AutoModelForCausalLM.from_pretrained(
-                load_path, 
+                base_model_path,
                 token=secret_key,
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
@@ -89,11 +91,9 @@ class Manager_LLM:
             config_path = os.path.join(load_path, "adapter_config.json")
 
             if os.path.exists(adapter_path) and os.path.exists(config_path):
-                if not hasattr(self.model, "peft_config"):
-                    self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
-                    print(f"Loaded fine-tuned LLM with LoRA adapters from {load_path}")
-                else:
-                    print("LoRA adapter already applied. Skipping duplicate loading.")
+                print(f"Loading LoRA adapter from {load_path}...")
+                self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
+                print("Successfully loaded LoRA adapter.")
             else:
                 print(f"No LoRA adapter found in {load_path}. Using base model.")
         else:
