@@ -91,9 +91,8 @@ class Manager_LLM:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
 
             # Load the base model first
-            base_model_path = self.model_name
             self.model = AutoModelForCausalLM.from_pretrained(
-                base_model_path,
+                self.model_name,
                 token=secret_key,
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
@@ -108,7 +107,8 @@ class Manager_LLM:
                 self.model = PeftModel.from_pretrained(self.model, load_path, is_trainable=True)
                 print("Successfully loaded LoRA adapter.")
             else:
-                print("Warning: LoRA adapter files not found, using base model only.")
+                print("Warning: LoRA adapter files not found, applying fresh QLoRA adapter.")
+                self._apply_qlora()
         else:
             print("No saved LLM model directory found! Using default base model.")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, token=secret_key)
@@ -118,8 +118,10 @@ class Manager_LLM:
                 quantization_config=self._get_quantization_config(),
                 device_map="auto"
             )
+            self._apply_qlora()
 
         return self
+
 
     def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm"):
         """Fine-tunes the LLM based on human rankings at the end of each epoch."""
