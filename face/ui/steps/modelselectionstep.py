@@ -77,7 +77,7 @@ class ModelSelectionStep(QWidget):
 
     def proceed(self):
         self.wizard.rl_model = self.load_rl_model()
-        self.wizard.llm_model = self.load_llm_model()
+        self.wizard.llm_model = self.load_llm_model(self.wizard)
         self.wizard.show_training_mode_step()
 
     def load_rl_model(self):
@@ -93,14 +93,14 @@ class ModelSelectionStep(QWidget):
         manager_ppo = Manager_PPO(input_dim=777, action_dim=20, num_categories=4, model_path=model_path)
         return manager_ppo.load_model(model_path)
 
-    def load_llm_model(self):
+    def load_llm_model(self, parent):
         selected_model = self.llm_model_dropdown.currentText()
         if selected_model == "Finetune New LLM Model":
             model_name = self.llm_model_name_input.text().strip()
             model_path = os.path.join("models/llm", model_name)
             self.wizard.llm_model_path = model_path
-            return Manager_LLM(self.parent)
+            return Manager_LLM(parent)
         model_path = os.path.join("models/llm", selected_model)
         self.wizard.llm_model_path = model_path
-        manager_llm = Manager_LLM(self.parent, model_path=model_path)
+        manager_llm = Manager_LLM(parent, model_path=model_path)
         return manager_llm.load_model(model_path)
