@@ -79,6 +79,9 @@ class AutoTrainingWizard(QWidget):
                 return data.get("situations", ["Default Situation"])
         except (FileNotFoundError, json.JSONDecodeError):
             return ["Default Situation"]
+        
+    def post_epoch_step(self):
+        self.start_training()
     
     def start_training(self):
         # Retrieve the selected number of epochs from the epoch selection step.
