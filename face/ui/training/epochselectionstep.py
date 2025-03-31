@@ -29,4 +29,4 @@ class EpochSelectionStep(QWidget):
     def confirm_epochs(self):
         self.parent.epochs = self.epoch_selector.value()
         print(f"Selected {self.parent.epochs} epochs")
-        self.parent.show_face_marking_step()
+        self.parent.post_epoch_step()
