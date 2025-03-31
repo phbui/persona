@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget
-from ui.training.humanfeedback.epochselectionstep import EpochSelectionStep
+from ui.training.epochselectionstep import EpochSelectionStep
 from ui.training.humanfeedback.facemarkingstep import FaceMarkingStep
 from ui.training.humanfeedback.rankingstep import RankingStep
 import numpy as np

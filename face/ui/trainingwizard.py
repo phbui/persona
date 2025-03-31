@@ -2,7 +2,7 @@ from ui.steps.characterdescriptionstep import CharacterDescriptionStep
 from ui.steps.modelselectionstep import ModelSelectionStep
 from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
-from ui.training.autotraining.autotraining import AutoTraining
+from ui.training.autotraining.autotrainingwizard import AutoTraining
 from ui.training.manager_rewards import Manager_Reward
 from ui.training.manager_loss import Manager_Loss
 from ai.manager_extraction import Manager_Extraction
