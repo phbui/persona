@@ -130,13 +130,20 @@ class Manager_LLM:
         train_dataset = Dataset.from_list(training_data)
 
         def tokenize_function(examples):
-            return self.tokenizer(
-                examples["prompt"], 
-                text_target=examples["response"], 
+            model_inputs = self.tokenizer(
+                examples["prompt"],
                 padding="max_length",
                 truncation=True,
-                max_length=512
+                max_length=768  
             )
+            labels = self.tokenizer(
+                examples["response"],
+                padding="max_length",
+                truncation=True,
+                max_length=256  
+            )["input_ids"]
+            model_inputs["labels"] = labels
+            return model_inputs
 
         tokenized_dataset = train_dataset.map(tokenize_function, batched=True, remove_columns=["prompt", "response"])
 
@@ -168,7 +175,7 @@ class Manager_LLM:
 
         self.save_model(output_dir)
 
-    def generate_response(self, prompt, max_new_tokens=512, temperature=1.0):
+    def generate_response(self, prompt, max_new_tokens=256  , temperature=1.0):
         """Generates a ranking response from the LLM."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         outputs = self.model.generate(
