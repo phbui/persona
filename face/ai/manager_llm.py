@@ -238,7 +238,7 @@ class Manager_LLM:
         
         # Generate a response from the fine-tuned LLM using the constructed prompt.
         # Here, we assume generate_training_text accepts a single prompt string.
-        response, prompt_used = self.generate_training_text(prompt)
+        response = self.generate_response(prompt)
         
         # Parse the LLM response to extract valid and invalid face indices.
         valid_faces = []
@@ -257,4 +257,4 @@ class Manager_LLM:
             invalid_indices = [int(x.strip()) for x in invalid_str.split(",") if x.strip().isdigit()]
             invalid_faces = [generated_faces[i] for i in invalid_indices if i < len(generated_faces)]
         
-        return valid_faces, invalid_faces, prompt_used, response
+        return valid_faces, invalid_faces, response

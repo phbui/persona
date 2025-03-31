@@ -18,9 +18,6 @@ class AutoTrainingWizard(QWidget):
         self.current_epoch = 0
         self.current_situation_index = 0
         
-        # List to accumulate prompt/response pairs for LLM fine-tuning.
-        self.llm_training = []
-        
         # Load situations from file.
         self.situations = self.load_situations()
         
@@ -80,7 +77,7 @@ class AutoTrainingWizard(QWidget):
         
         # Use the fine-tuned LLM to automatically generate feedback.
         # This call uses the parent's face description function, e.g. manager_extraction.describe_face.
-        valid_faces, invalid_faces, prompt_used, response = self.parent.manager_llm.auto_generate_face_feedback(
+        valid_faces, invalid_faces, response = self.parent.llm_model.auto_generate_face_feedback(
             self.parent.character_description,
             situation_text,
             generated_faces,
@@ -89,6 +86,7 @@ class AutoTrainingWizard(QWidget):
         
         # Extract the state for the current situation.
         state = self.parent.manager_extraction.extract_features(situation_text)
+        print(f"Response: {response}")
         
         # Record transitions for invalid faces (with a negative reward).
         for face in invalid_faces:
@@ -111,10 +109,6 @@ class AutoTrainingWizard(QWidget):
         
         # Update the RL policy.
         self.parent.rl_model.update_policy(self.parent.rl_model_path)
-        
-        # Save LLM training data (prompt/response pair) for potential further fine-tuning.
-        self.llm_training.append({"prompt": prompt_used, "response": response})
-        
         # Move to the next situation.
         self.current_situation_index += 1
         
