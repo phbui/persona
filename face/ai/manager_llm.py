@@ -1,4 +1,5 @@
 import os
+import re
 import torch
 from transformers import (
     AutoTokenizer,
@@ -122,7 +123,6 @@ class Manager_LLM:
 
         return self
 
-
     def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm"):
         """Fine-tunes the LLM based on human rankings at the end of each epoch."""
         self.model.config.use_cache = False
@@ -206,3 +206,55 @@ class Manager_LLM:
         response = valid_faces + "\n" + invalid_faces
 
         return response, prompt
+
+
+    def auto_generate_face_feedback(self, character_description, situation, generated_faces, describe_face_fn):
+        # Build a textual description of the faces using the provided description function.
+        face_descriptions = ""
+        for i, face in enumerate(generated_faces):
+            face_descriptions += f"{i}: {describe_face_fn(face)}\n"
+        
+        # Construct the prompt using the training data format.
+        prompt = f"""
+            ### Instruction:
+            Analyze the Character Description, Character Situation, and Generated Faces. 
+            Respond with:
+            - A **ranked list of Valid Faces** (most accurate to the situation first).
+            - A **list of Invalid Faces**.
+
+            ### Character Description:
+            {character_description}
+
+            ### Character Situation:
+            {situation}
+
+            ### Generated Faces:
+            {face_descriptions}
+
+            ### Response Format:
+            Valid Faces: [#, #, #, ...]
+            Invalid Faces: [#, #, #, ...]
+        """
+        
+        # Generate a response from the fine-tuned LLM using the constructed prompt.
+        # Here, we assume generate_training_text accepts a single prompt string.
+        response, prompt_used = self.generate_training_text(prompt)
+        
+        # Parse the LLM response to extract valid and invalid face indices.
+        valid_faces = []
+        invalid_faces = []
+        
+        valid_match = re.search(r"Valid\s*Faces\s*:\s*\[([^\]]+)\]", response, re.IGNORECASE)
+        invalid_match = re.search(r"Invalid\s*Faces\s*:\s*\[([^\]]+)\]", response, re.IGNORECASE)
+        
+        if valid_match:
+            valid_str = valid_match.group(1)
+            valid_indices = [int(x.strip()) for x in valid_str.split(",") if x.strip().isdigit()]
+            valid_faces = [generated_faces[i] for i in valid_indices if i < len(generated_faces)]
+        
+        if invalid_match:
+            invalid_str = invalid_match.group(1)
+            invalid_indices = [int(x.strip()) for x in invalid_str.split(",") if x.strip().isdigit()]
+            invalid_faces = [generated_faces[i] for i in invalid_indices if i < len(generated_faces)]
+        
+        return valid_faces, invalid_faces, prompt_used, response
