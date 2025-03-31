@@ -2,7 +2,7 @@ from ui.steps.characterdescriptionstep import CharacterDescriptionStep
 from ui.steps.modelselectionstep import ModelSelectionStep
 from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
-from ui.training.autotraining.autotrainingwizard import AutoTraining
+from ui.training.autotraining.autotrainingwizard import AutoTrainingWizard
 from ui.training.manager_rewards import Manager_Reward
 from ui.training.manager_loss import Manager_Loss
 from ai.manager_extraction import Manager_Extraction
@@ -31,7 +31,7 @@ class TrainingWizard(QWidget):
         self.model_selection_step = ModelSelectionStep(self)
         self.training_mode_step = TrainingModeStep(self)
         self.human_feedback_training = HumanFeedbackTrainingWizard(self)
-        self.auto_training = AutoTraining(self)
+        self.auto_training = AutoTrainingWizard(self)
         self.manager_reward = Manager_Reward()
         self.manager_loss = Manager_Loss()
 
@@ -57,7 +57,7 @@ class TrainingWizard(QWidget):
         if self.training_mode == "human_feedback":
             self.training_widget = HumanFeedbackTrainingWizard(self)
         elif self.training_mode == "auto_training":
-            self.training_widget = AutoTraining(self)
+            self.training_widget = AutoTrainingWizard(self)
 
         self.stacked_widget.addWidget(self.training_widget)
         self.stacked_widget.setCurrentWidget(self.training_widget)
