@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import torch
 from transformers import (
     AutoTokenizer,
@@ -167,7 +168,7 @@ class Manager_LLM:
 
         self.save_model(output_dir)
 
-    def generate_response(self, prompt, max_new_tokens=128, temperature=1.0):
+    def generate_response(self, prompt, max_new_tokens=512, temperature=1.0):
         """Generates a ranking response from the LLM."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
         outputs = self.model.generate(
@@ -238,7 +239,9 @@ class Manager_LLM:
         
         # Generate a response from the fine-tuned LLM using the constructed prompt.
         # Here, we assume generate_training_text accepts a single prompt string.
+        print(f"prompt: {prompt}")
         response = self.generate_response(prompt)
+        print(f"response: {response}")
         
         # Parse the LLM response to extract valid and invalid face indices.
         valid_faces = []
@@ -258,3 +261,53 @@ class Manager_LLM:
             invalid_faces = [generated_faces[i] for i in invalid_indices if i < len(generated_faces)]
         
         return valid_faces, invalid_faces, response
+    
+
+if __name__ == "__main__":
+    # Determine the absolute path of the models directory relative to this file.
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    models_dir = os.path.join(current_dir, "../models/llm")
+    
+    # List all subdirectories (each assumed to be a fine-tuned model)
+    if not os.path.isdir(models_dir):
+        print(f"Models directory '{models_dir}' not found.")
+        sys.exit(1)
+    
+    available_models = [
+        d for d in os.listdir(models_dir)
+        if os.path.isdir(os.path.join(models_dir, d))
+    ]
+    
+    if not available_models:
+        print("No fine-tuned models found in the directory.")
+        sys.exit(1)
+    
+    print("Available fine-tuned models:")
+    for idx, model_name in enumerate(available_models):
+        print(f"{idx}: {model_name}")
+    
+    # Prompt user to select a model
+    try:
+        selection = int(input("Select a model by index: "))
+        selected_model = available_models[selection]
+    except (ValueError, IndexError):
+        print("Invalid selection.")
+        sys.exit(1)
+    
+    selected_model_path = os.path.join(models_dir, selected_model)
+    print(f"Loading model from: {selected_model_path}")
+    
+    # Create a Manager_LLM instance (parent can be None if not used in this test)
+    manager = Manager_LLM(parent=None)
+    manager.load_model(selected_model_path)
+    
+    # Main loop to prompt the model.
+    print("Enter a prompt for the model. Type 'exit' to quit.")
+    while True:
+        prompt = input("Prompt: ")
+        if prompt.strip().lower() == "exit":
+            break
+        
+        # Generate response with some new tokens
+        response = manager.generate_response(prompt)
+        print("Response:", response)

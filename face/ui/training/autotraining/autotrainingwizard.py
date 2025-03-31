@@ -138,9 +138,6 @@ class AutoTrainingWizard(QWidget):
             self.parent.manager_extraction.describe_face
         )
         
-        # Debug print the LLM response.
-        print(f"LLM Response: {response}")
-        
         # Extract state features for the current situation.
         state = self.parent.manager_extraction.extract_features(situation_text)
         
