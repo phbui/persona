@@ -45,7 +45,7 @@ class Manager_Loss:
         with open(self.save_path, mode="a", newline="") as file:
             writer = csv.writer(file)
             writer.writerow([epoch, avg_loss])
-        print(f"Saved epoch {epoch} average loss: {avg_loss:.4f}")
+        print(f"Average loss: {avg_loss:.4f}")
 
     def load_losses(self):
         """

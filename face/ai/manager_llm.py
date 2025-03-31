@@ -163,7 +163,7 @@ class Manager_LLM:
         if final_loss is not None:
             self.parent.manager_loss.store_loss(final_loss)
             self.parent.manager_loss.end_epoch(trainer.state.epoch)
-            print(f"Epoch {trainer.state.epoch}: Recorded final loss = {final_loss}")
+            print(f"Final loss: {final_loss}")
 
         self.save_model(output_dir)
 

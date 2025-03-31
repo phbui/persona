@@ -71,9 +71,9 @@ class FaceMarkingStep(QWidget):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             toggle_button = QToolButton()
-            toggle_button.setText("✔️ Valid")
-            toggle_button.setCheckable(True)
-            toggle_button.setChecked(True)
+            toggle_button.setText("❌ Invalid")
+            toggle_button.setCheckable(False)
+            toggle_button.setChecked(False)
             toggle_button.setStyleSheet("background-color: lightgreen; font-weight: bold;")
             toggle_button.setFixedWidth(100)
 
