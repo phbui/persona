@@ -102,5 +102,6 @@ class ModelSelectionStep(QWidget):
             return Manager_LLM(parent)
         model_path = os.path.join("models/llm", selected_model)
         self.wizard.llm_model_path = model_path
-        manager_llm = Manager_LLM(parent, model_path=model_path)
+        manager_llm = Manager_LLM(parent)
+        manager_llm.load_model(model_path)
         return manager_llm.load_model(model_path)

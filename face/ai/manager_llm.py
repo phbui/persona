@@ -19,7 +19,7 @@ load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class Manager_LLM:
-    def __init__(self, parent=None, model_name="NousResearch/Nous-Hermes-2-Mistral-7B-DPO", model_path=None):
+    def __init__(self, parent=None, model_name="NousResearch/Nous-Hermes-2-Mistral-7B-DPO"):
         self.parent = parent
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -44,34 +44,22 @@ class Manager_LLM:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
         # Model initialization
-        self._init_model(model_path)
+        self._init_model()
         self.streamer = TextStreamer(self.tokenizer)
         
-    def _init_model(self, model_path):
+    def _init_model(self):
         """Initialize model with support for existing checkpoints"""
-        if model_path and os.path.exists(model_path):
-            print(f"Loading existing model from {model_path}")
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
-                quantization_config=self.quant_config,
-                device_map="auto",
-                attn_implementation="flash_attention_2",
-                torch_dtype=torch.float16
-            )
-            if PeftModel.is_adapter_model(model_path):
-                self.model = PeftModel.from_pretrained(self.model, model_path)
-        else:
-            print(f"Loading base model {self.model_name}")
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                token=secret_key,
-                quantization_config=self.quant_config,
-                device_map="auto",
-                attn_implementation="flash_attention_2",
-                torch_dtype=torch.float16
-            )
-            self.model = prepare_model_for_kbit_training(self.model)
-            self._apply_qlora()
+        print(f"Loading base model {self.model_name}")
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_name,
+            token=secret_key,
+            quantization_config=self.quant_config,
+            device_map="auto",
+            attn_implementation="flash_attention_2",
+            torch_dtype=torch.float16
+        )
+        self.model = prepare_model_for_kbit_training(self.model)
+        self._apply_qlora()
 
     def _apply_qlora(self):
         """Apply QLoRA configuration"""
@@ -225,6 +213,27 @@ class Manager_LLM:
         response = valid_faces + "\n" + invalid_faces
         return response, prompt
 
+    def extract_faces_from_response(self, response, generated_faces):
+        valid_faces = []
+        invalid_faces = []
+
+        total_indices = list(range(len(generated_faces)))
+        valid_indices = []
+
+        valid_match = re.search(r"Valid\s*Faces\s*:\s*\[([0-9,\s]*)\]", response)
+        if valid_match:
+            try:
+                valid_indices = [int(x.strip()) for x in valid_match.group(1).split(",") if x.strip().isdigit()]
+                print("Parsed Valid Indices:", valid_indices)
+                valid_faces = [generated_faces[i] for i in valid_indices if 0 <= i < len(generated_faces)]
+            except Exception as e:
+                print("Failed to parse valid faces:", e)
+
+        invalid_indices = [i for i in total_indices if i not in valid_indices]
+        invalid_faces = [generated_faces[i] for i in invalid_indices]
+
+        return valid_faces, invalid_faces
+
     def auto_generate_face_feedback(self, character_description, situation, generated_faces, describe_face_fn):
         face_descriptions = ""
         for i, face in enumerate(generated_faces):
@@ -248,25 +257,10 @@ class Manager_LLM:
             Valid Faces: [#, #, #]
             Invalid Faces: [#, #, #]
         """
-        
+
         response = self.generate_response(prompt)
-        
-        valid_faces = []
-        invalid_faces = []
-        
-        valid_match = re.search(r"Valid\s*Faces\s*:\s*\[([^\]]+)\]", response, re.IGNORECASE)
-        invalid_match = re.search(r"Invalid\s*Faces\s*:\s*\[([^\]]+)\]", response, re.IGNORECASE)
-        
-        if valid_match:
-            valid_str = valid_match.group(1)
-            valid_indices = [int(x.strip()) for x in valid_str.split(",") if x.strip().isdigit()]
-            valid_faces = [generated_faces[i] for i in valid_indices if i < len(generated_faces)]
-        
-        if invalid_match:
-            invalid_str = invalid_match.group(1)
-            invalid_indices = [int(x.strip()) for x in invalid_str.split(",") if x.strip().isdigit()]
-            invalid_faces = [generated_faces[i] for i in invalid_indices if i < len(generated_faces)]
-        
+        valid_faces, invalid_faces = self.extract_faces_from_response(response, generated_faces)
+
         return valid_faces, invalid_faces, response
 
 if __name__ == "__main__":
