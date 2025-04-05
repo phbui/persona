@@ -146,7 +146,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             "response": response.replace("\n", " ").strip()
         }
         self.llm_training.append(training_data)
-        print(training_data)
+        # print(training_data)
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])
