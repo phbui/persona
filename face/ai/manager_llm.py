@@ -224,7 +224,6 @@ class Manager_LLM:
         if valid_match:
             try:
                 valid_indices = [int(x.strip()) for x in valid_match.group(1).split(",") if x.strip().isdigit()]
-                print("Parsed Valid Indices:", valid_indices)
                 valid_faces = [generated_faces[i] for i in valid_indices if 0 <= i < len(generated_faces)]
             except Exception as e:
                 print("Failed to parse valid faces:", e)
