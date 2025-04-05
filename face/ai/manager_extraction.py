@@ -126,6 +126,7 @@ class Manager_Extraction:
 
         # Construct the final description
         if emotion_descriptions:
-            return f"The face displays {emotion_description_str}. Specific movements: {au_description_str}."
+            #return f"The face displays {emotion_description_str}. Specific movements: {au_description_str}."
+            return f"The face displays {emotion_description_str}."
         else:
             return "The face shows no discernible emotions."

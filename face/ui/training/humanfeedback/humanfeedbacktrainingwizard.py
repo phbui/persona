@@ -115,11 +115,13 @@ class HumanFeedbackTrainingWizard(QWidget):
 
         for action_au in self.invalid_faces:
             self.parent.rl_model.store_transition(
-                state=state, action=action_au, log_prob=0, reward=-1.0, value=0, done=False
+                state=state, action=action_au, log_prob=0, reward=-2.0, value=0, done=False
             )
-            self.parent.manager_reward.store_reward(-1.0)
+            self.parent.manager_reward.store_reward(-2.0)
 
         num_valid = len(self.valid_faces)
+        #print(f"Valid: {self.valid_faces}")
+        #print(f"Invalid: {self.invalid_faces}")
         for rank, action_au in enumerate(self.valid_faces):
             reward = 1 - (rank / num_valid) 
             self.parent.rl_model.store_transition(
@@ -139,7 +141,12 @@ class HumanFeedbackTrainingWizard(QWidget):
         valid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.valid_faces]
         invalid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.invalid_faces]
         response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, self.situations[self.current_situation_index], face_descriptions, valid_faces_idx, invalid_faces_idx)
-        self.llm_training.append({"prompt": prompt, "response": response})
+        training_data = {
+            "prompt": prompt.replace("\n", " ").strip(),
+            "response": response.replace("\n", " ").strip()
+        }
+        self.llm_training.append(training_data)
+        print(training_data)
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])

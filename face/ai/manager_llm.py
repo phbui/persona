@@ -19,7 +19,7 @@ load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class Manager_LLM:
-    def __init__(self, parent=None, model_name="mistralai/Mistral-7B-v0.1", model_path=None):
+    def __init__(self, parent=None, model_name="NousResearch/Nous-Hermes-2-Mistral-7B-DPO", model_path=None):
         self.parent = parent
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -132,16 +132,27 @@ class Manager_LLM:
         self.toggle_mode(training=True)
         try:
             train_dataset = Dataset.from_list(training_data)
-                        
+                                                            
             def tokenize_fn(examples):
-                tokens = self.tokenizer(
-                    examples["prompt"],
+                prompts = examples["prompt"]
+                responses = examples["response"]
+                full_prompts = [f"<s>[INST] {p.strip()} [/INST] {r.strip()}</s>" for p, r in zip(prompts, responses)]
+                
+                model_inputs = self.tokenizer(
+                    full_prompts,
                     padding="max_length",
                     truncation=True,
                     max_length=1024,
+                    return_tensors="pt"
                 )
-                tokens["labels"] = tokens["input_ids"].copy()
-                return tokens
+
+                input_ids = model_inputs["input_ids"]
+                labels = input_ids.clone()
+
+                labels[labels == self.tokenizer.pad_token_id] = -100
+                model_inputs["labels"] = labels
+
+                return model_inputs
 
             tokenized_dataset = train_dataset.map(tokenize_fn, batched=True, remove_columns=["prompt", "response"])
             
@@ -167,35 +178,32 @@ class Manager_LLM:
         finally:
             self.toggle_mode(training=False)
 
-    def generate_response(self, prompt, max_new_tokens=128, temperature=1.0):
-        """Optimized generation with streaming support"""
+    def generate_response(self, prompt, max_new_tokens=48):
+        chat_prompt = f"<s>[INST] {prompt.strip()} [/INST]"
+
         inputs = self.tokenizer(
-            prompt, 
-            return_tensors="pt", 
+            chat_prompt,
+            return_tensors="pt",
             return_attention_mask=True
         ).to(self.device)
-        
+
         with torch.inference_mode():
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                temperature=temperature,
-                do_sample=True,
+                do_sample=False,
                 pad_token_id=self.tokenizer.eos_token_id,
-                streamer=self.streamer,
-                repetition_penalty=1.1
+                repetition_penalty=1.1,
+                eos_token_id=self.tokenizer.eos_token_id
             )
-            
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    # Maintain original interface methods
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+
     def generate_training_text(self, character_description, situation, face_descriptions, valid_faces, invalid_faces):
         prompt = f"""
-            ### Instruction:
-            Analyze the Character Description, Character Situation, and Generated Faces. 
-            Respond with:
-            - A **ranked list of Valid Faces** (most accurate to the situation first).
-            - A **list of Invalid Faces**.
+            Analyze the Character Description, Character Situation, and Generated Faces.
+
+            Only respond using the exact format shown below — no extra text, explanation, or bullet points.
 
             ### Character Description:
             {character_description}
@@ -206,9 +214,9 @@ class Manager_LLM:
             ### Generated Faces:
             {face_descriptions}
 
-            ### Response Format:
-            Valid Faces: [#, #, #, ...]
-            Invalid Faces: [#, #, #, ...]
+            ### Response Format (STRICT):
+            Valid Faces: [#, #, #]
+            Invalid Faces: [#, #, #]
         """
             
         valid_faces = f"Valid Faces:\n{valid_faces}"
@@ -223,11 +231,9 @@ class Manager_LLM:
             face_descriptions += f"{i}: {describe_face_fn(face)}\n"
         
         prompt = f"""
-            ### Instruction:
-            Analyze the Character Description, Character Situation, and Generated Faces. 
-            Respond with:
-            - A **ranked list of Valid Faces** (most accurate to the situation first).
-            - A **list of Invalid Faces**.
+            Analyze the Character Description, Character Situation, and Generated Faces.
+
+            Only respond using the exact format shown below — no extra text, explanation, or bullet points.
 
             ### Character Description:
             {character_description}
@@ -238,9 +244,9 @@ class Manager_LLM:
             ### Generated Faces:
             {face_descriptions}
 
-            ### Response Format:
-            Valid Faces: [#, #, #, ...]
-            Invalid Faces: [#, #, #, ...]
+            ### Response Format (STRICT):
+            Valid Faces: [#, #, #]
+            Invalid Faces: [#, #, #]
         """
         
         response = self.generate_response(prompt)
