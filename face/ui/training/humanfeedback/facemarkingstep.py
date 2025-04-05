@@ -74,13 +74,13 @@ class FaceMarkingStep(QWidget):
             toggle_button.setText("❌ Invalid")
             toggle_button.setCheckable(True)
             toggle_button.setChecked(False)
-            toggle_button.setStyleSheet("background-color: lightgreen; font-weight: bold;")
+            toggle_button.setStyleSheet("background-color: lightcoral; font-weight: bold;")
             toggle_button.setFixedWidth(100)
 
             toggle_button.clicked.connect(partial(self.toggle_valid_invalid, toggle_button, au_values))
 
             self.checkboxes.append((toggle_button, au_values))
-            self.parent.valid_faces.append(au_values)
+            self.parent.invalid_faces.append(au_values)
 
             face_layout.addWidget(label)
             face_layout.addWidget(toggle_button)

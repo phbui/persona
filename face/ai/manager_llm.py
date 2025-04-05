@@ -132,16 +132,17 @@ class Manager_LLM:
         self.toggle_mode(training=True)
         try:
             train_dataset = Dataset.from_list(training_data)
-            
+                        
             def tokenize_fn(examples):
-                return self.tokenizer(
+                tokens = self.tokenizer(
                     examples["prompt"],
                     padding="max_length",
                     truncation=True,
-                    max_length=768,
-                    return_tensors="pt"
+                    max_length=1024,
                 )
-            
+                tokens["labels"] = tokens["input_ids"].copy()
+                return tokens
+
             tokenized_dataset = train_dataset.map(tokenize_fn, batched=True, remove_columns=["prompt", "response"])
             
             training_args = TrainingArguments(
@@ -166,7 +167,7 @@ class Manager_LLM:
         finally:
             self.toggle_mode(training=False)
 
-    def generate_response(self, prompt, max_new_tokens=256, temperature=1.0):
+    def generate_response(self, prompt, max_new_tokens=128, temperature=1.0):
         """Optimized generation with streaming support"""
         inputs = self.tokenizer(
             prompt, 
