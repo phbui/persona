@@ -72,7 +72,7 @@ class FaceMarkingStep(QWidget):
 
             toggle_button = QToolButton()
             toggle_button.setText("❌ Invalid")
-            toggle_button.setCheckable(False)
+            toggle_button.setCheckable(True)
             toggle_button.setChecked(False)
             toggle_button.setStyleSheet("background-color: lightgreen; font-weight: bold;")
             toggle_button.setFixedWidth(100)
