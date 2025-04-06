@@ -118,6 +118,7 @@ class Manager_LLM:
     def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm"):
         """Fine-tuning implementation with original parameters"""
         self.toggle_mode(training=True)
+        loss = None
         try:
             train_dataset = Dataset.from_list(training_data)
                                                             
@@ -159,12 +160,14 @@ class Manager_LLM:
                 train_dataset=tokenized_dataset,
                 data_collator=DataCollatorForSeq2Seq(self.tokenizer, pad_to_multiple_of=8)
             )
-            
-            trainer.train()
+                
+            train_output = trainer.train()
             self.save_model(output_dir)
+            loss = train_output.training_loss
             
         finally:
             self.toggle_mode(training=False)
+            return loss
 
     def generate_response(self, prompt, max_new_tokens=48):
         chat_prompt = f"<s>[INST] {prompt.strip()} [/INST]"

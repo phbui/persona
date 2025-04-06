@@ -13,39 +13,27 @@ class Manager_Loss:
         - Saves data to CSV.
         """
         self.save_path = save_path
-        self.epoch_losses = []
-        self.current_losses = []
 
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if not os.path.exists(save_path):
             with open(save_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["epoch", "average_loss"])  # CSV Header
+                writer.writerow(["epoch", "loss"])  # CSV Header
 
-    def store_loss(self, loss):
+    def store_loss(self, epoch, loss):
         """
         Store loss for the current training step.
         """
-        self.current_losses.append(loss)
-
-    def end_epoch(self, epoch):
-        """
-        Compute the average loss for the epoch and save to CSV.
-        """
-        if self.current_losses:
-            avg_loss = np.mean(self.current_losses)
-            self._save_to_csv(epoch, avg_loss)
-            self.epoch_losses.append(avg_loss)
-            self.current_losses = []  # Reset for next epoch
+        self._save_to_csv(epoch, loss)
 
     def _save_to_csv(self, epoch, avg_loss):
         """
-        Save the epoch's average loss to a CSV file.
+        Save the epoch's loss to a CSV file.
         """
         with open(self.save_path, mode="a", newline="") as file:
             writer = csv.writer(file)
             writer.writerow([epoch, avg_loss])
-        print(f"Average loss: {avg_loss:.4f}")
+        print(f"Saved epoch {epoch} loss: {avg_loss:.4f}")
 
     def load_losses(self):
         """

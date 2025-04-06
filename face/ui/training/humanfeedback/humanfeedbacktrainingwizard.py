@@ -68,10 +68,9 @@ class HumanFeedbackTrainingWizard(QWidget):
 
         if self.current_situation_index >= len(self.situations):
             print(f"Finised epoch {self.current_epoch}.")
-            print("Saving PPO reward.")
             self.parent.manager_reward.end_epoch(self.current_epoch)
-            print("Saving LLM loss.")
-            self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
+            loss = self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
+            self.parent.manager_loss.store_loss(self.current_epoch, loss)
             self.llm_training = []
             self.current_epoch += 1
             self.current_situation_index = 0
