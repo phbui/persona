@@ -10,7 +10,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
 from ui.training.epochselectionstep import EpochSelectionStep
 from ui.training.autotraining.traininglogstep import TrainingLogStep 
-
+import json
+import os
 
 class AutoTrainingWizard(QWidget):
     def __init__(self, parent):
@@ -20,7 +21,7 @@ class AutoTrainingWizard(QWidget):
         self.current_epoch = 0
         self.current_situation_index = 0
         self.llm_training = []
-        self.situations = self.parent.situations
+        self.situations = self.load_situations()
 
         layout = QVBoxLayout()
         self.stacked_widget = QStackedWidget()
@@ -47,6 +48,20 @@ class AutoTrainingWizard(QWidget):
         self.stacked_widget.addWidget(self.reward_plot_page)
 
         self.show_epoch_selection_step()
+
+    def load_situations(self):
+        file_path = "data/situations_expanded.json"
+        print(f"Loading situations from {file_path}.")
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    data = json.load(file)
+                    return data.get("situations", ["Default Situation"])
+            except (json.JSONDecodeError, KeyError):
+                print("Failed to load situations")
+                return ["Default Situation"]
+        print("No situations found")
+        return ["Default Situation"]
 
     def show_epoch_selection_step(self):
         self.stacked_widget.setCurrentWidget(self.epoch_selection_step)
