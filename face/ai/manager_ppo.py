@@ -25,7 +25,7 @@ class Manager_PPO:
             "model_state_dict": self.policy.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict()
         }, save_path)
-        print(f"Saved PPO model to {save_path}")
+        #print(f"Saved PPO model to {save_path}")
 
     def load_model(self, load_path):
         """Loads the PPO model state dictionary and optimizer."""

@@ -108,9 +108,9 @@ class AutoTrainingWizard(QWidget):
 
         for face in invalid_faces:
             self.parent.rl_model.store_transition(
-                state=state, action=face, log_prob=0, reward=-1.0, value=0, done=False
+                state=state, action=face, log_prob=0, reward=-2.0, value=0, done=False
             )
-            self.parent.manager_reward.store_reward(-1.0)
+            self.parent.manager_reward.store_reward(-2.0)
 
         num_valid = len(valid_faces)
         for rank, face in enumerate(valid_faces):
@@ -124,7 +124,7 @@ class AutoTrainingWizard(QWidget):
 
         episode_reward = self.parent.manager_reward.epoch_rewards[-1]
         self.training_log_step.append_log(
-            f"Epoch {self.current_epoch + 1}, Episode {self.current_situation_index + 1} ({self.situations[self.current_situation_index]}): {episode_reward:.2f}"
+            f"[Epoch {self.current_epoch + 1}, Episode {self.current_situation_index + 1} | Situation: {self.situations[self.current_situation_index]}, Valid: {num_valid}] {episode_reward:.2f}"
         )
 
         self.parent.rl_model.update_policy(self.parent.rl_model_path)
