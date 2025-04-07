@@ -131,7 +131,7 @@ class Manager_LLM:
                     full_prompts,
                     padding="max_length",
                     truncation=True,
-                    max_length=1024,
+                    max_length=768,
                     return_tensors="pt"
                 )
 
