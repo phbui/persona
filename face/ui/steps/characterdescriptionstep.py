@@ -46,13 +46,16 @@ class CharacterDescriptionStep(QWidget):
 
     def load_character_descriptions(self):
         file_path = "data/character_descriptions.json"
+        print(f"Loading character descriptions from {file_path}.")
         if os.path.exists(file_path):
             try:
                 with open(file_path, "r", encoding="utf-8") as file:
                     data = json.load(file)
                     return {char["name"]: char["description"] for char in data.get("character_descriptions", [])}
             except (json.JSONDecodeError, KeyError):
+                print("Failed to load descriptions")
                 return {"Error": "Failed to load descriptions"}
+        print("No character descriptions found")
         return {"No Data": "No character descriptions found"}
 
     def update_description(self):

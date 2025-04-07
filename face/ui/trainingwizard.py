@@ -9,6 +9,8 @@ from ai.manager_extraction import Manager_Extraction
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QStackedWidget
 )
+import json
+import os
 
 
 class TrainingWizard(QWidget):
@@ -25,6 +27,7 @@ class TrainingWizard(QWidget):
         self.rl_model = None
         self.llm_model = None
         self.training_mode = None  
+        self.situations = self.load_situations()
 
         self.manager_extraction = Manager_Extraction()
         self.character_description_step = CharacterDescriptionStep(self)
@@ -40,6 +43,20 @@ class TrainingWizard(QWidget):
         self.stacked_widget.addWidget(self.training_mode_step)
         self.stacked_widget.addWidget(self.human_feedback_training)
         self.stacked_widget.addWidget(self.auto_training)
+
+    def load_situations(self):
+        file_path = "data/situations.json"
+        print(f"Loading situations from {file_path}.")
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    data = json.load(file)
+                    return data.get("situations", ["Default Situation"])
+            except (json.JSONDecodeError, KeyError):
+                print("Failed to load situations")
+                return ["Default Situation"]
+        print("No situations found")
+        return ["Default Situation"]
 
     def show_model_selection_step(self):
         self.stacked_widget.setCurrentWidget(self.model_selection_step)

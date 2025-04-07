@@ -9,7 +9,6 @@ from feat.plotting import plot_face
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from io import BytesIO
-import json
 import sys
 
 class HumanFeedbackTrainingWizard(QWidget):
@@ -22,7 +21,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.valid_faces = []
         self.invalid_faces = []
         self.generated_faces = []
-        self.situations = self.load_situations()
+        self.situations = self.parent.situations
         self.llm_training = []
 
         layout = QVBoxLayout()
@@ -39,14 +38,6 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.stacked_widget.addWidget(self.ranking_step)
 
         self.show_epoch_selection_step()
-
-    def load_situations(self):
-        try:
-            with open("data/situations.json", "r", encoding="utf-8") as file:
-                data = json.load(file)
-                return data.get("situations", ["Default Situation"])
-        except (FileNotFoundError, json.JSONDecodeError):
-            return ["Default Situation"]
 
     def show_epoch_selection_step(self):
         self.stacked_widget.setCurrentWidget(self.epoch_selection_step)

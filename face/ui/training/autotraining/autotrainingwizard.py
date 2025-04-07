@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 import numpy as np
 import torch as th
-import json
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -21,7 +20,7 @@ class AutoTrainingWizard(QWidget):
         self.current_epoch = 0
         self.current_situation_index = 0
         self.llm_training = []
-        self.situations = self.load_situations()
+        self.situations = self.parent.situations
 
         layout = QVBoxLayout()
         self.stacked_widget = QStackedWidget()
@@ -52,16 +51,7 @@ class AutoTrainingWizard(QWidget):
     def show_epoch_selection_step(self):
         self.stacked_widget.setCurrentWidget(self.epoch_selection_step)
 
-    def load_situations(self):
-        try:
-            with open("data/situations.json", "r", encoding="utf-8") as file:
-                data = json.load(file)
-                return data.get("situations", ["Default Situation"])
-        except (FileNotFoundError, json.JSONDecodeError):
-            return ["Default Situation"]
-
     def post_epoch_step(self):
-        self.epochs = getattr(self.epoch_selection_step, "selected_epochs", 1)
         self.current_epoch = 0
         self.current_situation_index = 0
         self.llm_training = []
@@ -71,7 +61,7 @@ class AutoTrainingWizard(QWidget):
         QTimer.singleShot(100, self.run_epoch)
 
     def run_epoch(self):
-        if self.current_epoch >= self.epochs:
+        if self.current_epoch > self.epochs:
             self.show_epoch_plot()
             return
 
@@ -119,7 +109,7 @@ class AutoTrainingWizard(QWidget):
 
         episode_reward = self.parent.manager_reward.epoch_rewards[-1]
         self.training_log_step.append_log(
-            f"Epoch {self.current_epoch + 1}, Episode {self.current_situation_index + 1}: {episode_reward:.2f}"
+            f"Epoch {self.current_epoch + 1}, Episode {self.current_situation_index + 1} ({self.situations[self.current_situation_index]}): {episode_reward:.2f}"
         )
 
         self.parent.rl_model.update_policy(self.parent.rl_model_path)
