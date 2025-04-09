@@ -60,11 +60,11 @@ class FaceMarkingStep(QWidget):
         self.parent.valid_faces = []
         self.parent.invalid_faces = []
 
-        for au_values in generated_faces:
+        for face in generated_faces:
             face_widget = QWidget()
             face_layout = QHBoxLayout(face_widget)
 
-            pixmap = self.parent.generate_face_pixmap(au_values, size=(200, 200))
+            pixmap = self.parent.generate_face_pixmap(face['aus'], size=(200, 200))
 
             label = QLabel()
             label.setPixmap(pixmap)
@@ -77,10 +77,10 @@ class FaceMarkingStep(QWidget):
             toggle_button.setStyleSheet("background-color: lightcoral; font-weight: bold;")
             toggle_button.setFixedWidth(100)
 
-            toggle_button.clicked.connect(partial(self.toggle_valid_invalid, toggle_button, au_values))
+            toggle_button.clicked.connect(partial(self.toggle_valid_invalid, toggle_button, face))
 
-            self.checkboxes.append((toggle_button, au_values))
-            self.parent.invalid_faces.append(au_values)
+            self.checkboxes.append((toggle_button, face))
+            self.parent.invalid_faces.append(face)
 
             face_layout.addWidget(label)
             face_layout.addWidget(toggle_button)
@@ -89,16 +89,20 @@ class FaceMarkingStep(QWidget):
 
             self.face_layout.addWidget(face_widget)
 
-    def toggle_valid_invalid(self, button, au_values):
+    def toggle_valid_invalid(self, button, face):
+        def same_face(a, b):
+            return np.array_equal(a['aus'], b['aus'])
+
         if button.isChecked():
             button.setText("✔️ Valid")
             button.setStyleSheet("background-color: lightgreen; font-weight: bold;")
-            if not any(np.array_equal(x, au_values) for x in self.parent.valid_faces):
-                self.parent.valid_faces.append(au_values)
-            self.parent.invalid_faces = [x for x in self.parent.invalid_faces if not np.array_equal(x, au_values)]
+            if not any(same_face(x, face) for x in self.parent.valid_faces):
+                self.parent.valid_faces.append(face)
+            self.parent.invalid_faces = [x for x in self.parent.invalid_faces if not same_face(x, face)]
         else:
             button.setText("❌ Invalid")
             button.setStyleSheet("background-color: lightcoral; font-weight: bold;")
-            if not any(np.array_equal(x, au_values) for x in self.parent.invalid_faces):
-                self.parent.invalid_faces.append(au_values)
-            self.parent.valid_faces = [x for x in self.parent.valid_faces if not np.array_equal(x, au_values)]
+            if not any(same_face(x, face) for x in self.parent.invalid_faces):
+                self.parent.invalid_faces.append(face)
+            self.parent.valid_faces = [x for x in self.parent.valid_faces if not same_face(x, face)]
+

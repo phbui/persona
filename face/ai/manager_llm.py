@@ -252,7 +252,7 @@ class Manager_LLM:
     def auto_generate_face_feedback(self, character_description, situation, generated_faces, describe_face_fn):
         face_descriptions = ""
         for i, face in enumerate(generated_faces):
-            face_descriptions += f"{i}: {describe_face_fn(face)}\n"
+            face_descriptions += f"{i}: {describe_face_fn(face['aus'])}\n"
         
         prompt = f"""
             Analyze the Character Description, Character Situation, and 10 Generated Faces.

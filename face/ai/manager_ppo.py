@@ -72,7 +72,7 @@ class Manager_PPO:
         log_probs_old = th.tensor(self.log_probs)
         returns, advantages = self.compute_advantages()
 
-        for _ in range(4):  # Number of PPO epochs
+        for _ in range(4):
             indices = th.randperm(len(states))
 
             for i in range(0, len(states), batch_size):
@@ -93,6 +93,7 @@ class Manager_PPO:
                 loss = policy_loss + 0.5 * value_loss - self.entropy_coef * entropy.mean()
                 self.policy.optimizer.zero_grad()
                 loss.backward()
+                th.nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
                 self.policy.optimizer.step()
 
         # Clear storage after update

@@ -76,7 +76,7 @@ class RankingStep(QWidget):
         for face in valid_faces:
             face_key = tuple(face.tolist()) 
             if face_key not in self.face_pixmaps:
-                pixmap = self.parent.generate_face_pixmap(face, size=(150, 150))
+                pixmap = self.parent.generate_face_pixmap(face['aus'], size=(150, 150))
                 self.face_pixmaps[face_key] = pixmap
 
         self.render_faces()

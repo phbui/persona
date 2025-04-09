@@ -108,15 +108,15 @@ class AutoTrainingWizard(QWidget):
 
         for face in invalid_faces:
             self.parent.rl_model.store_transition(
-                state=state, action=face, log_prob=0, reward=-2.0, value=0, done=False
+                state=state, action=face['aus'], log_prob=face['log_prob'], reward=-1.0, value=face['value'], done=False
             )
-            self.parent.manager_reward.store_reward(-2.0)
+            self.parent.manager_reward.store_reward(-1.0)
 
         num_valid = len(valid_faces)
         for rank, face in enumerate(valid_faces):
-            reward = 1 - (rank / num_valid) if num_valid > 0 else 0
+            reward = 1 - (rank / num_valid) 
             self.parent.rl_model.store_transition(
-                state=state, action=face, log_prob=0, reward=reward, value=0, done=False
+                state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
             self.parent.manager_reward.store_reward(reward)
 
@@ -149,7 +149,6 @@ class AutoTrainingWizard(QWidget):
 
         faces = []
         for _ in range(10):
-            action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
-            action_au = np.clip(action, 0, 3)
-            faces.append(action_au)
+            action, log_prob, value = self.parent.rl_model.policy.select_action(state_tensor)
+            faces.append({'aus': np.clip(action, 0, 3), 'log_prob': log_prob, 'value': value})
         return faces

@@ -121,19 +121,19 @@ class HumanFeedbackTrainingWizard(QWidget):
     def submit_human_feedback(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index], add_noise=True)
 
-        for action_au in self.invalid_faces:
+        for face in self.invalid_faces:
             self.parent.rl_model.store_transition(
-                state=state, action=action_au, log_prob=0, reward=-2.0, value=0, done=False
+                state=state, action=face['aus'], log_prob=face['log_prob'], reward=-1.0, value=face['value'], done=False
             )
-            self.parent.manager_reward.store_reward(-2.0)
+            self.parent.manager_reward.store_reward(-1.0)
 
         num_valid = len(self.valid_faces)
         #print(f"Valid: {self.valid_faces}")
         #print(f"Invalid: {self.invalid_faces}")
-        for rank, action_au in enumerate(self.valid_faces):
+        for rank, face in enumerate(self.valid_faces):
             reward = 1 - (rank / num_valid) 
             self.parent.rl_model.store_transition(
-                state=state, action=action_au, log_prob=0, reward=reward, value=0, done=False
+                state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
             self.parent.manager_reward.store_reward(reward)
         
@@ -144,10 +144,19 @@ class HumanFeedbackTrainingWizard(QWidget):
 
         faces = self.generated_faces
         for i, face in enumerate(faces):
-            face_descriptions += f"{i}: " + self.parent.manager_extraction.describe_face(face) + "\n"
-
-        valid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.valid_faces]
-        invalid_faces_idx = [np.where([np.array_equal(face, gen_face) for gen_face in self.generated_faces])[0][0] for face in self.invalid_faces]
+            face_descriptions += f"{i}: " + self.parent.manager_extraction.describe_face(face['aus']) + "\n"
+            valid_faces_idx = [
+                np.where([
+                    np.array_equal(face['aus'], gen_face['aus']) for gen_face in self.generated_faces
+                ])[0][0]
+                for face in self.valid_faces
+            ]
+            invalid_faces_idx = [
+                np.where([
+                    np.array_equal(face['aus'], gen_face['aus']) for gen_face in self.generated_faces
+                ])[0][0]
+                for face in self.invalid_faces
+            ]
         response, prompt = self.parent.llm_model.generate_training_text(self.parent.character_description, self.situations[self.current_situation_index], face_descriptions, valid_faces_idx, invalid_faces_idx)
         training_data = {
             "prompt": prompt.replace("\n", " ").strip(),
@@ -164,8 +173,8 @@ class HumanFeedbackTrainingWizard(QWidget):
         faces = []
         with th.no_grad(): 
             for _ in range(10):
-                action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
-                faces.append(np.clip(action, 0, 3))
+                action, log_prob, value = self.parent.rl_model.policy.select_action(state_tensor)
+                faces.append({'aus': np.clip(action, 0, 3), 'log_prob': log_prob, 'value': value})
         self.parent.rl_model.policy.train()  
         print(faces)
         return faces
