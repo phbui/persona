@@ -163,7 +163,7 @@ class HumanFeedbackTrainingWizard(QWidget):
 
         faces = []
         for _ in range(10):
-            action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
+            action, _, _ = self.parent.rl_model.policy.select_action(state_tensor, 2.0)
             action_au = np.clip(action, 0, 3)
             faces.append(action_au)
 

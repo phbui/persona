@@ -33,16 +33,14 @@ class Manager_Policy(nn.Module):
         value = self.value_net(state).squeeze(-1)
         return logits, value
 
-    def select_action(self, state):
-        """
-        Sample an action for each AU (20 AUs, 4 categories each).
-        Returns a **20D action array**, where each value is `{0,1,2,3}`.
-        """
-        logits, value = self.forward(state)  # (batch, 20, 4)
-        probs = Categorical(logits=logits)  # Create categorical distribution
-        action = probs.sample()  # Sample from the distribution (batch, 20)
-        log_prob = probs.log_prob(action).sum(dim=-1)  # Sum log probs across AUs
-        return action.squeeze(0).tolist(), log_prob, value  # Convert tensor to list
+    def select_action(self, state, temperature=1.0):
+        logits, value = self.forward(state)
+        logits = logits / temperature
+        probs = Categorical(logits=logits)
+        action = probs.sample()
+        log_prob = probs.log_prob(action).sum(dim=-1)
+        return action.squeeze(0).tolist(), log_prob, value
+
 
     def evaluate_action(self, state, action):
         """

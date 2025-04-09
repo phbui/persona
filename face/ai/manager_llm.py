@@ -171,6 +171,8 @@ class Manager_LLM:
             gc.collect()
             self.save_model(output_dir)
             loss = train_output.training_loss
+            print("Training output:", train_output)
+            print("Training loss:", train_output.training_loss)
         except Exception as e:
             print("Trainer crashed:", e)
             traceback.print_exc()
