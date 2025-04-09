@@ -119,7 +119,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.run_epoch()
 
     def submit_human_feedback(self):
-        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])
+        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index], add_noise=True)
 
         for action_au in self.invalid_faces:
             self.parent.rl_model.store_transition(
@@ -157,16 +157,17 @@ class HumanFeedbackTrainingWizard(QWidget):
         # print(training_data)
 
     def generate_faces(self):
-        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index])
+        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index], add_noise=True)
         state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
-        state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
-
+        print(state_tensor)
+        self.parent.rl_model.policy.eval()  
         faces = []
-        for _ in range(10):
-            action, _, _ = self.parent.rl_model.policy.select_action(state_tensor, 2.0)
-            action_au = np.clip(action, 0, 3)
-            faces.append(action_au)
-
+        with th.no_grad(): 
+            for _ in range(10):
+                action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
+                faces.append(np.clip(action, 0, 3))
+        self.parent.rl_model.policy.train()  
+        print(faces)
         return faces
 
     def generate_face_pixmap(self, au_values, size=(200, 200)):

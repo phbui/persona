@@ -104,7 +104,7 @@ class AutoTrainingWizard(QWidget):
             self.parent.manager_extraction.describe_face
         )
 
-        state = self.parent.manager_extraction.extract_features(situation_text)
+        state = self.parent.manager_extraction.extract_features(situation_text, True)
 
         for face in invalid_faces:
             self.parent.rl_model.store_transition(
@@ -143,7 +143,7 @@ class AutoTrainingWizard(QWidget):
 
     def generate_faces(self):
         situation_text = self.situations[self.current_situation_index]
-        state = self.parent.manager_extraction.extract_features(situation_text)
+        state = self.parent.manager_extraction.extract_features(situation_text, True)
         state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
         state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
 

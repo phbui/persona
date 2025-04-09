@@ -1,19 +1,24 @@
+import torch as th
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Categorical
 
 
 class Manager_Policy(nn.Module):
-    def __init__(self, input_dim, action_dim=20, num_categories=4, hidden_dim=128, lr=3e-4):
+    def __init__(self, input_dim, action_dim=20, num_categories=4, hidden_dim=128, lr=3e-4, training=True):
         super(Manager_Policy, self).__init__()
         self.action_dim = action_dim
         self.num_categories = num_categories
+        self.training = training
 
         # Policy Network (Actor)
         self.policy_net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim * num_categories)  # Output (20 * 4) logits
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, action_dim * num_categories)
         )
 
         # Value Network (Critic)
@@ -27,9 +32,10 @@ class Manager_Policy(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
     def forward(self, state):
-        """Returns logits reshaped for categorical distribution & value estimate."""
-        logits = self.policy_net(state)  # Shape: (batch, 80)
-        logits = logits.view(-1, self.action_dim, self.num_categories)  # Reshape to (batch, 20, 4)
+        logits = self.policy_net(state)
+        if self.training:
+            logits += th.randn_like(logits) * 0.5
+        logits = logits.view(-1, self.action_dim, self.num_categories)
         value = self.value_net(state).squeeze(-1)
         return logits, value
 

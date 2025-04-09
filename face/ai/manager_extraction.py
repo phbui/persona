@@ -15,8 +15,10 @@ class Manager_Extraction:
         # Define the fixed embedding size based on the model configuration
         self.embedding_size = self.manager_encoder.model.config.d_model  # Typically 768D for Flan-T5 Base
 
-    def extract_features(self, text):
-        """Extracts a fixed-size feature vector (embedding + sentiment + emotion scores)."""
+    def extract_features(self, text, add_noise=False):
+        """Extracts a fixed-size feature vector (embedding + sentiment + emotion scores).
+        Optionally adds small noise to sentiment and emotion scores if add_noise is True.
+        """
         # Extract text embedding (ensuring fixed size)
         text_embedding = self.manager_encoder.generate_embedding(text)
         if len(text_embedding) != self.embedding_size:
@@ -24,18 +26,24 @@ class Manager_Extraction:
 
         # Extract sentiment scores
         sentiment_result = self.manager_analysis_sentiment.analyze(text)
-        positive_score = 0
-        negative_score = 0
+        positive_score = 0.0
+        negative_score = 0.0
 
         if sentiment_result:
             label = sentiment_result[0]["label"]
             score = sentiment_result[0]["score"]
             if label == "POSITIVE":
                 positive_score = score
-                negative_score = 1 - score
+                negative_score = 1.0 - score
             elif label == "NEGATIVE":
                 negative_score = score
-                positive_score = 1 - score
+                positive_score = 1.0 - score
+
+        # Optionally add noise to sentiment scores
+        if add_noise:
+            noise_std = 0.1 
+            positive_score = np.clip(positive_score + np.random.normal(0, noise_std), 0, 1)
+            negative_score = np.clip(negative_score + np.random.normal(0, noise_std), 0, 1)
 
         # Extract emotion scores
         emotion_result = self.manager_analysis_emotion.analyze(text, top_k=None)
@@ -43,6 +51,12 @@ class Manager_Extraction:
         emotion_scores = {e["label"]: e["score"] for e in emotion_result}
 
         emotion_vector = np.array([emotion_scores.get(em, 0) for em in target_emotions])
+
+        # Optionally add noise to the emotion vector
+        if add_noise:
+            noise_std = 0.1  
+            emotion_vector = emotion_vector + np.random.normal(0, noise_std, size=emotion_vector.shape)
+            emotion_vector = np.clip(emotion_vector, 0, 1)
 
         # Construct the final feature vector
         feature_vector = np.concatenate((text_embedding, [positive_score, negative_score], emotion_vector))

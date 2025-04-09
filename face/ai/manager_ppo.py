@@ -6,12 +6,13 @@ from ai.manager_policy import Manager_Policy
 
 
 class Manager_PPO:
-    def __init__(self, input_dim, action_dim=20, num_categories=4, gamma=0.99, clip_epsilon=0.2, gae_lambda=0.95, model_path=None):
+    def __init__(self, input_dim, action_dim=20, num_categories=4, gamma=0.99, clip_epsilon=0.1, gae_lambda=0.98, entropy_coef=0.3, training=True, model_path=None):
         self.model_path = model_path
-        self.policy = Manager_Policy(input_dim, action_dim, num_categories) 
+        self.policy = Manager_Policy(input_dim, action_dim, num_categories, training=training) 
         self.optimizer = th.optim.Adam(self.policy.parameters(), lr=3e-4)
 
         self.gamma = gamma
+        self.entropy_coef = entropy_coef
         self.clip_epsilon = clip_epsilon
         self.gae_lambda = gae_lambda  
 
@@ -41,7 +42,7 @@ class Manager_PPO:
     def store_transition(self, state, action, log_prob, reward, value, done):
         """Stores a step in the trajectory buffer"""
         self.states.append(state)
-        self.actions.append(th.tensor(action))  # Convert action array to tensor
+        self.actions.append(th.tensor(action)) 
         self.log_probs.append(log_prob)
         self.rewards.append(reward)
         self.values.append(value)
@@ -89,7 +90,7 @@ class Manager_PPO:
                 policy_loss = -th.min(surr1, surr2).mean()
                 value_loss = F.mse_loss(values, batch_returns)
 
-                loss = policy_loss + 0.5 * value_loss - 0.01 * entropy.mean()
+                loss = policy_loss + 0.5 * value_loss - self.entropy_coef * entropy.mean()
                 self.policy.optimizer.zero_grad()
                 loss.backward()
                 self.policy.optimizer.step()
