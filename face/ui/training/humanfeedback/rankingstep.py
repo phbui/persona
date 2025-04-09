@@ -74,7 +74,7 @@ class RankingStep(QWidget):
         self.face_pixmaps.clear()
 
         for face in valid_faces:
-            face_key = tuple(face.tolist()) 
+            face_key = tuple(face['aus'].tolist())
             if face_key not in self.face_pixmaps:
                 pixmap = self.parent.generate_face_pixmap(face['aus'], size=(150, 150))
                 self.face_pixmaps[face_key] = pixmap
@@ -88,7 +88,7 @@ class RankingStep(QWidget):
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, face)
 
-            face_key = tuple(face.tolist()) 
+            face_key = tuple(face['aus'].tolist())
             pixmap = self.face_pixmaps.get(face_key)
 
             if pixmap:
@@ -128,5 +128,5 @@ class RankingStep(QWidget):
         self.parent.go_back_to_face_marking_step()
 
     def submit_ranking(self):
-        self.parent.valid_faces = [np.array(face) for face in self.face_data]
+        self.parent.valid_faces = self.face_data[:] 
         self.parent.ranking_done()
