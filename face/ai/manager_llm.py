@@ -7,13 +7,15 @@ from transformers import (
     AutoModelForCausalLM,
     Trainer,
     TrainingArguments,
-    DataCollatorForSeq2Seq,
+    DataCollatorForLanguageModeling,
     BitsAndBytesConfig,
     TextStreamer
 )
 from datasets import Dataset
 from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_training
 from dotenv import load_dotenv
+from copy import deepcopy
+import traceback
 
 load_dotenv()
 secret_key = os.getenv('hf_key')
@@ -56,7 +58,8 @@ class Manager_LLM:
             quantization_config=self.quant_config,
             device_map="auto",
             attn_implementation="flash_attention_2",
-            torch_dtype=torch.float16
+            torch_dtype=torch.float16,
+            max_memory={0: "15GiB"} 
         )
         self.model = prepare_model_for_kbit_training(self.model)
         self._apply_qlora()
@@ -74,6 +77,10 @@ class Manager_LLM:
             )
             self.model = get_peft_model(self.model, lora_config)
             print("Applied QLoRA to the model.")
+
+            trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            total = sum(p.numel() for p in self.model.parameters())
+            print(f"Trainable params: {trainable} / {total}")
 
     def toggle_mode(self, training=False):
         """Switch between training/inference modes"""
@@ -107,6 +114,8 @@ class Manager_LLM:
                 device_map="auto",
                 torch_dtype=torch.float16
             )
+
+            self.model = prepare_model_for_kbit_training(self.model)
             
             adapter_path = os.path.join(load_path, "adapter_model.safetensors")
             if os.path.exists(adapter_path):
@@ -120,8 +129,9 @@ class Manager_LLM:
         self.toggle_mode(training=True)
         loss = None
         try:
+            print("Starting fine-tuning...")
             train_dataset = Dataset.from_list(training_data)
-                                                            
+                                                                    
             def tokenize_fn(examples):
                 prompts = examples["prompt"]
                 responses = examples["response"]
@@ -129,42 +139,41 @@ class Manager_LLM:
                 
                 model_inputs = self.tokenizer(
                     full_prompts,
-                    padding="max_length",
+                    padding=True,
                     truncation=True,
                     max_length=768,
-                    return_tensors="pt"
                 )
-
-                input_ids = model_inputs["input_ids"]
-                labels = input_ids.clone()
-
-                labels[labels == self.tokenizer.pad_token_id] = -100
-                model_inputs["labels"] = labels
-
                 return model_inputs
-
+            
             tokenized_dataset = train_dataset.map(tokenize_fn, batched=True, remove_columns=["prompt", "response"])
+            tokenized_dataset.set_format("torch", columns=["input_ids", "attention_mask"])
             
             training_args = TrainingArguments(
                 output_dir=output_dir,
                 num_train_epochs=1,
                 per_device_train_batch_size=1,
-                save_strategy="epoch",
+                save_strategy="no",
                 logging_dir=f"{output_dir}/logs",
-                remove_unused_columns=False,
+                remove_unused_columns=True,
             )
             
             trainer = Trainer(
                 model=self.model,
                 args=training_args,
                 train_dataset=tokenized_dataset,
-                data_collator=DataCollatorForSeq2Seq(self.tokenizer, pad_to_multiple_of=8)
+                data_collator=DataCollatorForLanguageModeling(self.tokenizer, pad_to_multiple_of=8, mlm=False)
             )
                 
             train_output = trainer.train()
+            del trainer
+            torch.cuda.empty_cache()
+            import gc
+            gc.collect()
             self.save_model(output_dir)
             loss = train_output.training_loss
-            
+        except Exception as e:
+            print("Trainer crashed:", e)
+            traceback.print_exc()
         finally:
             self.toggle_mode(training=False)
             return loss

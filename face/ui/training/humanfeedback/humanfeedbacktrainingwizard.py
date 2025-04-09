@@ -100,6 +100,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.stacked_widget.setCurrentWidget(self.face_marking_step)
 
     def show_ranking_step(self):
+        plt.close('all')
         if (len(self.valid_faces)) <= 1:
             self.ranking_done()
             return
@@ -112,6 +113,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.show_ranking_step()
 
     def ranking_done(self):
+        plt.close('all')
         self.submit_human_feedback()
         self.current_situation_index += 1
         self.run_epoch()
