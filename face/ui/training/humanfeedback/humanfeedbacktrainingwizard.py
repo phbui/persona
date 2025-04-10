@@ -25,6 +25,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.generated_faces = []
         self.situations = self.load_situations()
         self.llm_training = []
+        self.last_situation_embedding = []
 
         layout = QVBoxLayout()
         self.stacked_widget = QStackedWidget()
@@ -119,19 +120,20 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.run_epoch()
 
     def submit_human_feedback(self):
-        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index], add_noise=True)
+        state = self.last_situation_embedding
 
         for face in self.invalid_faces:
+            reward = -0.2
             self.parent.rl_model.store_transition(
-                state=state, action=face['aus'], log_prob=face['log_prob'], reward=-1.0, value=face['value'], done=False
+                state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
-            self.parent.manager_reward.store_reward(-1.0)
+            self.parent.manager_reward.store_reward(reward)
 
         num_valid = len(self.valid_faces)
-        #print(f"Valid: {self.valid_faces}")
-        #print(f"Invalid: {self.invalid_faces}")
+        #(f"Valid: {self.valid_faces}")
+        #(f"Invalid: {self.invalid_faces}")
         for rank, face in enumerate(self.valid_faces):
-            reward = 1 - (rank / num_valid) 
+            reward = (1 - (rank / num_valid)) * 3
             self.parent.rl_model.store_transition(
                 state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
@@ -167,15 +169,15 @@ class HumanFeedbackTrainingWizard(QWidget):
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index], add_noise=True)
+        self.last_situation_embedding = state
         state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
-        print(state_tensor)
-        self.parent.rl_model.policy.eval()  
+        self.parent.rl_model.policy.train()  
         faces = []
         with th.no_grad(): 
             for _ in range(10):
-                action, log_prob, value = self.parent.rl_model.policy.select_action(state_tensor)
+                action, log_prob, value = self.parent.rl_model.policy.select_action(state_tensor, 10.0)
                 faces.append({'aus': np.clip(action, 0, 3), 'log_prob': log_prob, 'value': value})
-        self.parent.rl_model.policy.train()  
+        print(state_tensor)
         print(faces)
         return faces
 

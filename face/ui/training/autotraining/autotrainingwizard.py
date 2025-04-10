@@ -107,14 +107,15 @@ class AutoTrainingWizard(QWidget):
         state = self.parent.manager_extraction.extract_features(situation_text, True)
 
         for face in invalid_faces:
+            reward = -0.5
             self.parent.rl_model.store_transition(
-                state=state, action=face['aus'], log_prob=face['log_prob'], reward=-1.0, value=face['value'], done=False
+                state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
-            self.parent.manager_reward.store_reward(-1.0)
+            self.parent.manager_reward.store_reward(reward)
 
         num_valid = len(valid_faces)
         for rank, face in enumerate(valid_faces):
-            reward = 1 - (rank / num_valid) 
+            reward = (1 - (rank / num_valid)) * 2
             self.parent.rl_model.store_transition(
                 state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )

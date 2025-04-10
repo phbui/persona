@@ -5,7 +5,7 @@ from torch.distributions import Categorical
 
 
 class Manager_Policy(nn.Module):
-    def __init__(self, input_dim, action_dim=20, num_categories=4, hidden_dim=128, lr=3e-4, training=True):
+    def __init__(self, input_dim, action_dim=20, num_categories=4, lr=1e-3, training=True):
         super(Manager_Policy, self).__init__()
         self.action_dim = action_dim
         self.num_categories = num_categories
@@ -23,9 +23,11 @@ class Manager_Policy(nn.Module):
 
         # Value Network (Critic)
         self.value_net = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
         )
 
         # Optimizer
@@ -34,7 +36,7 @@ class Manager_Policy(nn.Module):
     def forward(self, state):
         logits = self.policy_net(state)
         if self.training:
-            logits += th.randn_like(logits) * 0.5
+            logits += th.randn_like(logits) * 5.0
         logits = logits.view(-1, self.action_dim, self.num_categories)
         value = self.value_net(state).squeeze(-1)
         return logits, value
