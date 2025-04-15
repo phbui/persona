@@ -168,17 +168,25 @@ class HumanFeedbackTrainingWizard(QWidget):
         # print(training_data)
 
     def generate_faces(self):
-        state = self.parent.manager_extraction.extract_features(self.situations[self.current_situation_index], add_noise=True)
+        state = self.parent.manager_extraction.extract_features(
+            self.situations[self.current_situation_index]
+        )
         self.last_situation_embedding = state
-        state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
-        self.parent.rl_model.policy.train()  
+
         faces = []
-        with th.no_grad(): 
-            for _ in range(10):
-                action, log_prob, value = self.parent.rl_model.policy.select_action(state_tensor, 10.0)
-                faces.append({'aus': np.clip(action, 0, 3), 'log_prob': log_prob, 'value': value})
-        print(state_tensor)
-        print(faces)
+        for _ in range(10):
+            noisy_state = state + np.random.normal(0, 0.5, state.shape)
+            state_tensor = th.tensor(noisy_state, dtype=th.float32).unsqueeze(0)
+            dynamic_temp = max(2.0 - 0.3 * self.current_epoch, 0.1)
+            
+            action, log_prob, value = self.parent.rl_model.policy.select_action(
+                state_tensor, dynamic_temp
+            )
+            
+            faces.append({'aus': np.clip(action, 0, 3), 
+                        'log_prob': log_prob, 
+                        'value': value})
+        
         return faces
 
     def generate_face_pixmap(self, au_values, size=(200, 200)):

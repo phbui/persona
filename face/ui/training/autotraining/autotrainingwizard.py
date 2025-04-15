@@ -104,12 +104,14 @@ class AutoTrainingWizard(QWidget):
             self.parent.manager_extraction.describe_face
         )
 
-        state = self.parent.manager_extraction.extract_features(situation_text, True)
+        state = self.parent.manager_extraction.extract_features(situation_text)
 
         for face in invalid_faces:
             reward = -0.5
+            noisy_state = state + np.random.normal(0, 0.5, state.shape)
+            state_tensor = th.tensor(noisy_state, dtype=th.float32).unsqueeze(0)
             self.parent.rl_model.store_transition(
-                state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
+                state=state_tensor, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
             self.parent.manager_reward.store_reward(reward)
 
@@ -144,12 +146,13 @@ class AutoTrainingWizard(QWidget):
 
     def generate_faces(self):
         situation_text = self.situations[self.current_situation_index]
-        state = self.parent.manager_extraction.extract_features(situation_text, True)
-        state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
-        state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
+        state = self.parent.manager_extraction.extract_features(situation_text)
 
         faces = []
         for _ in range(10):
+            noisy_state = state + np.random.normal(0, 0.5, state.shape)
+            state_tensor = th.tensor(noisy_state, dtype=th.float32).unsqueeze(0)
+            state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
             action, log_prob, value = self.parent.rl_model.policy.select_action(state_tensor)
             faces.append({'aus': np.clip(action, 0, 3), 'log_prob': log_prob, 'value': value})
         return faces

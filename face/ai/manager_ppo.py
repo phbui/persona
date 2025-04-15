@@ -6,7 +6,7 @@ from ai.manager_policy import Manager_Policy
 
 
 class Manager_PPO:
-    def __init__(self, input_dim, action_dim=20, num_categories=4, gamma=0.99, clip_epsilon=0.1, gae_lambda=0.98, entropy_coef=0.5, training=True, model_path=None):
+    def __init__(self, input_dim=777, action_dim=20, num_categories=4, gamma=0.99, clip_epsilon=0.1, gae_lambda=0.98, entropy_coef=0.5, training=True, model_path=None):
         self.model_path = model_path
         self.policy = Manager_Policy(input_dim, action_dim, num_categories, training=training) 
         self.optimizer = th.optim.Adam(self.policy.parameters(), lr=3e-4)
@@ -66,7 +66,7 @@ class Manager_PPO:
 
     def update_policy(self, output_dir, batch_size=32):
         """Performs a PPO update"""
-        states = [th.tensor(state, dtype=th.float32) if isinstance(state, np.ndarray) else state for state in self.states]
+        states = [th.tensor(s, dtype=th.float32) if not isinstance(s, th.Tensor) else s for s in self.states]
         states = th.stack(states)
         actions = th.stack(self.actions)  # Convert to tensor
         log_probs_old = th.tensor(self.log_probs)
