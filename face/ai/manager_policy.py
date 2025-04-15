@@ -13,9 +13,9 @@ class Manager_Policy(nn.Module):
         self.training = training
 
         self.step = 0
-        self.epsilon_start = 1.0
         self.epsilon_end = 0.02  
-        self.epsilon_decay_steps = 1000000
+        self.epsilon_start = 1.0
+        self.epsilon_decay_steps = 25000
         self.base_temperature = 0.5 
 
         # Improved network architecture
@@ -41,6 +41,10 @@ class Manager_Policy(nn.Module):
             nn.Linear(256, 1))
 
         self.optimizer = optim.AdamW(self.parameters(), lr=lr, weight_decay=1e-4)
+
+    def set_auto(self):
+        self.epsilon_start = 0.75
+        self.epsilon_decay_steps = 50000
 
     def forward(self, state):
         logits = self.policy_net(state)

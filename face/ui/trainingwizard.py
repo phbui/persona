@@ -57,6 +57,7 @@ class TrainingWizard(QWidget):
             self.training_widget = HumanFeedbackTrainingWizard(self)
         elif self.training_mode == "auto_training":
             self.training_widget = AutoTrainingWizard(self)
+            self.rl_model.policy.set_auto()
 
         self.stacked_widget.addWidget(self.training_widget)
         self.stacked_widget.setCurrentWidget(self.training_widget)
