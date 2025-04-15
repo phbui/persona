@@ -15,7 +15,7 @@ class Manager_Policy(nn.Module):
         self.step = 0
         self.epsilon_start = 1.0
         self.epsilon_end = 0.02  
-        self.epsilon_decay_steps = 500 
+        self.epsilon_decay_steps = 1000000
         self.base_temperature = 0.5 
 
         # Improved network architecture
@@ -57,7 +57,7 @@ class Manager_Policy(nn.Module):
 
     def get_epsilon(self):
         progress = min(self.step / self.epsilon_decay_steps, 1.0)
-        epsilon = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * (1 - progress)**3
+        epsilon = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * (1 - progress)**6
         return max(epsilon, self.epsilon_end)
 
     def select_action(self, state, temperature=None):
