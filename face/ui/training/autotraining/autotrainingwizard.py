@@ -50,7 +50,7 @@ class AutoTrainingWizard(QWidget):
         self.show_epoch_selection_step()
 
     def load_situations(self):
-        file_path = "data/situations_expanded.json"
+        file_path = "data/situations.json"
         print(f"Loading situations from {file_path}.")
         if os.path.exists(file_path):
             try:

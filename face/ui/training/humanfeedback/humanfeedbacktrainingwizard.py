@@ -178,7 +178,6 @@ class HumanFeedbackTrainingWizard(QWidget):
             noisy_state = state + np.random.normal(0, 0.5, state.shape)
             state_tensor = th.tensor(noisy_state, dtype=th.float32).unsqueeze(0)
             dynamic_temp = max(2.0 - 0.3 * self.current_epoch, 0.1)
-            
             action, log_prob, value = self.parent.rl_model.policy.select_action(
                 state_tensor, dynamic_temp
             )

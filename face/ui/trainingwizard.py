@@ -52,6 +52,7 @@ class TrainingWizard(QWidget):
 
     def show_novel_generation_step(self):
         self.stacked_widget.setCurrentWidget(self.novel_generation_step)
+        self.rl_model.policy.set_exploit()
         self.novel_generation_step.run_generation()
 
     def show_training_mode_step(self):
@@ -67,7 +68,6 @@ class TrainingWizard(QWidget):
             self.training_widget = AutoTrainingWizard(self)
             self.rl_model.policy.set_auto()
         elif self.training_mode == "novel_generation":
-            self.rl_model.policy.training = False
             self.show_novel_generation_step()
             return
 

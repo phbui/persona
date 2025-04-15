@@ -86,11 +86,11 @@ class ModelSelectionStep(QWidget):
             model_name = self.rl_model_name_input.text().strip()
             model_path = os.path.join("models/rl", f"{model_name}.pth")
             self.wizard.rl_model_path = model_path
-            return Manager_PPO(input_dim=777, action_dim=20, num_categories=4, training=True)
+            return Manager_PPO(input_dim=777, action_dim=20, num_categories=4)
         
         model_path = os.path.join("models/rl", f"{selected_model}.pth")
         self.wizard.rl_model_path = model_path
-        manager_ppo = Manager_PPO(input_dim=777, action_dim=20, num_categories=4, model_path=model_path, training=True)
+        manager_ppo = Manager_PPO(input_dim=777, action_dim=20, num_categories=4, model_path=model_path)
         return manager_ppo.load_model(model_path)
 
     def load_llm_model(self, parent):

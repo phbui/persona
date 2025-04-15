@@ -6,11 +6,11 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 class Manager_Policy(nn.Module):
-    def __init__(self, input_dim, action_dim=20, num_categories=4, lr=1e-3, training=True):
+    def __init__(self, input_dim, action_dim=20, num_categories=4, lr=1e-3):
         super(Manager_Policy, self).__init__()
         self.action_dim = action_dim
         self.num_categories = num_categories
-        self.training = training
+        self.training = True
 
         self.step = 0
         self.epsilon_end = 0.02  
@@ -45,6 +45,10 @@ class Manager_Policy(nn.Module):
     def set_auto(self):
         self.epsilon_start = 0.75
         self.epsilon_decay_steps = 50000
+
+    def set_exploit(self):
+        self.epsilon_start = 0
+        self.training = False
 
     def forward(self, state):
         logits = self.policy_net(state)
