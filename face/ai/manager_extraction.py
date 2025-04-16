@@ -49,33 +49,23 @@ class Manager_Extraction:
 
         return feature_vector  # Shape: (embedding_size + 9,)
 
-    def describe_face(self, au_intensities):
+    def describe_face(au_intensities):
         # Mapping of intensity levels to descriptive terms
         intensity_descriptions = {
-            0: "no sign of",
-            1: "slight",
-            2: "moderate",
-            3: "strong"
+            0: "no activation of",
+            1: "slight activation of",
+            2: "moderate activation of",
+            3: "strong activation of"
         }
 
-        # Mapping of emotions to their corresponding AUs
-        emotion_aus = {
-            'happiness': [6, 12],
-            'sadness': [1, 4, 15],
-            'surprise': [1, 2, 5, 26],
-            'fear': [1, 2, 4, 5, 20, 26],
-            'anger': [4, 5, 7, 23],
-            'disgust': [9, 15, 16]
-        }
-
-        # Mapping of AU numbers to their descriptions
+        # Mapping of AU numbers to their muscle movement descriptions
         au_descriptions = {
             1: "inner brow raiser",
             2: "outer brow raiser",
             4: "brow lowerer",
-            5: "upper lid raiser",
+            5: "upper eyelid raiser",
             6: "cheek raiser",
-            7: "lid tightener",
+            7: "eyelid tightener",
             9: "nose wrinkler",
             12: "lip corner puller",
             15: "lip corner depressor",
@@ -86,47 +76,15 @@ class Manager_Extraction:
             43: "eyes closed"
         }
 
-        # Initialize a list to hold descriptions of active AUs
-        active_au_descriptions = []
-
-        # Iterate over each AU and its intensity
+        # Build AU-based physical description
+        movement_descriptions = []
         for au, intensity in enumerate(au_intensities, start=1):
-            if intensity > 0 and au in au_descriptions:
-                # Get the descriptive term for the intensity
-                intensity_desc = intensity_descriptions.get(intensity, 'unknown')
-                # Get the description of the AU
-                au_desc = au_descriptions[au]
-                # Append the formatted description to the list
-                active_au_descriptions.append(f"{intensity_desc} {au_desc}")
+            if au in au_descriptions:
+                desc = intensity_descriptions.get(intensity, "unknown intensity")
+                movement = au_descriptions[au]
+                movement_descriptions.append(f"{desc} the {movement}")
 
-        # Join all AU descriptions into a single string
-        au_description_str = "; ".join(active_au_descriptions)
+        if not movement_descriptions:
+            return "The face shows no visible muscle movement."
+        return "Facial movement includes: " + "; ".join(movement_descriptions) + "."
 
-        # Initialize a list to hold descriptions of emotions
-        emotion_intensity = []
-
-        # Iterate over each emotion and its corresponding AUs
-        for emotion, aus in emotion_aus.items():
-            # Get the intensities of the AUs related to the emotion
-            intensities = [au_intensities[au - 1] for au in aus if au - 1 < len(au_intensities)]
-            if intensities:
-                # Determine the minimum intensity among the relevant AUs
-                min_intensity = min(intensities)
-                # Append the intensity and emotion to the list
-                emotion_intensity.append((min_intensity, emotion))
-
-        # Sort emotions by intensity in descending order
-        emotion_intensity.sort(reverse=True, key=lambda x: x[0])
-
-        # Create a list of descriptions for each emotion based on its intensity
-        emotion_descriptions = [f"{intensity_descriptions.get(intensity, 'unknown')} {emotion}" for intensity, emotion in emotion_intensity]
-
-        # Combine emotion descriptions into a single string
-        emotion_description_str = ", ".join(emotion_descriptions)
-
-        # Construct the final description
-        if emotion_descriptions:
-            #return f"The face displays {emotion_description_str}. Specific movements: {au_description_str}."
-            return f"The face displays {emotion_description_str}."
-        else:
-            return "The face shows no discernible emotions."
