@@ -63,7 +63,8 @@ class NovelGenerationStep(QWidget):
             img_label.setPixmap(pixmap)
             img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            text_label = QLabel(f"<b>{i+1}. {situation}</b><br>{description}")
+            text_label = QLabel(f"<b>{i+1}. {situation}")
+            #text_label = QLabel(f"<b>{i+1}. {situation}</b><br>{description}")
             text_label.setWordWrap(True)
             text_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 

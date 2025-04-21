@@ -203,9 +203,9 @@ class Manager_LLM:
 
     def generate_training_text(self, character_description, situation, face_descriptions, valid_faces, invalid_faces):
         prompt = f"""
-            Analyze the Character Description, Character Situation, and 10 Generated Faces.
+            Analyze the Character Description, Character Situation, and 5 Generated Faces.
 
-            There are exactly 10 faces, labeled 0 through 9. Your task is to evaluate each one and classify it as either valid or invalid based on how well it aligns with the character description and the situation.
+            There are exactly 5 faces, labeled 0 through 9. Your task is to evaluate each one and classify it as either valid or invalid based on how well it aligns with the character description and the situation.
 
             Only respond using the exact format shown below — no extra text, explanation, or bullet points. List as many or as few indices in each category as needed.
 
@@ -255,9 +255,9 @@ class Manager_LLM:
             face_descriptions += f"{i}: {describe_face_fn(face['aus'])}\n"
         
         prompt = f"""
-            Analyze the Character Description, Character Situation, and 10 Generated Faces.
+            Analyze the Character Description, Character Situation, and 5 Generated Faces.
 
-            There are exactly 10 faces, labeled 0 through 9. Your task is to evaluate each one and classify it as either valid or invalid based on how well it aligns with the character description and the situation.
+            There are exactly 5 faces, labeled 0 through 9. Your task is to evaluate each one and classify it as either valid or invalid based on how well it aligns with the character description and the situation.
 
             Only respond using the exact format shown below — no extra text, explanation, or bullet points. List as many or as few indices in each category as needed.
 
