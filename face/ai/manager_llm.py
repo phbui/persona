@@ -141,7 +141,7 @@ class Manager_LLM:
                     full_prompts,
                     padding=True,
                     truncation=True,
-                    max_length=768,
+                    max_length=1024,
                 )
                 return model_inputs
             

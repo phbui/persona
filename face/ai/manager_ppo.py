@@ -94,7 +94,7 @@ class Manager_PPO:
                 self.policy.optimizer.zero_grad()
                 loss.backward()
                 total_norm = th.nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
-                print(f"Gradient Norm: {total_norm.item()}")
+                #print(f"Gradient Norm: {total_norm.item()}")
                 self.policy.optimizer.step()
 
         # Clear storage after update

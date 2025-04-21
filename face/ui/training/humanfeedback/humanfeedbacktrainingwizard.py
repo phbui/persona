@@ -165,7 +165,6 @@ class HumanFeedbackTrainingWizard(QWidget):
             "response": response.replace("\n", " ").strip()
         }
         self.llm_training.append(training_data)
-        print(training_data)
 
     def generate_faces(self):
         state = self.parent.manager_extraction.extract_features(
@@ -174,7 +173,7 @@ class HumanFeedbackTrainingWizard(QWidget):
         self.last_situation_embedding = state
 
         faces = []
-        for _ in range(10):
+        for _ in range(5):
             noisy_state = state + np.random.normal(0, 0.5, state.shape)
             state_tensor = th.tensor(noisy_state, dtype=th.float32).unsqueeze(0)
             dynamic_temp = max(2.0 - 0.3 * self.current_epoch, 0.1)

@@ -49,7 +49,7 @@ class Manager_Extraction:
 
         return feature_vector  # Shape: (embedding_size + 9,)
 
-    def describe_face(au_intensities):
+    def describe_face(self, au_intensities):
         # Mapping of intensity levels to descriptive terms
         intensity_descriptions = {
             0: "no activation of",
@@ -86,5 +86,5 @@ class Manager_Extraction:
 
         if not movement_descriptions:
             return "The face shows no visible muscle movement."
-        return "Facial movement includes: " + "; ".join(movement_descriptions) + "."
+        return "; ".join(movement_descriptions) + "."
 

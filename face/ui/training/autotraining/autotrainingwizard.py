@@ -82,7 +82,6 @@ class AutoTrainingWizard(QWidget):
 
         if self.current_situation_index >= len(self.situations):
             self.parent.manager_reward.end_epoch(self.current_epoch)
-            self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
             self.llm_training = []
             self.training_log_step.append_log(f"\nEpoch {self.current_epoch + 1} complete.\n")
             self.current_epoch += 1
@@ -147,7 +146,7 @@ class AutoTrainingWizard(QWidget):
         state = self.parent.manager_extraction.extract_features(situation_text)
 
         faces = []
-        for _ in range(10):
+        for _ in range(5):
             noisy_state = state + np.random.normal(0, 0.5, state.shape)
             state_tensor = th.tensor(noisy_state, dtype=th.float32).unsqueeze(0)
             state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
