@@ -43,7 +43,15 @@ class NovelGenerationStep(QWidget):
 
             action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
             aus = np.clip(action, 0, 3)
-            description = self.parent.manager_extraction.describe_face(aus)
+
+            # Generate emotion scores from AUs
+            emotion_scores = self._emotion_scores_from_aus(aus)
+            # Format emotion percentages
+            emotion_desc = ", ".join(f"{emo}: {score:.2f}" for emo, score in emotion_scores.items())
+            # Generate detailed AU description
+            au_description = self.parent.manager_extraction.describe_face(aus)
+            # Combine for final description
+            description = f"{emotion_desc} — {au_description}"
 
             face_widget = QWidget()
             face_layout = QHBoxLayout()
@@ -62,6 +70,35 @@ class NovelGenerationStep(QWidget):
             face_layout.addWidget(img_label)
             face_layout.addWidget(text_label)
             self.output_layout.addWidget(face_widget)
+
+    def _emotion_scores_from_aus(self, aus):
+        """
+        Rule-based scoring for basic emotions based on AU intensities.
+        Returns a dict mapping emotion to a 0-1 score.
+        """
+        # Normalize intensities (0-3) to 0-1
+        norm = lambda x: min(max(x / 3.0, 0.0), 1.0)
+
+        scores = {}
+        # Happiness: AU6 (index 5) & AU12 (index 11)
+        scores['Happiness'] = min(norm(aus[5]), norm(aus[11]))
+        # Sadness: AU1 (0), AU4 (3) & AU15 (14)
+        sadness_vals = [norm(aus[0]), norm(aus[3])]
+        if len(aus) > 14:
+            sadness_vals.append(norm(aus[14]))
+        scores['Sadness'] = min(sadness_vals)
+        # Anger: AU4 (3) & AU7 (6)
+        anger_vals = [norm(aus[3])]
+        if len(aus) > 6:
+            anger_vals.append(norm(aus[6]))
+        scores['Anger'] = min(anger_vals)
+        # Surprise: AU1 (0), AU2 (1) & AU5 (4)
+        scores['Surprise'] = min(norm(aus[0]), norm(aus[1]), norm(aus[4]))
+        # Neutral as inverse of strongest emotion
+        strongest = max(scores.values())
+        scores['Neutral'] = max(0.0, 1.0 - strongest)
+
+        return scores
 
     def generate_face_pixmap(self, au_values, size=(200, 200)):
         fig, ax = plt.subplots(figsize=(8, 9), dpi=400)
