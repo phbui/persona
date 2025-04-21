@@ -83,7 +83,7 @@ class AutoTrainingWizard(QWidget):
         if self.current_situation_index >= len(self.situations):
             self.parent.manager_reward.end_epoch(self.current_epoch)
             self.llm_training = []
-            self.training_log_step.append_log(f"\nEpoch {self.current_epoch + 1} complete.\n")
+            self.training_log_step.append_log(f"\nEpoch {self.current_epoch + 1} / {self.epochs  + 1} complete.\n")
             self.current_epoch += 1
             self.current_situation_index = 0
             QTimer.singleShot(100, self.run_epoch)
