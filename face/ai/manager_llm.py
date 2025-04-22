@@ -241,38 +241,32 @@ class Manager_LLM:
 
         ranked = ", ".join(map(str, ranked_face_indices))
         invalid = ", ".join(map(str, invalid_face_indices))
-        response = f"Ranked Faces: [{ranked}]\nInvalid Faces: [{invalid}]"
+        response = f"Ranked Valid Faces: [{ranked}]\nInvalid Faces: [{invalid}]"
 
         return response, prompt
 
-
     def extract_faces_from_response(self, response: str, generated_faces: list):
-        """
-        Parse the model’s answer and return
-        1. ranked_faces  – list[dict]  (best → worst)
-        2. invalid_faces – list[dict]
-        3. ranked_idx    – list[int]   (optional, keeps the order numerically)
-        """
-        # Find indices in the two lines (robust to spaces)
-        ranked_match  = re.search(r"Ranked\s*Faces\s*:\s*\[([0-9,\s]*)\]",  response, re.I)
-        invalid_match = re.search(r"Invalid\s*Faces\s*:\s*\[([0-9,\s]*)\]", response, re.I)
+        def grab_indices(label_regex: str) -> list[int]:
+            pattern = rf"{label_regex}\s*Faces\s*:\s*\[?([0-9,\s]*)\]?"
+            m = re.search(pattern, response, flags=re.I)
+            if not m:
+                return []
+            # Grab every number from the captured group
+            return [int(x) for x in re.findall(r"\d+", m.group(1))]
 
-        ranked_idx  = []
-        invalid_idx = []
+        # ranked list: first try “Ranked Valid”, then “Ranked”, then “Valid”
+        ranked_idx = (
+            grab_indices(r"Ranked\s+Valid") or
+            grab_indices(r"Ranked")         or
+            grab_indices(r"Valid")
+        )
+        # invalid list (simple)
+        invalid_idx = grab_indices(r"Invalid")
 
-        if ranked_match:
-            ranked_idx = [int(x) for x in ranked_match.group(1).split(",") if x.strip().isdigit()]
-
-        if invalid_match:
-            invalid_idx = [int(x) for x in invalid_match.group(1).split(",") if x.strip().isdigit()]
-
-        # Build face lists in the exact order supplied
         ranked_faces  = [generated_faces[i] for i in ranked_idx  if 0 <= i < len(generated_faces)]
         invalid_faces = [generated_faces[i] for i in invalid_idx if 0 <= i < len(generated_faces)]
 
         return ranked_faces, invalid_faces, ranked_idx
-
-
 
     def auto_generate_face_feedback(self, character_description, situation, generated_faces, describe_face_fn):
         face_descriptions = ""
@@ -296,7 +290,7 @@ class Manager_LLM:
             {face_descriptions}
 
             ### Response Format (STRICT):
-            Valid Faces: [#, #, #, #, #]
+            Ranked Valid Faces: [#, #, #, #, #]
             Invalid Faces: [#, #, #, #, #]
         """
 
