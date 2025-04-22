@@ -21,7 +21,7 @@ load_dotenv()
 secret_key = os.getenv('hf_key')
 
 class Manager_LLM:
-    def __init__(self, parent=None, model_name="NousResearch/Nous-Hermes-2-Mistral-7B-DPO"):
+    def __init__(self, parent=None, model_name="meta-llama/Meta-Llama-3-8B-Instruct", training=True):
         self.parent = parent
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -33,7 +33,8 @@ class Manager_LLM:
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type='nf4',
-            bnb_4bit_compute_dtype=torch.float16
+            bnb_4bit_compute_dtype=torch.float16,
+            llm_int8_enable_fp32_cpu_offload=True 
         )
         
         # Initialize tokenizer
@@ -46,10 +47,10 @@ class Manager_LLM:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         
         # Model initialization
-        self._init_model()
+        self._init_model(training)
         self.streamer = TextStreamer(self.tokenizer)
         
-    def _init_model(self):
+    def _init_model(self, training=True):
         """Initialize model with support for existing checkpoints"""
         print(f"Loading base model {self.model_name}")
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -59,10 +60,10 @@ class Manager_LLM:
             device_map="auto",
             attn_implementation="flash_attention_2",
             torch_dtype=torch.float16,
-            max_memory={0: "15GiB"} 
         )
-        self.model = prepare_model_for_kbit_training(self.model)
-        self._apply_qlora()
+        if training:
+            self.model = prepare_model_for_kbit_training(self.model)
+            self._apply_qlora() 
 
     def _apply_qlora(self):
         """Apply QLoRA configuration"""
@@ -180,7 +181,7 @@ class Manager_LLM:
             self.toggle_mode(training=False)
             return loss
 
-    def generate_response(self, prompt, max_new_tokens=48):
+    def generate_response(self, prompt, max_new_tokens=48, temperature=0.3, top_p=0.9):
         chat_prompt = f"<s>[INST] {prompt.strip()} [/INST]"
 
         inputs = self.tokenizer(
@@ -193,7 +194,9 @@ class Manager_LLM:
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                do_sample=False,
+                do_sample=True,              
+                temperature=temperature,      
+                top_p=top_p,                 
                 pad_token_id=self.tokenizer.eos_token_id,
                 repetition_penalty=1.1,
                 eos_token_id=self.tokenizer.eos_token_id
@@ -201,53 +204,75 @@ class Manager_LLM:
 
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
 
-    def generate_training_text(self, character_description, situation, face_descriptions, valid_faces, invalid_faces):
-        prompt = f"""
-            Analyze the Character Description, Character Situation, and 5 Generated Faces.
 
-            There are exactly 5 faces, labeled 0 through 9. Your task is to evaluate each one and classify it as either valid or invalid based on how well it aligns with the character description and the situation.
+    def generate_training_text(
+        self,
+        character_description: str,
+        situation: str,
+        face_descriptions: str,
+        ranked_face_indices: list[int],
+        invalid_face_indices: list[int],
+    ):
+        user_msg = f"""
+        Analyze the Character Description, Character Situation, and 5 Generated Faces.
 
-            Only respond using the exact format shown below — no extra text, explanation, or bullet points. List as many or as few indices in each category as needed.
+        Output **exactly two lines**:
+        Ranked Faces: [a, b, c, d, e]      # all valid faces, best → worst
+        Invalid Faces: [i, j]              # any indices that are invalid
 
-            ### Character Description:
-            {character_description}
+        ### Character Description:
+        {character_description}
 
-            ### Character Situation:
-            {situation}
+        ### Character Situation:
+        {situation}
 
-            ### Generated Faces:
-            {face_descriptions}
+        ### Generated Faces:
+        {face_descriptions}
+        """.strip()
 
-            ### Response Format (STRICT):
-            Valid Faces: [#, #, #, #, #]
-            Invalid Faces: [#, #, #, #, #]
-        """
-            
-        valid_faces = f"Valid Faces:\n{valid_faces}"
-        invalid_faces = f"Invalid Faces:\n{invalid_faces}"
+        prompt = (
+            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
+            "You are a helpful assistant that always follows the output format exactly.\n"
+            "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
+            f"{user_msg}\n"
+            "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
+            "Ranked Faces: ["
+        )
 
-        response = valid_faces + "\n" + invalid_faces
+        ranked = ", ".join(map(str, ranked_face_indices))
+        invalid = ", ".join(map(str, invalid_face_indices))
+        response = f"Ranked Faces: [{ranked}]\nInvalid Faces: [{invalid}]"
+
         return response, prompt
 
-    def extract_faces_from_response(self, response, generated_faces):
-        valid_faces = []
-        invalid_faces = []
 
-        total_indices = list(range(len(generated_faces)))
-        valid_indices = []
+    def extract_faces_from_response(self, response: str, generated_faces: list):
+        """
+        Parse the model’s answer and return
+        1. ranked_faces  – list[dict]  (best → worst)
+        2. invalid_faces – list[dict]
+        3. ranked_idx    – list[int]   (optional, keeps the order numerically)
+        """
+        # Find indices in the two lines (robust to spaces)
+        ranked_match  = re.search(r"Ranked\s*Faces\s*:\s*\[([0-9,\s]*)\]",  response, re.I)
+        invalid_match = re.search(r"Invalid\s*Faces\s*:\s*\[([0-9,\s]*)\]", response, re.I)
 
-        valid_match = re.search(r"Valid\s*Faces\s*:\s*\[([0-9,\s]*)\]", response)
-        if valid_match:
-            try:
-                valid_indices = [int(x.strip()) for x in valid_match.group(1).split(",") if x.strip().isdigit()]
-                valid_faces = [generated_faces[i] for i in valid_indices if 0 <= i < len(generated_faces)]
-            except Exception as e:
-                print("Failed to parse valid faces:", e)
+        ranked_idx  = []
+        invalid_idx = []
 
-        invalid_indices = [i for i in total_indices if i not in valid_indices]
-        invalid_faces = [generated_faces[i] for i in invalid_indices]
+        if ranked_match:
+            ranked_idx = [int(x) for x in ranked_match.group(1).split(",") if x.strip().isdigit()]
 
-        return valid_faces, invalid_faces
+        if invalid_match:
+            invalid_idx = [int(x) for x in invalid_match.group(1).split(",") if x.strip().isdigit()]
+
+        # Build face lists in the exact order supplied
+        ranked_faces  = [generated_faces[i] for i in ranked_idx  if 0 <= i < len(generated_faces)]
+        invalid_faces = [generated_faces[i] for i in invalid_idx if 0 <= i < len(generated_faces)]
+
+        return ranked_faces, invalid_faces, ranked_idx
+
+
 
     def auto_generate_face_feedback(self, character_description, situation, generated_faces, describe_face_fn):
         face_descriptions = ""
@@ -276,7 +301,8 @@ class Manager_LLM:
         """
 
         response = self.generate_response(prompt)
-        valid_faces, invalid_faces = self.extract_faces_from_response(response, generated_faces)
+        valid_faces, invalid_faces, _ = self.extract_faces_from_response(response, generated_faces)
+        print(f"valid: {valid_faces} | invalid: {invalid_faces}")
 
         return valid_faces, invalid_faces, response
 
@@ -306,7 +332,7 @@ if __name__ == "__main__":
         print("Invalid selection")
         sys.exit(1)
     
-    manager = Manager_LLM()
+    manager = Manager_LLM(training=False)
     manager.load_model(os.path.join(models_dir, selected_model))
     
     print("Chat interface (type 'exit' to quit)")

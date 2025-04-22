@@ -164,7 +164,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             "prompt": prompt.replace("\n", " ").strip(),
             "response": response.replace("\n", " ").strip()
         }
-        print(training_data)
+        #print(training_data)
         self.llm_training.append(training_data)
 
     def generate_faces(self):

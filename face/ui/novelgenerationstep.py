@@ -57,7 +57,7 @@ class NovelGenerationStep(QWidget):
             face_layout = QHBoxLayout()
             face_widget.setLayout(face_layout)
 
-            pixmap = self.generate_face_pixmap(aus)
+            pixmap = self.generate_face_pixmap(aus, index=i)
 
             img_label = QLabel()
             img_label.setPixmap(pixmap)
@@ -101,7 +101,7 @@ class NovelGenerationStep(QWidget):
 
         return scores
 
-    def generate_face_pixmap(self, au_values, size=(200, 200)):
+    def generate_face_pixmap(self, au_values, size=(200, 200), index=None):
         fig, ax = plt.subplots(figsize=(8, 9), dpi=400)
         plot_face(ax=ax, au=au_values)
         ax.set_xticks([])
@@ -111,6 +111,13 @@ class NovelGenerationStep(QWidget):
         buf = BytesIO()
         fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0, dpi=400, facecolor="white")
         buf.seek(0)
+
+        # Save to file
+        if index is not None:
+            save_path = f"data/generated/face_{index + 1}.png"
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            with open(save_path, "wb") as f:
+                f.write(buf.getvalue())
 
         pixmap = QPixmap()
         pixmap.loadFromData(buf.getvalue(), "PNG")
