@@ -217,7 +217,7 @@ class Manager_LLM:
         Analyze the Character Description, Character Situation, and 5 Generated Faces.
 
         Output **exactly two lines**:
-        Ranked Faces: [a, b, c, d, e]      # all valid faces, best → worst
+        Valid Faces: [a, b, c, d, e]      # all valid faces, best → worst
         Invalid Faces: [i, j]              # any indices that are invalid
 
         ### Character Description:
@@ -236,32 +236,27 @@ class Manager_LLM:
             "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
             f"{user_msg}\n"
             "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
-            "Ranked Faces: ["
+            "Valid Faces: ["
         )
 
         ranked = ", ".join(map(str, ranked_face_indices))
         invalid = ", ".join(map(str, invalid_face_indices))
-        response = f"Ranked Valid Faces: [{ranked}]\nInvalid Faces: [{invalid}]"
+        response = f"{ranked}]\nInvalid Faces: [{invalid}]"
 
         return response, prompt
 
     def extract_faces_from_response(self, response: str, generated_faces: list):
-        def grab_indices(label_regex: str) -> list[int]:
-            pattern = rf"{label_regex}\s*Faces\s*:\s*\[?([0-9,\s]*)\]?"
-            m = re.search(pattern, response, flags=re.I)
+        def grab(label: str) -> list[int]:
+            # Matches  e.g.  "Valid Faces: [2, 4]"  or "Invalid Faces: 0 1"
+            pat = rf"{label}\s*Faces\s*:\s*\[?([0-9,\s]*)\]?"
+            m   = re.search(pat, response, flags=re.I)
             if not m:
                 return []
-            # Grab every number from the captured group
+            # collect every integer found in the captured group
             return [int(x) for x in re.findall(r"\d+", m.group(1))]
 
-        # ranked list: first try “Ranked Valid”, then “Ranked”, then “Valid”
-        ranked_idx = (
-            grab_indices(r"Ranked\s+Valid") or
-            grab_indices(r"Ranked")         or
-            grab_indices(r"Valid")
-        )
-        # invalid list (simple)
-        invalid_idx = grab_indices(r"Invalid")
+        ranked_idx  = grab("Valid")    # “Valid Faces: …” holds the ranked list
+        invalid_idx = grab("Invalid")  # “Invalid Faces: …”
 
         ranked_faces  = [generated_faces[i] for i in ranked_idx  if 0 <= i < len(generated_faces)]
         invalid_faces = [generated_faces[i] for i in invalid_idx if 0 <= i < len(generated_faces)]
@@ -273,12 +268,12 @@ class Manager_LLM:
         for i, face in enumerate(generated_faces):
             face_descriptions += f"{i}: {describe_face_fn(face['aus'])}\n"
         
-        prompt = f"""
+        user_msg = f"""
             Analyze the Character Description, Character Situation, and 5 Generated Faces.
 
-            There are exactly 5 faces, labeled 0 through 9. Your task is to evaluate each one and classify it as either valid or invalid based on how well it aligns with the character description and the situation.
-
-            Only respond using the exact format shown below — no extra text, explanation, or bullet points. List as many or as few indices in each category as needed.
+            Output **exactly two lines**:
+            Valid Faces: [a, b, c, d, e]      # all valid faces, best → worst
+            Invalid Faces: [i, j]              # any indices that are invalid
 
             ### Character Description:
             {character_description}
@@ -288,14 +283,20 @@ class Manager_LLM:
 
             ### Generated Faces:
             {face_descriptions}
+            """.strip()
 
-            ### Response Format (STRICT):
-            Ranked Valid Faces: [#, #, #, #, #]
-            Invalid Faces: [#, #, #, #, #]
-        """
+        prompt = (
+            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
+            "You are a helpful assistant that always follows the output format exactly.\n"
+            "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
+            f"{user_msg}\n"
+            "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
+            "Valid Faces: ["
+        )
 
         response = self.generate_response(prompt)
         valid_faces, invalid_faces, _ = self.extract_faces_from_response(response, generated_faces)
+        print(f"response: {response}")
         print(f"valid: {valid_faces} | invalid: {invalid_faces}")
 
         return valid_faces, invalid_faces, response
