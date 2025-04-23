@@ -181,11 +181,9 @@ class Manager_LLM:
             self.toggle_mode(training=False)
             return loss
 
-    def generate_response(self, prompt, max_new_tokens=48, temperature=0.3, top_p=0.9):
-        chat_prompt = f"<s>[INST] {prompt.strip()} [/INST]"
-
+    def generate_response(self, prompt, max_new_tokens=32, temperature=0.3, top_p=0.9):
         inputs = self.tokenizer(
-            chat_prompt,
+            prompt,
             return_tensors="pt",
             return_attention_mask=True
         ).to(self.device)
@@ -203,7 +201,6 @@ class Manager_LLM:
             )
 
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-
 
     def generate_training_text(
         self,
@@ -241,7 +238,7 @@ class Manager_LLM:
 
         ranked = ", ".join(map(str, ranked_face_indices))
         invalid = ", ".join(map(str, invalid_face_indices))
-        response = f"{ranked}]\nInvalid Faces: [{invalid}]"
+        response = f"{ranked}]\nInvalid Faces: [{invalid}]<|eot_id|>"
 
         return response, prompt
 
