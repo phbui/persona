@@ -43,7 +43,7 @@ class Manager_Policy(nn.Module):
         self.optimizer = optim.AdamW(self.parameters(), lr=lr, weight_decay=1e-4)
 
     def set_auto(self):
-        self.epsilon_decay_steps = 10000
+        self.epsilon_decay_steps = 13500 
 
     def set_exploit(self):
         self.epsilon_start = 0
