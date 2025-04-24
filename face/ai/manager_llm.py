@@ -191,7 +191,7 @@ class Manager_LLM:
             )
 
             train_output = trainer.train()
-            best_val     = train_output.metrics.get("eval_loss")
+            best_val = train_output.metrics.get("eval_loss")
             print(f"Best validation loss: {best_val:.4f}")
 
             self.save_model(output_dir)

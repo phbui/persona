@@ -20,20 +20,21 @@ class Manager_Loss:
                 writer = csv.writer(file)
                 writer.writerow(["epoch", "loss"])  # CSV Header
 
-    def store_loss(self, epoch, loss):
+    def store_loss(self, epoch, losses):
         """
         Store loss for the current training step.
         """
-        self._save_to_csv(epoch, loss)
+        for loss in losses:
+            self._save_to_csv(epoch, loss)
 
-    def _save_to_csv(self, epoch, avg_loss):
+    def _save_to_csv(self, epoch, loss):
         """
         Save the epoch's loss to a CSV file.
         """
         with open(self.save_path, mode="a", newline="") as file:
             writer = csv.writer(file)
-            writer.writerow([epoch, avg_loss])
-        print(f"Saved epoch {epoch} loss: {avg_loss:.4f}")
+            writer.writerow([epoch, loss])
+        print(f"Saved epoch {epoch} loss: {loss:.4f}")
 
     def load_losses(self):
         """

@@ -13,9 +13,9 @@ class Manager_Policy(nn.Module):
         self.training = True
 
         self.step = 0
-        self.epsilon_end = 0.1  
-        self.epsilon_start = 1
-        self.epsilon_decay_steps = 25000
+        self.epsilon_end = 0.15  
+        self.epsilon_start = 1.0
+        self.epsilon_decay_steps = 6000
         self.base_temperature = 0.5 
 
         # Improved network architecture
@@ -43,7 +43,9 @@ class Manager_Policy(nn.Module):
         self.optimizer = optim.AdamW(self.parameters(), lr=lr, weight_decay=1e-4)
 
     def set_auto(self):
-        self.epsilon_decay_steps = 13500 
+        print("Policy in automated training mode.")
+        self.epsilon_decay_steps = 18000 
+        self.epsilon_start = 0.5
 
     def set_exploit(self):
         self.epsilon_start = 0
@@ -76,7 +78,6 @@ class Manager_Policy(nn.Module):
         action = dist.sample()
         log_prob = dist.log_prob(action).sum(dim=-1)
         epsilon = self.get_epsilon()
-        print(f"Epsilon: {epsilon}")
         if self.training and random.random() < epsilon:
             noise = th.randn_like(logits) * 2.0
             noisy_logits = logits + noise * epsilon
