@@ -68,6 +68,7 @@ class AutoTrainingWizard(QWidget):
 
     def post_epoch_step(self):
         self.current_epoch = 0
+        self.epochs -= 1
         self.current_situation_index = 0
         self.llm_training = []
         self.training_log_step.reset()
@@ -81,6 +82,7 @@ class AutoTrainingWizard(QWidget):
             return
 
         if self.current_situation_index >= len(self.situations):
+            self.parent.rl_model.update_policy(self.parent.rl_model_path)
             self.parent.manager_reward.end_epoch(self.current_epoch)
             self.llm_training = []
             self.training_log_step.append_log(f"\nEpoch {self.current_epoch + 1} / {self.epochs  + 1} complete.\n")
@@ -106,7 +108,7 @@ class AutoTrainingWizard(QWidget):
         state = self.parent.manager_extraction.extract_features(situation_text)
 
         for face in invalid_faces:
-            reward = -0.5
+            reward = -0.2
             self.parent.rl_model.store_transition(
                 state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
@@ -114,7 +116,7 @@ class AutoTrainingWizard(QWidget):
 
         num_valid = len(valid_faces)
         for rank, face in enumerate(valid_faces):
-            reward = (1 - (rank / num_valid)) * 2
+            reward = (1 - (rank / num_valid)) * 3
             self.parent.rl_model.store_transition(
                 state=state, action=face['aus'], log_prob=face['log_prob'], reward=reward, value=face['value'], done=False
             )
@@ -126,8 +128,6 @@ class AutoTrainingWizard(QWidget):
         self.training_log_step.append_log(
             f"[Epoch {self.current_epoch + 1}, Episode {self.current_situation_index + 1} | Situation: {self.situations[self.current_situation_index]}, Valid: {num_valid}] {episode_reward:.2f}"
         )
-
-        self.parent.rl_model.update_policy(self.parent.rl_model_path)
         self.current_situation_index += 1
         QTimer.singleShot(100, self.run_epoch)
 

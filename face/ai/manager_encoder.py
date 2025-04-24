@@ -67,6 +67,7 @@ class Manager_Encoder():
                 hidden_states = encoder_outputs.last_hidden_state  # Shape: (1, seq_len, hidden_size)
 
                 if hidden_states is None:
+                    print("Zero vector detected.")
                     return [0.0] * self.model.config.d_model  # Fallback to zero vector
 
                 pooled = torch.mean(hidden_states, dim=1)  # Shape: (1, hidden_size)

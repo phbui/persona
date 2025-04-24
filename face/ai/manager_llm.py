@@ -8,6 +8,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
     DataCollatorForLanguageModeling,
+        EarlyStoppingCallback,
     BitsAndBytesConfig,
     TextStreamer
 )
@@ -16,6 +17,7 @@ from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_t
 from dotenv import load_dotenv
 from copy import deepcopy
 import traceback
+
 
 load_dotenv()
 secret_key = os.getenv('hf_key')
@@ -125,61 +127,82 @@ class Manager_LLM:
                 self._apply_qlora()
         return self
 
-    def fine_tune(self, training_data, output_dir="models/llm/finetuned_llm"):
-        """Fine-tuning implementation with original parameters"""
+    def fine_tune(
+        self,
+        training_data,
+        output_dir: str = "models/llm/finetuned_llm",
+        num_epochs: int = 10,
+        val_split: float = 0.1,
+    ):
+        """Fine-tune the LLM on HF comparisons and monitor validation loss."""
         self.toggle_mode(training=True)
-        loss = None
+        best_val = None
+
         try:
-            print("Starting fine-tuning...")
-            train_dataset = Dataset.from_list(training_data)
-                                                                    
+            print("Starting fine-tuning …")
+
+            raw_ds   = Dataset.from_list(training_data)
+            ds_split = raw_ds.train_test_split(test_size=val_split, seed=42)
+            train_ds, val_ds = ds_split["train"], ds_split["test"]
+
             def tokenize_fn(examples):
-                prompts = examples["prompt"]
-                responses = examples["response"]
-                full_prompts = [f"<s>[INST] {p.strip()} [/INST] {r.strip()}</s>" for p, r in zip(prompts, responses)]
-                
-                model_inputs = self.tokenizer(
+                full_prompts = [
+                    f"<s>[INST] {p.strip()} [/INST] {r.strip()}</s>"
+                    for p, r in zip(examples["prompt"], examples["response"])
+                ]
+                return self.tokenizer(
                     full_prompts,
                     padding=True,
                     truncation=True,
                     max_length=1024,
                 )
-                return model_inputs
-            
-            tokenized_dataset = train_dataset.map(tokenize_fn, batched=True, remove_columns=["prompt", "response"])
-            tokenized_dataset.set_format("torch", columns=["input_ids", "attention_mask"])
-            
+
+            train_tok = train_ds.map(tokenize_fn, batched=True,
+                                    remove_columns=["prompt", "response"])
+            val_tok   = val_ds.map(tokenize_fn, batched=True,
+                                remove_columns=["prompt", "response"])
+
+            train_tok.set_format("torch", columns=["input_ids", "attention_mask"])
+            val_tok.set_format("torch", columns=["input_ids", "attention_mask"])
+
             training_args = TrainingArguments(
-                output_dir=output_dir,
-                num_train_epochs=1,
-                per_device_train_batch_size=1,
-                save_strategy="no",
-                logging_dir=f"{output_dir}/logs",
-                remove_unused_columns=True,
+                output_dir               = output_dir,
+                num_train_epochs         = num_epochs,
+                per_device_train_batch_size = 1,
+                evaluation_strategy      = "epoch",
+                save_strategy            = "epoch",
+                load_best_model_at_end   = True,
+                metric_for_best_model    = "eval_loss",
+                greater_is_better        = False,
+                remove_unused_columns    = True,
             )
-            
+
             trainer = Trainer(
-                model=self.model,
-                args=training_args,
-                train_dataset=tokenized_dataset,
-                data_collator=DataCollatorForLanguageModeling(self.tokenizer, pad_to_multiple_of=8, mlm=False)
+                model         = self.model,
+                args          = training_args,
+                train_dataset = train_tok,
+                eval_dataset  = val_tok,
+                data_collator = DataCollatorForLanguageModeling(
+                                    self.tokenizer,
+                                    pad_to_multiple_of=8,
+                                    mlm=False),
+                callbacks     = [EarlyStoppingCallback(
+                                    early_stopping_patience=2)]
             )
-                
+
             train_output = trainer.train()
-            del trainer
-            torch.cuda.empty_cache()
-            import gc
-            gc.collect()
+            best_val     = train_output.metrics.get("eval_loss")
+            print(f"Best validation loss: {best_val:.4f}")
+
             self.save_model(output_dir)
-            loss = train_output.training_loss
-            print("Training output:", train_output)
-            print("Training loss:", train_output.training_loss)
+
         except Exception as e:
             print("Trainer crashed:", e)
             traceback.print_exc()
+
         finally:
             self.toggle_mode(training=False)
-            return loss
+            return best_val
 
     def generate_response(self, prompt, max_new_tokens=72, temperature=0.3, top_p=0.9):
         inputs = self.tokenizer(

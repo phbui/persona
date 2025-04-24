@@ -41,6 +41,7 @@ class NovelGenerationStep(QWidget):
             state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
             state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
 
+            self.parent.rl_model.policy.training=False
             action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
             aus = np.clip(action, 0, 3)
 
