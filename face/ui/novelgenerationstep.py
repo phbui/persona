@@ -35,13 +35,14 @@ class NovelGenerationStep(QWidget):
         with open(file_path, "r", encoding="utf-8") as f:
             situations = json.load(f).get("situations", [])
 
+        self.parent.rl_model.policy.set_exploit()
+
         for i, situation in enumerate(situations):
             state = self.parent.manager_extraction.extract_features(situation)
             state += np.random.normal(0, 0.5, state.shape)
             state_tensor = th.tensor(state, dtype=th.float32).unsqueeze(0)
             state_tensor = state_tensor.to(next(self.parent.rl_model.policy.parameters()).device)
 
-            self.parent.rl_model.policy.training=False
             action, _, _ = self.parent.rl_model.policy.select_action(state_tensor)
             aus = np.clip(action, 0, 3)
 

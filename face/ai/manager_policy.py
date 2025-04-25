@@ -14,8 +14,8 @@ class Manager_Policy(nn.Module):
 
         self.step = 0
         self.epsilon_end = 0.15  
-        self.epsilon_start = 1.0
-        self.epsilon_decay_steps = 6000
+        self.epsilon_start = 1.0 # hf
+        self.epsilon_decay_steps = 6000 # hf
         self.base_temperature = 0.5 
 
         # Improved network architecture
@@ -44,10 +44,13 @@ class Manager_Policy(nn.Module):
 
     def set_auto(self):
         print("Policy in automated training mode.")
-        self.epsilon_decay_steps = 18000 
-        self.epsilon_start = 0.5
+        self.epsilon_decay_steps = 36000 # llm
+        self.epsilon_start = 1.0 # llm
+        # self.epsilon_decay_steps = 18000 # hf + llm
+        # self.epsilon_start = 0.5 # hf + llm
 
     def set_exploit(self):
+        print("Policy in exploitation mode.")
         self.epsilon_start = 0
         self.epsilon_end = 0
         self.training = False

@@ -101,30 +101,49 @@ class Manager_LLM:
         self.tokenizer.save_pretrained(save_path)
         print(f"Saved model to {save_path}")
 
-    def load_model(self, load_path):
-        """Load model with adapter support"""
-        if os.path.isdir(load_path):
-            try:
-                self.tokenizer = AutoTokenizer.from_pretrained(load_path)
-            except Exception as e:
-                print(f"Using base tokenizer: {e}")
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, token=secret_key)
+    def load_model(self, model_dir: str):
+        ckpts = [
+            d for d in os.listdir(model_dir)
+            if os.path.isdir(os.path.join(model_dir, d))
+            and re.fullmatch(r"checkpoint-(\d+)", d)
+        ]
+        if ckpts:
+            ckpts.sort(key=lambda d: int(d.split("-",1)[1]))
+            last_ckpt = ckpts[-1]
+            load_path = os.path.join(model_dir, last_ckpt)
+            print(f"Loading adapter from checkpoint: {last_ckpt}")
+        else:
+            load_path = model_dir
+            print(f"No checkpoints found, loading from top-level: {model_dir}")
 
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                token=secret_key,
-                quantization_config=self.quant_config,
-                device_map="auto",
-                torch_dtype=torch.float16
+        cfg_file = os.path.join(load_path, "adapter_config.json")
+        if not os.path.isfile(cfg_file):
+            raise ValueError(
+                f"Can't find adapter_config.json in '{load_path}'.\n"
+                "Did you save your LoRA adapters there?"
             )
 
-            self.model = prepare_model_for_kbit_training(self.model)
-            
-            adapter_path = os.path.join(load_path, "adapter_model.safetensors")
-            if os.path.exists(adapter_path):
-                self.model = PeftModel.from_pretrained(self.model, load_path)
-            else:
-                self._apply_qlora()
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name,
+            token=secret_key,
+            padding_side="left"
+        )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_name,
+            token=secret_key,
+            quantization_config=self.quant_config,
+            device_map="auto",
+            attn_implementation="flash_attention_2",
+            torch_dtype=torch.float16,
+        )
+        self.model = prepare_model_for_kbit_training(self.model)
+
+        self.model = PeftModel.from_pretrained(self.model, load_path)
+        print(f"Loaded finetuned LORA from {load_path}")
+
         return self
 
     def fine_tune(
