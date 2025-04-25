@@ -1,71 +1,68 @@
 import os
-import csv
-import numpy as np
+import re
+import json
 import matplotlib.pyplot as plt
 
+def load_best_metrics_for_model(model_path):
+    ckpts = [
+        d for d in os.listdir(model_path)
+        if os.path.isdir(os.path.join(model_path, d))
+        and re.fullmatch(r"checkpoint-(\d+)", d)
+    ]
+    ckpts.sort(key=lambda d: int(d.split("-", 1)[1]))
 
-class Manager_Loss:
-    def __init__(self, save_path="data/loss.csv"):
-        """
-        Manages storing and processing training loss values.
-        - Stores loss per step.
-        - Computes average loss per epoch.
-        - Saves data to CSV.
-        """
-        self.save_path = save_path
+    nums = []
+    metrics = []
+    for ckpt in ckpts:
+        state_file = os.path.join(model_path, ckpt, "trainer_state.json")
+        if not os.path.isfile(state_file):
+            continue
+        with open(state_file, "r") as f:
+            state = json.load(f)
+        best = state.get("best_metric")
+        if best is None:
+            continue
+        nums.append(int(ckpt.split("-", 1)[1]))
+        metrics.append(best)
 
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if not os.path.exists(save_path):
-            with open(save_path, mode="w", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow(["epoch", "loss"])  # CSV Header
-
-    def store_loss(self, epoch, losses):
-        """
-        Store loss for the current training step.
-        """
-        for loss in losses:
-            self._save_to_csv(epoch, loss)
-
-    def _save_to_csv(self, epoch, loss):
-        """
-        Save the epoch's loss to a CSV file.
-        """
-        with open(self.save_path, mode="a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([epoch, loss])
-        print(f"Saved epoch {epoch} loss: {loss:.4f}")
-
-    def load_losses(self):
-        """
-        Load saved loss values from the CSV file.
-        """
-        epochs, losses = [], []
-        if os.path.exists(self.save_path):
-            with open(self.save_path, mode="r") as file:
-                reader = csv.reader(file)
-                next(reader)  # Skip header
-                for row in reader:
-                    epochs.append(int(row[0]))
-                    losses.append(float(row[1]))
-        return epochs, losses
-
+    return nums, metrics
 
 if __name__ == "__main__":
-    """
-    If this file is run directly, it will plot the average loss over epochs.
-    """
-    manager_loss = Manager_Loss()
-    epochs, losses = manager_loss.load_losses()
+    models_root = "models/llm"
+    model_names = [
+        d for d in os.listdir(models_root)
+        if os.path.isdir(os.path.join(models_root, d))
+    ]
+    if not model_names:
+        print("No models found in", models_root)
+        exit(1)
 
-    if epochs and losses:
-        plt.figure(figsize=(8, 5))
-        plt.plot(epochs, losses, marker="o", linestyle="-", color="r", label="Average Loss")
-        plt.xlabel("Epoch")
-        plt.ylabel("Average Loss")
-        plt.title("Loss Over Training Epochs")
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-    else:
-        print("No loss data found.")
+    print("Available models:")
+    for idx, name in enumerate(model_names):
+        print(f"[{idx}] {name}")
+    sel = input("Select model by number: ")
+    try:
+        sel = int(sel)
+        model_name = model_names[sel]
+    except (ValueError, IndexError):
+        print("Invalid selection.")
+        exit(1)
+
+    model_path = os.path.join(models_root, model_name)
+    print(f"\nLoading checkpoints for model: {model_name}\n")
+
+    checkpoints, best_metrics = load_best_metrics_for_model(model_path)
+    if not checkpoints:
+        print("No checkpoints or no best_metric found.")
+        exit(1)
+
+    print(f"Checkpoints: {checkpoints}")
+    print(f"Best Metrics: {best_metrics}")
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(checkpoints, best_metrics, marker="o", linestyle="-")
+    plt.xlabel("Checkpoint Number")
+    plt.ylabel("Best Metric")
+    plt.title(f"Best Metric over Checkpoints for Fine-Tuned LLM'")
+    plt.grid(True)
+    plt.show()

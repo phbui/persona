@@ -80,8 +80,7 @@ class HumanFeedbackTrainingWizard(QWidget):
             self.current_epoch += 1
             self.current_situation_index = 0
             if self.current_epoch >= self.epochs:
-                loss = self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
-                self.parent.manager_loss.store_loss(self.current_epoch, loss)
+                self.parent.llm_model.fine_tune(self.llm_training, self.parent.llm_model_path)
                 print("Training complete.")
                 sys.exit(0)
                 return

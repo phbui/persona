@@ -4,7 +4,6 @@ from ui.steps.trainingmodestep import TrainingModeStep
 from ui.training.humanfeedback.humanfeedbacktrainingwizard import HumanFeedbackTrainingWizard
 from ui.training.autotraining.autotrainingwizard import AutoTrainingWizard
 from ui.training.manager_rewards import Manager_Reward
-from ui.training.manager_loss import Manager_Loss
 from ai.manager_extraction import Manager_Extraction
 from ui.novelgenerationstep import NovelGenerationStep
 
@@ -35,7 +34,6 @@ class TrainingWizard(QWidget):
         self.auto_training = AutoTrainingWizard(self)
         self.novel_generation_step = NovelGenerationStep(self)
         self.manager_reward = Manager_Reward()
-        self.manager_loss = Manager_Loss()
 
         self.stacked_widget.addWidget(self.character_description_step)
         self.stacked_widget.addWidget(self.model_selection_step)

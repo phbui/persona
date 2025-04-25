@@ -168,13 +168,17 @@ class Manager_LLM:
             training_args = TrainingArguments(
                 output_dir               = output_dir,
                 num_train_epochs         = num_epochs,
-                per_device_train_batch_size = 1,
                 evaluation_strategy      = "epoch",
                 save_strategy            = "epoch",
                 load_best_model_at_end   = True,
                 metric_for_best_model    = "eval_loss",
                 greater_is_better        = False,
                 remove_unused_columns    = True,
+                per_device_train_batch_size = 2,     
+                dataloader_num_workers   = 4,          
+                dataloader_pin_memory    = True,        
+                gradient_accumulation_steps = 1,     
+                fp16                     = True,                          
             )
 
             trainer = Trainer(
@@ -192,7 +196,7 @@ class Manager_LLM:
 
             train_output = trainer.train()
             best_val = train_output.metrics.get("eval_loss")
-            print(f"Best validation loss: {best_val:.4f}")
+            print(f"train_output")
 
             self.save_model(output_dir)
 
