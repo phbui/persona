@@ -1,34 +1,52 @@
-# Persona: A RL NPC Dialogue System
+# Persona: Automatic NPC Generation Tool
 
-A reinforcement learning (RL) driven dialogue system for generating immersive NPC responses. This system dynamically updates an NPC's internal mental state based on player input, dialogue embeddings, and emotion analysis. It uses large language models (LLMs) for response generation and multiple reward signals to guide the RL policy.
+**Persona** is a work-in-progress automatic NPC generation tool divided into two complementary modules: **Face** and **Speech**. These modules collaboratively produce immersive dialogues and expressive facial interactions for NPCs.
 
-## Features
+---
 
-- **Dynamic Mental State:** Continuously updates based on player input and context.
-- **Multi-modal Input:** Combines dialogue embeddings (via SentenceTransformer) and emotion analysis.
-- **RL-Driven Adaptation:** Uses Proximal Policy Optimization (PPO) to learn optimal state updates for character-consistent responses.
-- **LLM Integration:** Generates natural, character-driven dialogue responses.
+## Face: Human-Feedback Driven Facial Expression Generator
 
-## Quick Start
+The **Face** module uses reinforcement learning with human feedback (RLHF) and a fine-tuned LLM to generate expressive, character-specific facial expressions via Facial Action Units (AUs).
 
-1. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Features
+- **Human-in-the-Loop Training**: Initial training guided by direct human feedback.
+- **Automated Feedback**: Further training automated via fine-tuned LLM.
+- **Facial AU Representation**: Adheres to Facial Action Coding System (FACS) standards.
+- **GUI-based Workflow**: Visualizes faces, gathers human feedback, and automates evaluation.
 
-2. **Set Up `.env`:**
-   Place an `.env` in `persona/src`.
-   Add a `hf_key` field.
+### Setup and Usage
+1. **Install Dependencies**:  
+   `pip install -r requirements.txt`
+2. **Setup Environment (.env)**:
+   - Create `.env` in `persona/src`
+   - Add: `hf_key=YOUR_HF_KEY`   
+3. **Run GUI**:  
+   `python face/app.py`
+4. **Training Workflow**:
+   - **Human Feedback**: Validate and rank facial expressions through GUI.
+   - **Automated Mode**: Use fine-tuned LLM for automated evaluation and ranking.
+   
+---
 
-3. **Run System:**
-   ```bash
-   python persona/app.y
-   ```
+## (WIP) Speech: RL-Driven NPC Dialogue System
 
-5. **Usage:**
-The system starts the game loop in a separate thread and opens a persistent chat interface for the user. The NPC's dialogue adapts in real-time using RL and LLM feedback.
+The **Speech** module generates immersive NPC dialogues, dynamically updating an NPC's mental state based on player interactions, context, and emotional cues. It combines large language models (LLMs) with reinforcement learning (RL) techniques.
 
-## Configuration
+### Features
+- **Dynamic Mental State**: Real-time updates based on player interactions.
+- **Multi-modal Inputs**: Utilizes embeddings (SentenceTransformer) and emotional analysis.
+- **RL-Driven Adaptation**: Employs Proximal Policy Optimization (PPO) for adaptive, consistent character responses.
+- **LLM Integration**: Natural, contextually appropriate dialogues.
 
-- **Model Parameters:** Adjust input dimensions, action dimensions, and other hyperparameters in `src/ai/rl.py`.
-- **Persona:** Define NPC backstory, goals, and mental state in a JSON file under `src/game/player/personas`.
+### Quick Start
+1. **Install Dependencies**:  
+   `pip install -r requirements.txt`
+2. **Setup Environment (.env)**:
+   - Create `.env` in `persona/src`
+   - Add: `hf_key=YOUR_HF_KEY`
+3. **Run Dialogue System**:  
+   `python speech/app.py`
+
+### Configuration
+- **Model Parameters**: Modify settings in `src/ai/rl.py`
+- **Character Personas**: JSON files located in `src/game/player/personas`
