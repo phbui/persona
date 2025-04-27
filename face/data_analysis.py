@@ -15,14 +15,12 @@ def select_file(directory="data/responses"):
     return csvs[idx]
 
 def load_face_data(csv_path):
-    # read raw lines
     with open(csv_path, 'r', encoding='utf-8') as f:
         lines = [l.strip() for l in f]
 
     face_rows = []
     for i, line in enumerate(lines):
         if line.startswith("Rate the faces"):
-            # consume the next lines that start with "Face"
             j = i + 1
             while j < len(lines) and lines[j].startswith("Face"):
                 face_rows.append(lines[j])
@@ -31,56 +29,56 @@ def load_face_data(csv_path):
     if not face_rows:
         raise ValueError("No 'Face' blocks found in file")
 
-    # parse into DataFrame
     df = pd.DataFrame([r.split(',') for r in face_rows],
                       columns=["Face", "Avg", "Min", "Max", "Count"])
-    # convert to numeric, coerce blanks → NaN → 0
+
+    # Rename faces
+    df["Face"] = df["Face"].replace({
+        "Face 1": "HF",
+        "Face 2": "HF + LLM",
+        "Face 3": "LLM"
+    })
+
     for col in ["Avg", "Min", "Max", "Count"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(1)
     return df
 
 def analyze_and_plot(faces_df):
-    # 1) aggregate stats
     stats = faces_df.groupby("Face").agg(
-        avg_of_avgs = ("Avg", "mean"),
-        overall_min = ("Min", "min"),
-        overall_max = ("Max", "max"),
-        total_counts = ("Count", "sum"),
-        std_of_avgs = ("Avg", "std")
+        avg_of_avgs=("Avg", "mean"),
+        overall_min=("Min", "min"),
+        overall_max=("Max", "max"),
+        total_counts=("Count", "sum"),
+        std_of_avgs=("Avg", "std")
     )
     print("\n=== Aggregate Stats by Face ===")
     print(stats.to_string())
 
-    # 2) compute weighted mean
     weighted_mean = faces_df.groupby("Face").apply(
         lambda g: np.average(g["Avg"], weights=g["Count"])
     )
 
-    # 3) one figure, two subplots
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
-    # box‐plot on the left
     faces_df.boxplot(
         column="Avg",
         by="Face",
         grid=False,
         ax=ax1,
-        showfliers=False  
+        showfliers=False
     )
     ax1.set_title("Per-Question Avg Ratings by Face")
-    ax1.set_xlabel("Face Version")
+    ax1.set_xlabel("Face Generation Version")
     ax1.set_ylabel("Avg Rating (1–5)")
-    # remove the auto “Boxplot grouped by Face” title
     fig.suptitle("")
 
-    # bar chart of weighted means on the right
     weighted_mean.plot(
         kind="bar",
         ax=ax2,
         legend=False
     )
     ax2.set_title("Weighted Overall Mean Rating")
-    ax2.set_xlabel("Face Version")
+    ax2.set_xlabel("Face Generation Version")
     ax2.set_ylabel("Weighted Mean")
 
     plt.tight_layout()

@@ -6,274 +6,274 @@ Title:
 Description:
 
 Consent - Do you consent to your answers being used anonymously as part of my CS: 138 Reinforcement Learning final paper?,Count,Number of responses
-Yes,1,1
+Yes,12,12
 
 Title:
 Description:
 
 Consent - Do you consent to your answers being used anonymously as part of my CS: 138 Reinforcement Learning final paper?,Count,Count
-Yes,100%,1
+Yes,100%,12
 
 Title:
 Description:
 
 Consent - Do you consent to your answers being used anonymously as part of my CS: 138 Reinforcement Learning final paper?,Average (Consent - Do you consent to your answers being used anonymously as part of my CS: 138 Reinforcement Learning final paper?),Minimum (Consent - Do you consent to your answers being used anonymously as part of my CS: 138 Reinforcement Learning final paper?),Maximum (Consent - Do you consent to your answers being used anonymously as part of my CS: 138 Reinforcement Learning final paper?),Count
-Yes,1.00,1.00,1.00,1
+Yes,1.00,1.00,1.00,12
 
 Title:
 Description:
 
 "Instructions - You will be presented with a character and 30 distinct situations. For each situation, you will evaluate 3 automatically generated facial expressions representing the character’s reaction. You will be tasked with rating each face on a scale from 1 to 5 based on how appropriate or expressive it appears. Do you understand?",Count,Number of responses
-Yes,1,1
+Yes,12,12
 
 Title:
 Description:
 
 "Instructions - You will be presented with a character and 30 distinct situations. For each situation, you will evaluate 3 automatically generated facial expressions representing the character’s reaction. You will be tasked with rating each face on a scale from 1 to 5 based on how appropriate or expressive it appears. Do you understand?",Count,Count
-Yes,100%,1
+Yes,100%,12
 
 Title:
 Description:
 
 "Instructions - You will be presented with a character and 30 distinct situations. For each situation, you will evaluate 3 automatically generated facial expressions representing the character’s reaction. You will be tasked with rating each face on a scale from 1 to 5 based on how appropriate or expressive it appears. Do you understand?","Average (Instructions - You will be presented with a character and 30 distinct situations. For each situation, you will evaluate 3 automatically generated facial expressions representing the character’s reaction. You will be tasked with rating each face on a scale from 1 to 5 based on how appropriate or expressive it appears. Do you understand?)","Minimum (Instructions - You will be presented with a character and 30 distinct situations. For each situation, you will evaluate 3 automatically generated facial expressions representing the character’s reaction. You will be tasked with rating each face on a scale from 1 to 5 based on how appropriate or expressive it appears. Do you understand?)","Maximum (Instructions - You will be presented with a character and 30 distinct situations. For each situation, you will evaluate 3 automatically generated facial expressions representing the character’s reaction. You will be tasked with rating each face on a scale from 1 to 5 based on how appropriate or expressive it appears. Do you understand?)",Count
-Yes,1.00,1.00,1.00,1
+Yes,1.00,1.00,1.00,12
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,2.00,2.00,2.00,1
-Face 3,,,,0
+Face 1,2.33,1.00,3.00,9
+Face 2,2.89,2.00,4.00,9
+Face 3,3.33,1.00,5.00,3
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,4.00,4.00,4.00,1
-Face 3,5.00,5.00,5.00,1
+Face 1,2.00,1.00,3.00,4
+Face 2,3.00,2.00,4.00,9
+Face 3,3.75,3.00,5.00,8
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,5.00,5.00,5.00,1
-Face 3,,,,0
+Face 1,2.75,2.00,4.00,4
+Face 2,3.90,3.00,5.00,10
+Face 3,2.67,1.00,4.00,3
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,2.00,2.00,2.00,1
-Face 2,,,,0
-Face 3,,,,0
+Face 1,3.17,1.00,5.00,6
+Face 2,2.33,2.00,3.00,6
+Face 3,2.25,1.00,3.00,4
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,3.00,3.00,3.00,1
-Face 3,,,,0
+Face 1,2.33,2.00,3.00,3
+Face 2,2.44,1.00,3.00,9
+Face 3,2.56,2.00,5.00,9
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,4.00,4.00,4.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,2.00,1.00,3.00,6
+Face 2,3.40,2.00,4.00,10
+Face 3,3.25,2.00,5.00,12
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,3.00,3.00,3.00,1
-Face 3,2.00,2.00,2.00,1
+Face 1,3.80,2.00,5.00,5
+Face 2,3.50,2.00,5.00,10
+Face 3,3.40,2.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,5.00,5.00,5.00,1
-Face 3,2.00,2.00,2.00,1
+Face 1,2.80,1.00,5.00,5
+Face 2,3.36,2.00,5.00,11
+Face 3,3.27,2.00,5.00,11
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,4.00,4.00,4.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,3.14,2.00,4.00,7
+Face 2,3.11,2.00,4.00,9
+Face 3,3.18,2.00,5.00,11
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,3.00,3.00,3.00,1
+Face 1,3.30,2.00,5.00,10
+Face 2,2.78,2.00,4.00,9
+Face 3,3.45,2.00,5.00,11
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,4.00,4.00,4.00,1
-Face 3,,,,0
+Face 1,2.33,1.00,4.00,3
+Face 2,3.64,2.00,5.00,11
+Face 3,2.67,2.00,3.00,3
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,,,,0
-Face 3,,,,0
+Face 1,3.57,2.00,5.00,7
+Face 2,3.00,2.00,5.00,6
+Face 3,3.60,2.00,5.00,5
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,4.00,4.00,4.00,1
-Face 3,,,,0
+Face 1,3.22,2.00,5.00,9
+Face 2,3.33,2.00,4.00,9
+Face 3,3.80,2.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,3.00,3.00,3.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,1.60,1.00,2.00,5
+Face 2,2.89,2.00,4.00,9
+Face 3,3.36,2.00,5.00,11
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,4.00,4.00,4.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,3.00,3.00,3.00,1
+Face 1,3.50,2.00,5.00,10
+Face 2,2.67,2.00,4.00,9
+Face 3,2.88,2.00,4.00,8
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,4.00,4.00,4.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,3.00,1.00,5.00,7
+Face 2,2.90,1.00,4.00,10
+Face 3,3.40,2.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,5.00,5.00,5.00,1
-Face 3,,,,0
+Face 1,3.33,2.00,5.00,6
+Face 2,3.64,2.00,5.00,11
+Face 3,1.67,1.00,2.00,3
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,4.00,4.00,4.00,1
-Face 2,,,,0
-Face 3,,,,0
+Face 1,3.73,2.00,5.00,11
+Face 2,3.44,2.00,5.00,9
+Face 3,2.83,2.00,5.00,6
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,3.00,3.00,3.00,1
+Face 1,3.58,2.00,5.00,12
+Face 2,3.29,2.00,5.00,7
+Face 3,3.42,2.00,5.00,12
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,4.00,4.00,4.00,1
-Face 2,4.00,4.00,4.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,2.63,2.00,4.00,8
+Face 2,3.18,2.00,4.00,11
+Face 3,4.17,3.00,5.00,12
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,,,,0
-Face 3,,,,0
+Face 1,3.00,2.00,4.00,8
+Face 2,2.25,2.00,3.00,4
+Face 3,2.00,2.00,2.00,2
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,3.00,3.00,3.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,2.13,1.00,4.00,8
+Face 2,2.71,1.00,4.00,7
+Face 3,3.90,2.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,3.00,3.00,3.00,1
+Face 1,3.80,2.00,5.00,10
+Face 2,3.27,2.00,5.00,11
+Face 3,2.90,1.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,4.00,4.00,4.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,3.40,2.00,4.00,10
+Face 2,2.44,1.00,4.00,9
+Face 3,3.67,2.00,5.00,9
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,2.67,2.00,3.00,6
+Face 2,3.33,2.00,4.00,9
+Face 3,2.90,1.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,2.00,2.00,2.00,1
-Face 2,5.00,5.00,5.00,1
-Face 3,2.00,2.00,2.00,1
+Face 1,2.00,1.00,3.00,5
+Face 2,3.83,2.00,5.00,12
+Face 3,3.60,2.00,5.00,10
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,3.00,3.00,3.00,1
-Face 3,,,,0
+Face 1,1.33,1.00,2.00,3
+Face 2,2.45,1.00,4.00,11
+Face 3,1.50,1.00,2.00,2
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,3.00,3.00,3.00,1
-Face 2,3.00,3.00,3.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,3.20,2.00,4.00,5
+Face 2,3.00,2.00,4.00,10
+Face 3,3.38,2.00,5.00,8
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,4.00,4.00,4.00,1
-Face 2,4.00,4.00,4.00,1
-Face 3,3.00,3.00,3.00,1
+Face 1,3.60,3.00,4.00,5
+Face 2,3.57,3.00,4.00,7
+Face 3,3.11,2.00,4.00,9
 
 Title:
 Description:
 
 Rate the faces on a scale of 1 to 5 based on how appropriate or expressive...,Average,Minimum,Maximum,Count
-Face 1,,,,0
-Face 2,3.00,3.00,3.00,1
-Face 3,4.00,4.00,4.00,1
+Face 1,2.40,2.00,3.00,5
+Face 2,2.56,2.00,4.00,9
+Face 3,3.78,2.00,5.00,9
