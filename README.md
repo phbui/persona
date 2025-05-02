@@ -9,7 +9,7 @@
 The **Face** module uses reinforcement learning with human feedback (RLHF) and a fine-tuned LLM to generate expressive, character-specific facial expressions via Facial Action Units (AUs).
 
 ### Paper
-[LLMs Can Be Judgy Too]([https://pages.github.com/](https://www.are.na/block/36403350))
+[LLMs Can Be Judgy Too](https://www.are.na/block/36403350)
 
 ### Features
 - **Human-in-the-Loop Training**: Initial training guided by direct human feedback.
