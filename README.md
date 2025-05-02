@@ -33,7 +33,7 @@ The **Face** module uses reinforcement learning with human feedback (RLHF) and a
 
 ## (WIP) Speech: RL-Driven NPC Dialogue System
 
-The **Speech** module generates immersive NPC dialogues, dynamically updating an NPC's mental state based on player interactions, context, and emotional cues. It combines large language models (LLMs) with reinforcement learning (RL) techniques.
+The **Speech** module generates immersive NPC dialogues, dynamically updating an NPC's mental state based on player interactions, context, and emotional cues. It combines retrieval augmented generation (RAG) large language models (LLMs) with reinforcement learning (RL) techniques.
 
 ### Features
 - **Dynamic Mental State**: Real-time updates based on player interactions.
